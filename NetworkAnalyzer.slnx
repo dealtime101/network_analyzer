@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/NetworkAnalyzer/NetworkAnalyzer.csproj" />
+  <Project Path="tests/NetworkAnalyzer.Tests/NetworkAnalyzer.Tests.csproj" />
+</Solution>

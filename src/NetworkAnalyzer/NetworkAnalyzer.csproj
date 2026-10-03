@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NetworkAnalyzer</RootNamespace>
+    <AssemblyName>NetworkAnalyzer</AssemblyName>
+    <!-- THE version of NetworkAnalyzer: bump it by hand at each delivery (see deploy script).
+         1.0.0 = C# port of the Python prototype, runs on Windows without Python. -->
+    <Version>1.0.0</Version>
+    <!-- Invariant culture everywhere: "." decimals in the JSON, CSV and HTML whatever the Windows language. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Desktop tool: workstation GC (the Web SDK defaults to server GC, which is heavier). -->
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- The page is embedded in the assembly: no wwwroot folder, no IIS web.config next to the exe. -->
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\index.html" LogicalName="index.html" />
+  </ItemGroup>
+
+</Project>

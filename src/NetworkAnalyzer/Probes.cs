@@ -192,17 +192,20 @@ public static class Probes
         {
             for (int ttl = 1; ttl <= maxHops && !ct.IsCancellationRequested; ttl++)
             {
+                // Windows reports RoundtripTime = 0 for "TTL expired" replies: the time is measured here instead, for every hop alike.
                 var replies = await Task.WhenAll(Enumerable.Range(0, 3).Select(async _ =>
                 {
                     using var p = new Ping();
-                    return await p.SendPingAsync(dest, 800, new byte[32], new PingOptions(ttl, true));
+                    var sw = Stopwatch.StartNew();
+                    var rep = await p.SendPingAsync(dest, 800, new byte[32], new PingOptions(ttl, true));
+                    return (Reply: rep, Ms: sw.Elapsed.TotalMilliseconds);
                 }));
                 var hop = new TraceHop { Hop = ttl, Sent = 3 };
                 bool reached = false;
-                foreach (var r in replies)
+                foreach (var (r, ms) in replies)
                 {
                     if (r.Status == IPStatus.TimedOut) { hop.Lost++; continue; }
-                    hop.Rtts.Add(r.RoundtripTime == 0 ? 0.5 : r.RoundtripTime);
+                    hop.Rtts.Add(Math.Round(ms, 1));
                     hop.Ip ??= r.Address?.ToString();
                     if (r.Status == IPStatus.Success) reached = true;
                 }

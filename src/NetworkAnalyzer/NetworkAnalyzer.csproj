@@ -8,8 +8,11 @@
     <RootNamespace>NetworkAnalyzer</RootNamespace>
     <AssemblyName>NetworkAnalyzer</AssemblyName>
     <!-- THE version of NetworkAnalyzer: bump it by hand at each delivery (see deploy script).
-         1.0.0 = C# port of the Python prototype, runs on Windows without Python. -->
-    <Version>1.0.0</Version>
+         1.0.0 = C# port of the Python prototype, runs on Windows without Python;
+         1.0.1 = found by the first real run on Windows: bridged Hyper-V NIC detected as the active connection, filter bindings
+                 and Teredo no longer listed as interfaces/VPN, traceroute times measured (Windows reports 0 for TTL-expired replies),
+                 traffic read from one interface instead of a sum. -->
+    <Version>1.0.1</Version>
     <!-- Invariant culture everywhere: "." decimals in the JSON, CSV and HTML whatever the Windows language. -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>

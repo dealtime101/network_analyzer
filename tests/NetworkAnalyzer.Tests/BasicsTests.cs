@@ -347,6 +347,56 @@ SSID 3 : Autre
     [InlineData("Connexion au réseau local", "Adaptateur", NetworkInterfaceType.Tunnel, "vpn")]
     public void AdapterKind(string name, string desc, NetworkInterfaceType type, string expected) => Assert.Equal(expected, SysInfo.Kind(name, desc, type));
 
+    [Theory]
+    [InlineData("Ethernet-WFP Native MAC Layer LightWeight Filter-0000", true)]
+    [InlineData("vEthernet (External Network Switch)-QoS Packet Scheduler-0000", true)]
+    [InlineData("vSwitch (Default Switch)-Hyper-V Virtual Switch Extension Filter-0000", true)]
+    [InlineData("Ethernet-WFP 802.3 MAC Layer LightWeight Filter-0000", true)]
+    [InlineData("Ethernet", false)]
+    [InlineData("vEthernet (External Network Switch)", false)]
+    [InlineData("Wi-Fi 2", false)]
+    public void FilterBindingsAreNotInterfaces(string name, bool expected) => Assert.Equal(expected, SysInfo.IsFilterInstance(name));
+
+    // Names read on a real Windows 11 machine (Hyper-V "External Network Switch" bridging an Intel NIC).
+    [Theory]
+    [InlineData("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", NetworkInterfaceType.Tunnel, "virtuel")]
+    [InlineData("6to4 Adapter", "Microsoft 6to4 Adapter", NetworkInterfaceType.Tunnel, "virtuel")]
+    [InlineData("Local Area Connection* 4", "WAN Miniport (PPTP)", NetworkInterfaceType.Ppp, "virtuel")]
+    [InlineData("Local Area Connection* 3", "WAN Miniport (L2TP)", NetworkInterfaceType.Ppp, "virtuel")]
+    [InlineData("Ethernet (Kernel Debugger)", "Microsoft Kernel Debug Network Adapter", NetworkInterfaceType.Ethernet, "virtuel")]
+    [InlineData("Ethernet", "Intel(R) I211 Gigabit Network Connection", NetworkInterfaceType.Ethernet, "ethernet")]
+    [InlineData("vEthernet (External Network Switch)", "Hyper-V Virtual Ethernet Adapter #2", NetworkInterfaceType.Ethernet, "virtuel")]
+    [InlineData("Cisco AnyConnect", "Cisco AnyConnect Secure Mobility Client Virtual Miniport Adapter for Windows x64", NetworkInterfaceType.Ethernet, "vpn")]
+    [InlineData("OpenVPN", "TAP-Windows Adapter V9", NetworkInterfaceType.Ethernet, "vpn")]
+    public void WindowsBuiltinsAreNotVpn(string name, string desc, NetworkInterfaceType type, string expected) => Assert.Equal(expected, SysInfo.Kind(name, desc, type));
+
+    [Fact]
+    public void HyperVBridgedMachineKeepsItsRealConnection()
+    {
+        // Real case: the IP and the gateway sit on the virtual external switch, the physical NIC has neither.
+        var env = SysInfo.Summarize(new List<AdapterInfo>
+        {
+            Ad("vEthernet (External Network Switch)", "Hyper-V Virtual Ethernet Adapter #2", "virtuel", "Up", "192.168.0.1", null, new[] { "192.168.0.50" }, metric: 0),
+            Ad("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter", "virtuel", "Up", null, null, new[] { "172.24.0.1" }),
+            Ad("Ethernet", "Intel(R) I211 Gigabit Network Connection", "ethernet", "Up"),
+            Ad("Local Area Connection* 5", "WAN Miniport (PPPOE)", "virtuel", "Down"),
+        });
+        Assert.Equal("vEthernet (External Network Switch)", env.Active!.Name);
+        Assert.Equal("ethernet", env.Active.Kind);
+        Assert.Equal("192.168.0.1", env.Active.Gw4);
+        Assert.Contains(env.Notes, n => n.Contains("interface virtuelle") && n.Contains("Ethernet"));
+        Assert.False(env.Vpn.Active);
+    }
+
+    [Fact]
+    public void LiveTeredoTunnelIsNotReportedAsVpn()
+    {
+        var teredo = Ad("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", SysInfo.Kind("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", NetworkInterfaceType.Tunnel), "Up", v6: new[] { "2001:0:1::2" });
+        var env = SysInfo.Summarize(new List<AdapterInfo> { Ad("Ethernet", "Realtek", "ethernet", "Up", "192.168.0.1", null, new[] { "192.168.0.5" }, metric: 0), teredo });
+        Assert.False(env.Vpn.Active);
+        Assert.Equal("Ethernet", env.Active!.Name);
+    }
+
     [Fact]
     public void RealEnvironmentCollectDoesNotThrow()
     {

@@ -27,9 +27,17 @@ public static partial class SysInfo
     [DllImport("kernel32.dll")]
     static extern uint GetOEMCP();
 
+    // Windows' own plumbing: never a VPN (a live Teredo tunnel would otherwise be reported as one).
+    static readonly Regex WindowsBuiltinRx = new(@"^WAN Miniport|Teredo|6to4|IP-HTTPS|ISATAP|Kernel Debug", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    // Per-adapter filter bindings (WFP, QoS Packet Scheduler, Hyper-V switch extension) show up as extra "interfaces" named "<adapter>-<filter>-0000".
+    static readonly Regex FilterInstanceRx = new(@"-(WFP .*|QoS Packet Scheduler|.*Virtual Switch Extension Filter)-\d{4}$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public static bool IsFilterInstance(string name) => FilterInstanceRx.IsMatch(name);
+
     public static string Kind(string name, string description, NetworkInterfaceType type)
     {
         var text = $"{name} {description}";
+        if (WindowsBuiltinRx.IsMatch(description)) return "virtuel";
         if (VpnRx.IsMatch(text) || type is NetworkInterfaceType.Tunnel or NetworkInterfaceType.Ppp) return "vpn";
         if (VirtualRx.IsMatch(text)) return "virtuel";
         if (type == NetworkInterfaceType.Wireless80211 || WifiRx.IsMatch(text)) return "wifi";
@@ -50,7 +58,7 @@ public static partial class SysInfo
         }
         foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
         {
-            if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback || IsFilterInstance(ni.Name)) continue;
             var ip = ni.GetIPProperties();
             int index = 0;
             try { index = ip.GetIPv4Properties().Index; } catch (NetworkInformationException) { try { index = ip.GetIPv6Properties().Index; } catch (NetworkInformationException) { } }
@@ -77,11 +85,22 @@ public static partial class SysInfo
     {
         bool IsUp(AdapterInfo i) => i.Status.Equals("Up", StringComparison.OrdinalIgnoreCase) || i.Status.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
         var vpnUp = ifaces.Where(i => i.Kind == "vpn" && IsUp(i) && (i.Ipv4.Count > 0 || i.Ipv6.Count > 0)).ToList();
-        var cands = ifaces.Where(i => (i.Gw4 != null || i.Gw6 != null) && i.Kind is not ("vpn" or "virtuel") && IsUp(i)).OrderBy(i => i.Metric).ToList();
+        // A virtual interface qualifies only if it carries the default gateway (e.g. a Hyper-V "External Network Switch" bridging the NIC).
+        var cands = ifaces.Where(i => (i.Gw4 != null || i.Gw6 != null) && i.Kind != "vpn" && IsUp(i)).OrderBy(i => i.Metric).ToList();
         var active = cands.FirstOrDefault();
         var env = new EnvInfo { Interfaces = ifaces, Active = active, Vpn = new VpnInfo { Active = vpnUp.Count > 0, Adapters = vpnUp.Select(i => i.Name).ToList() } };
         if (cands.Count > 1)
             env.Notes.Add($"Plusieurs interfaces avec passerelle ({string.Join(", ", cands.Select(i => i.Name))}) : la plus prioritaire est mesurée ({active!.Name}).");
+        if (active is { Kind: "virtuel" })
+        {
+            var phys = ifaces.FirstOrDefault(i => i.Kind is "wifi" or "ethernet" && IsUp(i) && i.Gw4 == null && i.Gw6 == null);
+            if (phys != null)
+            {
+                env.Notes.Add($"« {active.Name} » est une interface virtuelle (pont Hyper-V / machine virtuelle) : la liaison physique serait « {phys.Name} » ({(phys.Kind == "wifi" ? "Wi-Fi" : "Ethernet")}), le type de liaison en est déduit.");
+                active.Kind = phys.Kind;
+                if (active.LinkSpeed.Length == 0) active.LinkSpeed = phys.LinkSpeed;
+            }
+        }
         if (vpnUp.Count > 0)
             env.Notes.Add($"VPN détecté ({string.Join(", ", vpnUp.Select(i => i.Name))}) : les mesures Internet passent peut-être par le tunnel ; la passerelle mesurée est celle de l'interface physique.");
         if (active is null) env.Notes.Add("Aucune connexion active avec passerelle détectée.");

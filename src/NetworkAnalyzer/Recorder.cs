@@ -359,31 +359,34 @@ public sealed class Recorder
         catch (OperationCanceledException) { }
     }
 
-    static (long Rx, long Tx) ReadCounters(string? nic)
+    /// <summary>Byte counters of ONE interface. Never the sum of several: bridges, VM switches and filter bindings count the same bytes again.</summary>
+    static (long Rx, long Tx)? ReadCounters(string? nic)
     {
-        var all = NetworkInterface.GetAllNetworkInterfaces();
+        var all = NetworkInterface.GetAllNetworkInterfaces().Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback && !SysInfo.IsFilterInstance(n.Name)).ToList();
         var one = nic == null ? null : all.FirstOrDefault(n => n.Name == nic);
-        if (one != null) { var s = one.GetIPv4Statistics(); return (s.BytesReceived, s.BytesSent); }
-        long rx = 0, tx = 0;
-        foreach (var n in all.Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback && n.OperationalStatus == OperationalStatus.Up))
-        {
-            var s = n.GetIPv4Statistics();
-            rx += s.BytesReceived; tx += s.BytesSent;
-        }
-        return (rx, tx);
+        // No known active interface: the busiest physical-looking one.
+        one ??= all.Where(n => n.OperationalStatus == OperationalStatus.Up && SysInfo.Kind(n.Name, n.Description, n.NetworkInterfaceType) is "wifi" or "ethernet")
+                   .OrderByDescending(n => { var s = n.GetIPv4Statistics(); return s.BytesReceived + s.BytesSent; }).FirstOrDefault();
+        if (one is null) return null;
+        var st = one.GetIPv4Statistics();
+        return (st.BytesReceived, st.BytesSent);
     }
 
     async Task TrafficLoop(string? nic, CancellationToken ct)
     {
         try
         {
-            var prev = ReadCounters(nic);
+            var first = ReadCounters(nic);
+            if (first is null) { AddNote("Aucune interface réseau physique lisible : trafic de l'ordinateur indisponible."); return; }
+            var prev = first.Value;
             double pt = Clock.Now();
             while (!ct.IsCancellationRequested)
             {
                 await Task.Delay(1000, ct);
                 var now = Clock.Now();
-                var cur = ReadCounters(nic);
+                var cur0 = ReadCounters(nic);
+                if (cur0 is null) continue;  // interface momentarily gone (cable pulled, adapter reset): no sample, no fake zero
+                var cur = cur0.Value;
                 double dt = now - pt;
                 if (dt > GapS) { prev = cur; pt = now; continue; }  // sleep: the delta would cover the pause
                 if (cur.Rx >= prev.Rx && cur.Tx >= prev.Tx && dt > 0)

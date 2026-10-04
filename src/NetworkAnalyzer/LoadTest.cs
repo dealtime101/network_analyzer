@@ -83,7 +83,8 @@ public sealed class LoadTest
     readonly List<string> errors = new();
     readonly List<PhaseMeta> results = new();
     readonly HttpClient http;
-    long bytes;
+    /// <summary>Bytes moved during ONE phase. Each phase gets its own: a worker that is late to stop adds to the phase it belongs to, never to the next one.</summary>
+    sealed class Counter { public long N; }
     string state = "idle";
     string? phase;
     double current;
@@ -182,23 +183,23 @@ public sealed class LoadTest
     {
         var series = $"load:{direction}_bps";
         long cap = (direction == "down" ? cfg.CapDownMb : cfg.CapUpMb) * 1_000_000L;
-        Interlocked.Exchange(ref bytes, 0);
+        var bytes = new Counter();
         int errs0;
         lock (gate) errs0 = errors.Count;
         var sw = Stopwatch.StartNew();
         using var phaseCts = CancellationTokenSource.CreateLinkedTokenSource(cancel.Token);
         phaseCts.CancelAfter(TimeSpan.FromSeconds(dur));
         var ct = phaseCts.Token;
-        var workers = Enumerable.Range(0, cfg.Streams).Select(_ => Task.Run(() => direction == "down" ? DownWorker(cap, ct) : UpWorker(cap, ct))).ToList();
+        var workers = Enumerable.Range(0, cfg.Streams).Select(_ => Task.Run(() => direction == "down" ? DownWorker(cap, ct, bytes) : UpWorker(cap, ct, bytes))).ToList();
         var rates = new List<double>();
         var all = new List<double>();
         long lastN = 0;
         double lastT = 0;
-        while (!ct.IsCancellationRequested && Interlocked.Read(ref bytes) < cap)
+        while (!Stopped(cap, ct, bytes))
         {
             try { await Task.Delay(1000, ct); } catch (OperationCanceledException) { break; }
             double now = sw.Elapsed.TotalSeconds;
-            long n = Interlocked.Read(ref bytes);
+            long n = Interlocked.Read(ref bytes.N);
             double bps = (n - lastN) * 8 / Math.Max(1e-6, now - lastT);
             lastN = n; lastT = now; current = bps;
             rec.Emit(series, bps, true);
@@ -206,7 +207,7 @@ public sealed class LoadTest
             if (now >= WarmupS) rates.Add(bps);
         }
         double elapsed = sw.Elapsed.TotalSeconds;  // read before waiting for the workers: their shutdown is not part of the phase
-        long total = Interlocked.Read(ref bytes);
+        long total = Interlocked.Read(ref bytes.N);
         phaseCts.Cancel();  // streams stop by themselves: deadline, volume cap or cancellation
         try { await Task.WhenAll(workers).WaitAsync(TimeSpan.FromSeconds(6)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
         var src = rates.Count > 0 ? rates : all;
@@ -220,15 +221,15 @@ public sealed class LoadTest
         return res;
     }
 
-    bool Stopped(long cap, CancellationToken ct) => ct.IsCancellationRequested || Interlocked.Read(ref bytes) >= cap;
+    static bool Stopped(long cap, CancellationToken ct, Counter bytes) => ct.IsCancellationRequested || Interlocked.Read(ref bytes.N) >= cap;
 
     void AddError(Exception e) { lock (gate) errors.Add($"{e.GetType().Name}: {e.Message}"); }
 
-    async Task DownWorker(long cap, CancellationToken ct)
+    async Task DownWorker(long cap, CancellationToken ct, Counter bytes)
     {
         int fails = 0;
         var buf = new byte[Chunk];
-        while (!Stopped(cap, ct) && fails < 5)
+        while (!Stopped(cap, ct, bytes) && fails < 5)
         {
             try
             {
@@ -236,11 +237,11 @@ public sealed class LoadTest
                 using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
                 if (resp.StatusCode != HttpStatusCode.OK) throw new HttpRequestException($"HTTP {(int)resp.StatusCode}");
                 await using var s = await resp.Content.ReadAsStreamAsync(ct);
-                while (!Stopped(cap, ct))
+                while (!Stopped(cap, ct, bytes))
                 {
                     int n = await s.ReadAsync(buf, ct);
                     if (n == 0) break;
-                    Interlocked.Add(ref bytes, n);
+                    Interlocked.Add(ref bytes.N, n);
                 }
             }
             catch (OperationCanceledException) { return; }
@@ -284,17 +285,17 @@ public sealed class LoadTest
         protected override bool TryComputeLength(out long length) { length = size; return true; }
     }
 
-    async Task UpWorker(long cap, CancellationToken ct)
+    async Task UpWorker(long cap, CancellationToken ct, Counter bytes)
     {
         int fails = 0;
         var block = new byte[Chunk];
         Random.Shared.NextBytes(block);  // incompressible
-        while (!Stopped(cap, ct) && fails < 5)
+        while (!Stopped(cap, ct, bytes) && fails < 5)
         {
             try
             {
                 using var req = new HttpRequestMessage(HttpMethod.Post, cfg.BaseUrl + "/__up") { Version = HttpVersion.Version11, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
-                req.Content = new BodyContent(10_000_000, block, () => Stopped(cap, ct), n => Interlocked.Add(ref bytes, n));
+                req.Content = new BodyContent(10_000_000, block, () => Stopped(cap, ct, bytes), n => Interlocked.Add(ref bytes.N, n));
                 using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
                 if (!resp.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)resp.StatusCode}");  // a refused upload is a failure, as for the download
                 await resp.Content.ReadAsByteArrayAsync(ct);

@@ -401,6 +401,15 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void ExampleDotComIsDescribedAsReservedForDocumentation()
+    {
+        var (en, fr) = Loc.Raw("dnsr.limit2");
+        Assert.DoesNotContain("reserved for this purpose", en);
+        Assert.Contains("documentation", en);
+        Assert.Contains("documentation", fr);
+    }
+
+    [Fact]
     public void NeighbourCountIsWrittenForOneNetworkToo()
     {
         var (en, fr) = Loc.Raw("lan.ev.neighbors");

@@ -120,7 +120,7 @@ public static partial class Loc
         // ---- DNS
         Add("dnsr.title", "DNS problem", "Problème DNS");
         Add("dnsr.limit1", "The measurement queries your resolver directly over UDP/53; a browser using DNS-over-HTTPS bypasses that resolver.", "La mesure interroge directement votre résolveur en UDP/53 ; un navigateur qui utilise DNS‑sur‑HTTPS contourne ce résolveur.");
-        Add("dnsr.limit2", "The \"cold\" test uses random names under example.com (reserved for this purpose).", "Le test « à froid » utilise des noms aléatoires sous example.com (réservé à cet usage).");
+        Add("dnsr.limit2", "The \"cold\" test uses random names under example.com (a domain reserved for documentation, RFC 2606; the random names do not exist, so the expected answer is NXDOMAIN).", "Le test « à froid » utilise des noms aléatoires sous example.com (domaine réservé à la documentation, RFC 2606 ; ces noms n'existent pas, la réponse attendue est NXDOMAIN).");
         Add("dnsr.next", "Change the PC's DNS (e.g. 1.1.1.1 or 9.9.9.9), run another session and compare resolution times.", "Changer le DNS du PC (ex. 1.1.1.1 ou 9.9.9.9), refaire une session et comparer les temps de résolution.");
         Add("dnsr.limit_none", "No DNS measurement available.", "Aucune mesure DNS disponible.");
         Add("dnsr.ev.fail", "Resolution failures: {0} % ({1} of {2}) on the configured DNS.", "Échecs de résolution : {0} % ({1} sur {2}) sur le DNS configuré.");

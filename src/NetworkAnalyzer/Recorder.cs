@@ -339,7 +339,7 @@ public sealed class Recorder
                 var t0 = Clock.Now();
                 var r = await Probes.DnsQueryAsync(server, HitNames[i % HitNames.Length]);
                 Emit("dns:sys_hit", r.Ms, r.Ok, r.Info, t0);
-                if (i % 3 == 0)  // cold resolution: random name under example.com (reserved by IANA)
+                if (i % 3 == 0)  // cold resolution: random name under example.com (reserved for documentation, RFC 2606)
                 {
                     var t1 = Clock.Now();
                     r = await Probes.DnsQueryAsync(server, $"na{Random.Shared.NextInt64():x}.example.com", acceptNxdomain: true);

@@ -143,7 +143,7 @@ public static partial class SysInfo
         return m.Success && double.TryParse(m.Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : null;
     }
 
-    [GeneratedRegex(@"\d+(?:[.,]\d+)?")]
+    [GeneratedRegex(@"-?\d+(?:[.,]\d+)?")]  // optional minus: an RSSI is negative (-60 dBm)
     private static partial Regex NumRx();
 
     public static string? BandFromChannel(int? ch) => ch switch

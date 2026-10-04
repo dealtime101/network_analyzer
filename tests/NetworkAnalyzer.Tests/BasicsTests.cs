@@ -272,6 +272,15 @@ SSID 3 : Autre
         Assert.StartsWith("5 GHz", w.Band);
     }
 
+    [Fact]
+    public void RssiKeepsItsNegativeSign()
+    {
+        var w = SysInfo.ParseNetshInterfaces(NetshFr.Replace("    Signal ", "    RSSI                   : -57\n    Signal "))!;
+        Assert.Equal(-57.0, w.Rssi);
+        Assert.Equal(92, w.Signal);
+        Assert.Equal(866.7, w.RxRate);   // other numbers are untouched
+    }
+
     [Theory]
     [InlineData("État", "etat")]
     [InlineData("Débit de réception (Mbit/s)", "debit de reception (mbit/s)")]

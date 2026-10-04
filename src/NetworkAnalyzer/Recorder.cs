@@ -74,6 +74,8 @@ public sealed class Recorder
     // Defaults are the real thing; tests replace them (no Wi-Fi hardware, short delays).
     public double GapThresholdS { get; set; } = GapS;
     public int WifiPollMs { get; set; } = 5000;
+    public int TrafficPollMs { get; set; } = 1000;
+    public Func<string?, (long Rx, long Tx)?> CounterReader { get; set; } = ReadCounters;
     public Func<Task<WifiInfo?>> WifiReader { get; set; } = SysInfo.ReadWifiAsync;
     public Func<int?, Task<WifiNeighbors?>> NeighborReader { get; set; } = SysInfo.ReadNeighborsAsync;
 
@@ -390,15 +392,26 @@ public sealed class Recorder
     {
         try
         {
-            var first = ReadCounters(nic);
+            bool noted = false;
+            // an adapter being reset throws: that read is skipped, the loop goes on (and says so once)
+            (long Rx, long Tx)? Read()
+            {
+                try { return CounterReader(nic); }
+                catch (NetworkInformationException)
+                {
+                    if (!noted) { noted = true; AddNote("counters_unreadable"); }
+                    return null;
+                }
+            }
+            var first = Read();
             if (first is null) { AddNote("no_iface"); return; }
             var prev = first.Value;
             double pt = Clock.Now();
             while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(1000, ct);
+                await Task.Delay(TrafficPollMs, ct);
                 var now = Clock.Now();
-                var cur0 = ReadCounters(nic);
+                var cur0 = Read();
                 if (cur0 is null) continue;  // interface momentarily gone (cable pulled, adapter reset): no sample, no fake zero
                 var cur = cur0.Value;
                 double dt = now - pt;
@@ -412,7 +425,6 @@ public sealed class Recorder
             }
         }
         catch (OperationCanceledException) { }
-        catch (NetworkInformationException) { AddNote("counters_unreadable"); }
     }
 
     async Task WifiLoop(CancellationToken ct)

@@ -564,6 +564,28 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task ATransientCounterErrorDoesNotEndTrafficMeasurement()
+    {
+        int calls = 0;
+        var rec = new Recorder(new SessionStore(Tmp.Dir()))
+        {
+            TrafficPollMs = 40,
+            CounterReader = _ =>
+            {
+                int n = Interlocked.Increment(ref calls);
+                if (n is 3 or 4) throw new System.Net.NetworkInformation.NetworkInformationException();   // adapter being reset
+                return (n * 1_000L, n * 500L);
+            },
+        };
+        rec.Start(new EnvInfo { Active = new AdapterInfo { Name = "eth" } }, new List<Target>(), 1);
+        await Task.Delay(900);
+        await rec.StopAsync();
+        var down = rec.LiveSince(0)["net:down_bps"];
+        Assert.True(down.Count >= 5, $"only {down.Count} samples: the loop stopped at the error");
+        Assert.Single(rec.Status().Notes, n => n == Loc.T("note.counters_unreadable"));   // noted once, not on every failed read
+    }
+
+    [Fact]
     public async Task AWifiSessionDoesNotStartWithAFakeSleepMark()
     {
         // the neighbour scan runs once, right after the first reading; its duration is not a system sleep

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -55,7 +56,18 @@ public sealed class SessionStore
     {
         lock (idLock)
         {
-            h.Id = Directory.EnumerateFiles(dir, "*.meta.json").Select(f => int.TryParse(Path.GetFileName(f).Split('.')[0], out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
+            // never below what was handed out before, even if that session was deleted (an export or a link may still name it)
+            var counter = Path.Combine(dir, "last_id.txt");
+            int last = 0;
+            try { int.TryParse(File.ReadAllText(counter).Trim(), out last); } catch (IOException) { }
+            int id = Math.Max(last, Directory.EnumerateFiles(dir, "*.meta.json").Select(f => int.TryParse(Path.GetFileName(f).Split('.')[0], out var n) ? n : 0).DefaultIfEmpty(0).Max()) + 1;
+            while (true)  // reserve it atomically: another process on the same folder cannot get the same number
+            {
+                try { using (new FileStream(MetaPath(id), FileMode.CreateNew, FileAccess.Write)) { } break; }
+                catch (IOException) { id++; }
+            }
+            h.Id = id;
+            File.WriteAllText(counter, id.ToString(CultureInfo.InvariantCulture));
             SaveHeader(h);
             File.WriteAllText(LinesPath(h.Id), "");
             return h.Id;

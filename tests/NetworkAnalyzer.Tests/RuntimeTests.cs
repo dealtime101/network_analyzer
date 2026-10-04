@@ -412,7 +412,8 @@ public class StoreTests
         Assert.NotNull(store.Load(id));
         store.Delete(id);
         Assert.Null(store.Load(id));
-        Assert.Empty(Directory.GetFiles(Path.Combine(dir, "sessions")));
+        // both session files are gone; only the id counter stays, on purpose (an id is never handed out again)
+        Assert.Equal(new[] { "last_id.txt" }, Directory.GetFiles(Path.Combine(dir, "sessions")).Select(Path.GetFileName).ToArray());
     }
 
     [Fact]
@@ -486,6 +487,44 @@ public class RequestNumberTests
         Assert.Equal(12.5, App.Num(System.Text.Json.Nodes.JsonValue.Create("12.5")));
         Assert.Equal(-3, App.Num(System.Text.Json.Nodes.JsonValue.Create(-3.0)));
         Assert.Null(App.Num(null));
+    }
+}
+
+public class SessionIdTests
+{
+    static SessionHeader H() => new() { Started = Simulator.T0, Meta = new SessionMeta() };
+
+    [Fact]
+    public void AnIdIsNeverReusedAfterTheLastSessionIsDeleted()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        int a = store.Create(H()), b = store.Create(H());
+        Assert.Equal(a + 1, b);
+        store.Delete(b);
+        int c = store.Create(H());
+        Assert.True(c > b, $"id {b} was handed out again ({c})");
+        store.Delete(c);
+        int d = new SessionStore(dir).Create(H());   // and not after a restart either
+        Assert.True(d > c, $"id {c} was handed out again after a restart ({d})");
+    }
+
+    [Fact]
+    public void ADataFolderWithoutTheCounterStillNumbersFromItsSessions()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        store.Create(H()); store.Create(H());
+        File.Delete(Directory.EnumerateFiles(Path.Combine(dir, "sessions"), "last_id*").Single());   // a folder written by an older version
+        Assert.Equal(3, new SessionStore(dir).Create(H()));
+    }
+
+    [Fact]
+    public async Task ConcurrentCreationsGetDistinctIds()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var ids = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Run(() => store.Create(H()))));
+        Assert.Equal(20, ids.Distinct().Count());
     }
 }
 

@@ -7,6 +7,22 @@ using Xunit;
 
 namespace NetworkAnalyzer.Tests;
 
+public class LauncherTests
+{
+    [Fact]
+    public void EveryKnownPlatformHasABrowserCommand()
+    {
+        var win = Launcher.BrowserCommand("http://127.0.0.1:8765", windows: true, macOS: false, linux: false)!;
+        Assert.True(win.UseShellExecute);
+        Assert.Equal("http://127.0.0.1:8765", win.FileName);
+        var mac = Launcher.BrowserCommand("http://127.0.0.1:8765", windows: false, macOS: true, linux: false)!;
+        Assert.Equal(("open", "http://127.0.0.1:8765"), (mac.FileName, mac.Arguments));
+        var lin = Launcher.BrowserCommand("http://127.0.0.1:8765", windows: false, macOS: false, linux: true)!;
+        Assert.Equal("xdg-open", lin.FileName);
+        Assert.Null(Launcher.BrowserCommand("http://127.0.0.1:8765", windows: false, macOS: false, linux: false));   // unknown: the user is told to open it by hand
+    }
+}
+
 public class TcpProbeTests
 {
     [Fact]

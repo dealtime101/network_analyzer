@@ -22,10 +22,11 @@ static void Open(string url)
 {
     try
     {
-        if (OperatingSystem.IsWindows()) Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        else if (OperatingSystem.IsLinux()) Process.Start(new ProcessStartInfo("xdg-open", url) { RedirectStandardError = true, RedirectStandardOutput = true });
+        var cmd = Launcher.BrowserCommand(url);
+        if (cmd != null) { Process.Start(cmd); return; }
     }
     catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException) { }
+    Console.WriteLine($"Could not open a browser automatically: open {url} yourself.");
 }
 
 // Already running? (same program answering on the port) → just open the browser on it.

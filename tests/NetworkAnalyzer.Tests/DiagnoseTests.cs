@@ -182,6 +182,18 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void SnapshotConfigDoesNotMixInLiveTargetSettings()
+    {
+        var d = Simulator.Make("healthy", 7);
+        d.Meta.CfgSnapshot = new ConfigSnapshot { PlanDownMbps = 100, PlanUpMbps = 20 };
+        var live = new AppConfig { CustomTarget = "changed.example.net", GatewayOverride = "10.9.9.9", PlanDownMbps = 500 };
+        var cfg = Diagnose.ConfigFor(d, live);
+        Assert.Equal(100, cfg.PlanDownMbps);
+        Assert.Equal(new AppConfig().CustomTarget, cfg.CustomTarget);
+        Assert.Equal(new AppConfig().GatewayOverride, cfg.GatewayOverride);
+    }
+
+    [Fact]
     public void ComparisonMetricsIgnoreAGatewayThatDoesNotAnswerIcmp()
     {
         var a = Run("healthy", null, p => p.IcmpBlocked.Add("gateway"));

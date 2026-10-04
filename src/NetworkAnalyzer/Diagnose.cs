@@ -968,7 +968,8 @@ public static partial class Diagnose
     {
         var snap = d.Meta.CfgSnapshot;
         if (snap is null) return live;
-        return new AppConfig { CustomTarget = live.CustomTarget, GatewayOverride = live.GatewayOverride, PlanDownMbps = snap.PlanDownMbps, PlanUpMbps = snap.PlanUpMbps, Router = snap.Router };
+        // the targets of a session are the ones stored with it (Meta.Targets): the live target settings play no part here
+        return new AppConfig { PlanDownMbps = snap.PlanDownMbps, PlanUpMbps = snap.PlanUpMbps, Router = snap.Router };
     }
 
     static List<string> GeneralLimits(Ctx cx)

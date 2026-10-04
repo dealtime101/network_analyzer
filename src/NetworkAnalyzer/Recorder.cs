@@ -80,6 +80,8 @@ public sealed class Recorder
     public int TrafficPollMs { get; set; } = 1000;
     public Func<string?, (string Name, long Rx, long Tx)?> CounterReader { get; set; } = ReadCounters;
     public Func<Task<WifiInfo?>> WifiReader { get; set; } = SysInfo.ReadWifiAsync;
+    /// <summary>Test seam: one ICMP probe of an address.</summary>
+    public Func<IPAddress, int, Task<ProbeResult>> Pinger { get; set; } = Probes.PingAsync;
     public Func<int?, string?, Task<WifiNeighbors?>> NeighborReader { get; set; } = SysInfo.ReadNeighborsAsync;
 
     public bool Running { get; private set; }
@@ -334,7 +336,7 @@ public sealed class Recorder
                         try { addr = await Probes.ResolveAsync(tg.Host, tg.Family, ct); resolvedAt = t; }
                         catch (Exception e) when (e is System.Net.Sockets.SocketException or ArgumentException) { addr = null; }
                     }
-                    r = addr is null ? new ProbeResult(false, null, "error") : await Probes.PingAsync(addr, 1000);
+                    r = addr is null ? new ProbeResult(false, null, "error") : await Pinger(addr, 1000);
                 }
                 else r = await Probes.TcpAsync(tg.Host, tg.TcpPort!.Value);
                 last = Clock.Now();

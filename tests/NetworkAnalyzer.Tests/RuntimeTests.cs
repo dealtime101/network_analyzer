@@ -1861,6 +1861,25 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task AnOutageAfterAnswersIsFailuresNotAFilteredIcmpTarget()
+    {
+        // NoResponse is the "does not answer ICMP" badge, decided from the first 8 probes. A target that answered and then goes down is an
+        // OUTAGE, shown by its failed probes and loss, and must not be relabelled as a host that filters ICMP.
+        int calls = 0;
+        var rec = new Recorder(new SessionStore(Tmp.Dir()))
+        {
+            Pinger = (_, _) => Task.FromResult(++calls <= 2 ? new ProbeResult(true, 5.0, "") : new ProbeResult(false, null, "timeout")),
+        };
+        rec.Start(new EnvInfo(), new List<Target> { new() { Id = "gw", Host = "127.0.0.1", Role = "gateway" } }, 1);
+        await Task.Delay(5500);                                         // 2 answers, then about 3 failures
+        var live = rec.LiveStats(60)["gw"];
+        await rec.StopAsync();
+        Assert.False(live.NoResponse);                                  // not the filtered-ICMP badge
+        Assert.True(live.Stats!.Lost >= 2, $"only {live.Stats.Lost} failures shown");   // the outage is in the figures
+        Assert.True(live.Stats.LossPct > 0);
+    }
+
+    [Fact]
     public async Task AWifiSessionDoesNotStartWithAFakeSleepMark()
     {
         // the neighbour scan runs once, right after the first reading; its duration is not a system sleep

@@ -90,6 +90,26 @@ public class LauncherTests
 public class SimulatorIsolationTests
 {
     [Fact]
+    public void ACutShortSimulationHasNoPhaseOrMarkAfterItsEnd()
+    {
+        foreach (var scn in Simulator.Scenarios)
+            foreach (var minutes in new[] { 1, 3 })
+            {
+                var d = Simulator.Make(scn, 7, p => p.Minutes = minutes);
+                Assert.All(d.Marks, m => Assert.InRange(m.T, d.Started, d.Ended!.Value));
+                Assert.All(d.Phases, ph =>
+                {
+                    Assert.True(ph.T0 < d.Ended!.Value, $"{scn}/{minutes} min: phase {ph.Name} starts after the end");   // red before: phases up to 130 s in a 60 s session
+                    Assert.InRange(ph.T1, ph.T0, d.Ended.Value);
+                });
+            }
+        // the full-length scenarios are untouched by the cut
+        var full = Simulator.Make("bufferbloat", 7);
+        Assert.Equal(Simulator.Make("bufferbloat", 7).Phases.Select(x => (x.Name, x.T0, x.T1)), full.Phases.Select(x => (x.Name, x.T0, x.T1)));
+        Assert.Contains(full.Phases, ph => ph.T1 - full.Started > 120);   // the 130 s schedule is still whole
+    }
+
+    [Fact]
     public void EveryListedScenarioBuildsAndAnUnknownOneIsRefused()
     {
         Assert.Equal(11, Simulator.Scenarios.Length);   // the ones the suite has always run

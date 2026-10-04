@@ -146,8 +146,9 @@ public static class Simulator
                 Add("wifi:signal", t, sig + r.Next(-3, 4));
             }
         }
-        var marks = p.Marks.Select(m => new Mark { T = T0 + m, Kind = "lag" }).Concat(p.Roam.Select(m => new Mark { T = T0 + m, Kind = "roam" })).OrderBy(m => m.T).ToList();
-        var phases = p.Load != null ? PhaseSchedule.Select(x => new Phase { Name = x.Name, T0 = T0 + x.A, T1 = T0 + x.B }).ToList() : new List<Phase>();
+        // Minutes may cut the scenario short: nothing is placed after the end of the session (no mark, no phase that starts there, no phase running past it)
+        var marks = p.Marks.Where(m => m <= n).Select(m => new Mark { T = T0 + m, Kind = "lag" }).Concat(p.Roam.Where(m => m <= n).Select(m => new Mark { T = T0 + m, Kind = "roam" })).OrderBy(m => m.T).ToList();
+        var phases = p.Load != null ? PhaseSchedule.Where(x => x.A < n).Select(x => new Phase { Name = x.Name, T0 = T0 + x.A, T1 = T0 + Math.Min(x.B, n) }).ToList() : new List<Phase>();
         return new SessionData
         {
             Id = 1, Started = T0, Ended = T0 + n, Label = scn, Link = p.Link, PlannedS = n,

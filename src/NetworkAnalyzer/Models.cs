@@ -95,7 +95,7 @@ public sealed class TraceAnalysis
 
 public sealed class TraceResult
 {
-    /// <summary>Error code: unsupported | name_not_found | failed (translated at display time).</summary>
+    /// <summary>Error code: unsupported | name_not_found | failed | cancelled (translated at display time).</summary>
     public string? Error { get; set; }
     public List<TraceHop>? Hops { get; set; }
     public TraceAnalysis? Analysis { get; set; }

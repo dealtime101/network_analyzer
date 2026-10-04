@@ -123,6 +123,7 @@ public static partial class Loc
         // ---- traceroute
         Add("trace.error.unsupported", "Traceroute unavailable on this system (privileges required).", "Traceroute indisponible sur ce système (privilèges requis).");
         Add("trace.error.name_not_found", "Name not found.", "Nom introuvable.");
+        Add("trace.error.cancelled", "Traceroute interrupted before it finished.", "Traceroute interrompu avant la fin.");
         Add("trace.error.failed", "Traceroute failed.", "Traceroute impossible.");
         Add("trace.nohops", "No readable hop.", "Aucun saut lisible.");
         Add("trace.intermediate", "Loss at hop(s) {0} but the following hops answer: most likely ICMP rate-limiting by the router, NOT a real loss.", "Perte(s) au(x) saut(s) {0} mais les sauts suivants répondent : très probablement une limitation ICMP du routeur, PAS une perte réelle.");

@@ -238,6 +238,8 @@ public static class Probes
         }
         catch (PlatformNotSupportedException) { return new TraceResult { Error = "unsupported" }; }
         catch (Exception e) when (e is PingException or SocketException) { return new TraceResult { Error = "failed" }; }
+        // interrupted by the caller: what was measured is partial, so no verdict (a missing destination would read as "unreachable")
+        if (ct.IsCancellationRequested) return new TraceResult { Hops = hops, Error = "cancelled" };
         return new TraceResult { Hops = hops, Analysis = AnalyzeTrace(hops, dest.ToString()) };
     }
 }

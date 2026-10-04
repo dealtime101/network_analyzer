@@ -177,6 +177,17 @@ public class ProbeTests
     }
 
     [Fact]
+    public async Task ACancelledTracerouteIsNotAnalysedAsAnUnreachedDestination()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var r = await Probes.TracerouteAsync("127.0.0.1", 20, cts.Token);
+        Assert.Equal("cancelled", r.Error);
+        Assert.Null(r.Analysis);   // no "destination did not answer" conclusion about a measurement the user interrupted
+        Assert.False(string.IsNullOrEmpty(Loc.Raw("trace.error.cancelled").En));
+    }
+
+    [Fact]
     public async Task AReplyFromAnotherSenderIsIgnored()
     {
         // the real server answers NXDOMAIN; a third party sends a "good" reply with the right id from another port just before

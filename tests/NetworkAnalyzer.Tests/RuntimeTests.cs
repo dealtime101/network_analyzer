@@ -339,6 +339,29 @@ public class StoreTests
     }
 }
 
+public class RequestNumberTests
+{
+    [Theory]
+    [InlineData("NaN")] [InlineData("Infinity")] [InlineData("-Infinity")] [InlineData("1e999")]
+    public void NonFiniteTextIsRejected(string text) =>
+        Assert.Throws<ApiException>(() => App.Num(System.Text.Json.Nodes.JsonValue.Create(text)));
+
+    [Fact]
+    public void NonFiniteNumbersAreRejectedToo()
+    {
+        Assert.Throws<ApiException>(() => App.Num(System.Text.Json.Nodes.JsonValue.Create(double.NaN)));
+        Assert.Throws<ApiException>(() => App.Num(System.Text.Json.Nodes.JsonValue.Create(double.PositiveInfinity)));
+    }
+
+    [Fact]
+    public void OrdinaryNumbersStillWork()
+    {
+        Assert.Equal(12.5, App.Num(System.Text.Json.Nodes.JsonValue.Create("12.5")));
+        Assert.Equal(-3, App.Num(System.Text.Json.Nodes.JsonValue.Create(-3.0)));
+        Assert.Null(App.Num(null));
+    }
+}
+
 public class ShotNameTests
 {
     [Fact]

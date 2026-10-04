@@ -73,8 +73,9 @@ public sealed class App
     public static double? Num(JsonNode? n)
     {
         if (n is not JsonValue v) return null;
-        if (v.TryGetValue<double>(out var d)) return d;
-        if (v.TryGetValue<string>(out var s)) return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ? x : throw new ApiException(Loc.T("err.invalid_number"));
+        // NaN and Infinity parse fine but slip through Math.Min/Max bounds and (int) casts: only finite numbers pass
+        if (v.TryGetValue<double>(out var d)) return double.IsFinite(d) ? d : throw new ApiException(Loc.T("err.invalid_number"));
+        if (v.TryGetValue<string>(out var s)) return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && double.IsFinite(x) ? x : throw new ApiException(Loc.T("err.invalid_number"));
         return null;
     }
 

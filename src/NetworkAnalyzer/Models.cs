@@ -72,6 +72,8 @@ public sealed class TraceHop
     public string? Ip { get; set; }
     public List<double> Rtts { get; set; } = new();
     public int Lost { get; set; }
+    /// <summary>Replies that were ICMP "destination unreachable" errors: the hop did answer (its RTT is in <see cref="Rtts"/>), but it is not an echo reply or a TTL-expired.</summary>
+    public int Unreachable { get; set; }
     public int Sent { get; set; }
 }
 

@@ -208,7 +208,7 @@ public static class Probes
         var res = new TraceAnalysis();
         if (hops.Count == 0) return res;
         var last = hops[^1];
-        res.Reached = last.Rtts.Count > 0 && (destIp is null || last.Ip == destIp);
+        res.Reached = last.Rtts.Count > last.Unreachable && (destIp is null || last.Ip == destIp);   // an error from the destination's address is not an echo reply
         for (int i = 0; i < hops.Count - 1; i++)
             if (hops[i].Lost > 0 && hops.Skip(i + 1).Any(x => x.Rtts.Count > 0)) res.IntermediateLoss.Add(hops[i].Hop);
         var meds = hops.Where(h => h.Rtts.Count > 0).Select(h => (h.Hop, Ms: h.Rtts.Average(), h.Ip)).ToList();
@@ -222,7 +222,7 @@ public static class Probes
             }
         }
         res.DestSent = last.Sent;
-        res.DestLossPct = last.Sent > 0 ? 100.0 * last.Lost / last.Sent : null;
+        res.DestLossPct = last.Sent > 0 ? 100.0 * (last.Lost + last.Unreachable) / last.Sent : null;   // the probes an error answered did not measure the destination
         return res;
     }
 
@@ -244,6 +244,8 @@ public static class Probes
     public static bool IsHopReply(IPStatus s) => s is IPStatus.Success or IPStatus.TtlExpired or IPStatus.TimeExceeded or IPStatus.TtlReassemblyTimeExceeded
         or IPStatus.DestinationNetworkUnreachable or IPStatus.DestinationHostUnreachable or IPStatus.DestinationProtocolUnreachable
         or IPStatus.DestinationPortUnreachable or IPStatus.DestinationUnreachable or IPStatus.DestinationProhibited or IPStatus.DestinationScopeMismatch;
+
+    static bool IsTtlReply(IPStatus s) => s is IPStatus.TtlExpired or IPStatus.TimeExceeded or IPStatus.TtlReassemblyTimeExceeded;
 
     public static async Task<TraceResult> TracerouteAsync(string host, int maxHops = 20, CancellationToken ct = default)
     {
@@ -273,6 +275,7 @@ public static class Probes
                     hop.Rtts.Add(Math.Round(ms, 1));
                     hop.Ip ??= r.Address?.ToString();
                     if (r.Status == IPStatus.Success) reached = true;
+                    else if (!IsTtlReply(r.Status)) hop.Unreachable++;   // kept apart: the hop answered, but with an error
                 }
                 hops.Add(hop);
                 if (reached) break;

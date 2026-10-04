@@ -14,9 +14,56 @@ using Xunit;
 
 namespace NetworkAnalyzer.Tests;
 
+/// <summary>Temporary folders that are removed (with their content) when this object is disposed.</summary>
+sealed class TempFolders : IDisposable
+{
+    readonly System.Collections.Concurrent.ConcurrentBag<string> dirs = new();
+
+    public string Dir()
+    {
+        var d = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "na-test-" + Guid.NewGuid().ToString("N"))).FullName;
+        dirs.Add(d);
+        return d;
+    }
+
+    public void Dispose()
+    {
+        foreach (var d in dirs)
+            try { Directory.Delete(d, true); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }  // best effort: a file still open
+    }
+}
+
 static class Tmp
 {
-    public static string Dir() => Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "na-test-" + Guid.NewGuid().ToString("N"))).FullName;
+    static readonly TempFolders shared = Create();
+
+    // every folder handed out is removed when the test process exits, so runs do not pile up folders in the temp directory
+    static TempFolders Create()
+    {
+        var t = new TempFolders();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => t.Dispose();
+        return t;
+    }
+
+    public static string Dir() => shared.Dir();
+}
+
+public class TempFolderTests
+{
+    [Fact]
+    public void FoldersAreRemovedWithTheirContentOnDispose()
+    {
+        string a, b;
+        using (var t = new TempFolders())
+        {
+            a = t.Dir(); b = t.Dir();
+            Directory.CreateDirectory(Path.Combine(a, "sessions"));
+            File.WriteAllText(Path.Combine(a, "sessions", "1.jsonl"), "x");
+            Assert.True(Directory.Exists(a) && Directory.Exists(b));
+        }
+        Assert.False(Directory.Exists(a));
+        Assert.False(Directory.Exists(b));
+    }
 }
 
 /// <summary>Fake Cloudflare-like speed server: GET /__down?bytes=N and POST /__up.</summary>

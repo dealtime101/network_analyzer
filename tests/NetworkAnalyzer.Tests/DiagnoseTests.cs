@@ -365,7 +365,7 @@ public class InvariantTests
     public void StoredFilesNeverContainDisplayText()
     {
         // Session files hold codes, numbers and user input only: no sentence, no translated label.
-        var dir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "na-test-" + Guid.NewGuid().ToString("N"))).FullName;
+        var dir = Tmp.Dir();
         var store = new SessionStore(dir);
         foreach (var lang in Loc.Languages)
             using (Loc.Scope(lang))

@@ -101,9 +101,14 @@ public static class Probes
         BinaryPrimitives.WriteUInt16BigEndian(hdr[2..], 0x0100);
         BinaryPrimitives.WriteUInt16BigEndian(hdr[4..], 1);
         ms.Write(hdr);
-        foreach (var label in name.Trim('.').Split('.'))
+        string ascii;
+        try { ascii = new System.Globalization.IdnMapping().GetAscii(name.Trim().TrimEnd('.')); }  // international names become punycode instead of '?'
+        catch (ArgumentException) { throw new ArgumentException(Loc.T("err.invalid_host", name)); }
+        if (ascii.Length == 0 || ascii.Length > 253) throw new ArgumentException(Loc.T("err.invalid_host", name));
+        foreach (var label in ascii.Split('.'))
         {
             var b = System.Text.Encoding.ASCII.GetBytes(label);
+            if (b.Length is 0 or > 63) throw new ArgumentException(Loc.T("err.invalid_host", name));  // empty or too long: the packet would be malformed
             ms.WriteByte((byte)b.Length);
             ms.Write(b);
         }
@@ -130,7 +135,9 @@ public static class Probes
     {
         if (!IPAddress.TryParse(server, out var ip)) return new ProbeResult(false, null, "error:invalid_dns_server");
         var qid = (ushort)Random.Shared.Next(65536);
-        var pkt = BuildDnsQuery(name, qid);
+        byte[] pkt;
+        try { pkt = BuildDnsQuery(name, qid); }
+        catch (ArgumentException) { return new ProbeResult(false, null, "error:invalid_name"); }
         var buf = new byte[4096];
         using var cts = new CancellationTokenSource(timeoutMs);
         try

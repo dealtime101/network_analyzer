@@ -177,6 +177,21 @@ public class ProbeTests
     }
 
     [Fact]
+    public async Task DnsNamesAreValidatedAndInternationalNamesEncoded()
+    {
+        Assert.Throws<ArgumentException>(() => Probes.BuildDnsQuery("a..b.example", 1));                        // empty label
+        Assert.Throws<ArgumentException>(() => Probes.BuildDnsQuery(new string('a', 64) + ".example", 1));    // label over 63 bytes
+        Assert.Throws<ArgumentException>(() => Probes.BuildDnsQuery(string.Join(".", Enumerable.Repeat(new string('a', 60), 5)), 1));   // name over 253
+        Assert.Equal(1, Probes.BuildDnsQuery("trailing.dot.example.", 1)[^5] == 0 ? 1 : 0);                     // a final dot is fine
+        var idn = Probes.BuildDnsQuery("bücher.example", 1);
+        Assert.True(idn.AsSpan(12).IndexOf(System.Text.Encoding.ASCII.GetBytes("xn--bcher-kva")) >= 0, "the name must be sent as punycode, not with '?'");
+        Assert.DoesNotContain((byte)'?', idn);
+        var r = await Probes.DnsQueryAsync("127.0.0.1", "a..b.example", 500);
+        Assert.False(r.Ok);
+        Assert.Equal("error:invalid_name", r.Info);
+    }
+
+    [Fact]
     public async Task DnsOk()
     {
         var r = await Query(0, 1);

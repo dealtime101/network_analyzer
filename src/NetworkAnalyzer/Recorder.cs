@@ -552,7 +552,10 @@ public sealed class Recorder
         foreach (var tg in Targets)
         {
             var smp = snap.GetValueOrDefault($"ping:{tg.Id}") ?? new List<Sample>();
-            smp = smp.Where(s => s.T >= t1 - seconds && s.Info != "icmp_no_reply").ToList();
+            // The failures held back before the ICMP/TCP decision are dropped only if a TCP fallback really took over (as the
+            // report and the analysis do); when nothing answered at all they are the unavailability and they count.
+            bool tcpTookOver = smp.Any(s => s.Info == "tcp");
+            smp = smp.Where(s => s.T >= t1 - seconds && !(tcpTookOver && s.Info == "icmp_no_reply")).ToList();
             TargetState? st;
             lock (gate) targetState.TryGetValue(tg.Id, out st);
             res[tg.Id] = new LiveTarget { Label = tg.Label, Role = tg.Role, Host = tg.Host, Mode = st?.Mode ?? "icmp", Port = st?.Port, NoResponse = st?.NoResponse ?? false, Stats = Stats.Rtt(smp) };

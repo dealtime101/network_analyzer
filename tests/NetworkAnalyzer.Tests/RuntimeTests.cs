@@ -1469,6 +1469,24 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task LiveStatisticsKeepTheInitialFailuresUnlessATcpFallbackReallyTookOver()
+    {
+        var rec = new Recorder(new SessionStore(Tmp.Dir()));
+        var t = new Target { Id = "ghost", Host = "192.0.2.1", Role = "internet", Family = 4, TcpPort = 443 };
+        rec.Start(new EnvInfo(), new List<Target> { t }, 1);
+        double now = Clock.Now();
+        // 8 failures flushed with no TCP fallback (both probes failed): real unavailability, they count
+        for (int i = 0; i < 8; i++) rec.Emit("ping:ghost", null, false, "icmp_no_reply", now - 8 + i);
+        var noFallback = rec.LiveStats()["ghost"].Stats!;
+        Assert.Equal((8, 100.0), (noFallback.N, noFallback.LossPct));
+        // the TCP fallback then worked: the ICMP failures are not relevant to the new mode any more, and are left out
+        for (int i = 0; i < 5; i++) rec.Emit("ping:ghost", 20.0 + i, true, "tcp", now + i * 0.1);
+        var fallback = rec.LiveStats()["ghost"].Stats!;
+        Assert.Equal((5, 0.0), (fallback.N, fallback.LossPct));
+        await rec.StopAsync();
+    }
+
+    [Fact]
     public async Task FailuresHeldBackWhileWaitingToDecideAboutIcmpAreSavedWhenTheSessionStopsEarly()
     {
         var store = new SessionStore(Tmp.Dir());

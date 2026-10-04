@@ -190,6 +190,11 @@ public class PageAccessibilityTests
         Assert.Matches(@"\.linklike\{[^}]*background:none", Page);
         Assert.Matches(@"\.linklike:focus-visible\{[^}]*outline", Page);
         Assert.Contains("class=\"linklike\"", cell);
+        // its name says what it does and to which session, not just the current label ("—" for an unnamed one)
+        Assert.Contains("aria-label=\"${esc(t('hist.rename_aria', s.id, s.label || '—'))}\"", cell);   // red before: the name was the label text alone
+        Assert.True(Regex.Matches(Page, @"'hist\.rename_aria'\s*:").Count >= 2, "the key must exist in both dictionaries");
+        Assert.Contains("'hist.rename_aria': 'Rename session {0} (currently: {1})'", Page);
+        Assert.Contains("'hist.rename_aria': 'Renommer la session {0} (actuellement : {1})'", Page);
     }
 
     [Fact]

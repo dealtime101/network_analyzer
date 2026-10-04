@@ -124,6 +124,24 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void WifiSignalPercentAndLinkRateMbpsAreOnSeparateCharts()
+    {
+        // two canvases in the live tab and two in the diagnosis tab, each with its own legend and translated name
+        foreach (var id in new[] { "c_wifi", "c_wifi_rate", "d_wifi", "d_wifi_rate" })
+            Assert.Matches($@"<canvas id=""{id}""[^>]*(role=""img"")", Page);
+        foreach (var id in new[] { "l_wifi", "l_wifi_rate", "dl_wifi", "dl_wifi_rate" })
+            Assert.Contains($"id=\"{id}\"", Page);
+        var draw = Regex.Match(Page, @"function drawAll\([^\n]*\n(?:[^\n]*\n)*?\}").Value;
+        Assert.NotEmpty(draw);
+        // the signal series is alone on its chart, the two rates share theirs (same unit)
+        Assert.Matches(@"ids\.wifi\)[^\n]*series: sig", draw);
+        Assert.Matches(@"ids\.wifir\)[^\n]*series: rates", draw);
+        Assert.DoesNotMatch(@"simple\(map, 'wifi:signal'[^\n]*simple\(map, 'wifi:tx'", draw);   // no longer one list
+        foreach (var key in new[] { "chart.wifi_sig", "chart.wifi_rate" })
+            Assert.True(Regex.Matches(Page, $@"'{Regex.Escape(key)}'\s*:").Count >= 2, $"{key} must exist in both dictionaries");
+    }
+
+    [Fact]
     public void EveryHistoryCheckboxSaysWhichSessionAndWhichGroup()
     {
         var boxes = Regex.Matches(Page, @"<input type=""checkbox"" data-g=""[ab]""[^>]*>").Select(m => m.Value).ToList();

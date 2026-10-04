@@ -89,7 +89,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     <div class="card"><h2 data-i18n="chart.traffic"></h2><canvas id="c_net" role="img" data-i18n-aria="chart.traffic"></canvas><div class="legend" id="l_net"></div></div>
     <div class="card"><h2 data-i18n="chart.dns"></h2><canvas id="c_dns" role="img" data-i18n-aria="chart.dns"></canvas><div class="legend" id="l_dns"></div></div>
   </div>
-  <div class="card" id="wifi_card"><h2 data-i18n="chart.wifi"></h2><canvas id="c_wifi" role="img" data-i18n-aria="chart.wifi"></canvas><div class="legend" id="l_wifi"></div><p class="small muted" data-i18n-html="chart.wifi_note"></p></div>
+  <div class="card" id="wifi_card"><h2 data-i18n="chart.wifi_sig"></h2><canvas id="c_wifi" role="img" data-i18n-aria="chart.wifi_sig"></canvas><div class="legend" id="l_wifi"></div><h2 data-i18n="chart.wifi_rate"></h2><canvas id="c_wifi_rate" role="img" data-i18n-aria="chart.wifi_rate"></canvas><div class="legend" id="l_wifi_rate"></div><p class="small muted" data-i18n-html="chart.wifi_note"></p></div>
   <p class="small muted" data-i18n="chart.traffic_note"></p>
 </section>
 
@@ -191,7 +191,7 @@ en: {
  'cards.h': 'Live measurements', 'cards.sub': '(last 60 seconds)', 'cards.none': 'No monitoring in progress.', 'cards.noicmp': 'does not answer ICMP', 'cards.waiting': 'Waiting for measurements…',
  'm.median': 'median ms', 'm.p95': 'p95 ms', 'm.max': 'max ms', 'm.loss': 'loss %', 'm.jitter': 'jitter ms',
  'chart.latency': 'Latency (ms)', 'chart.latency_note': 'One curve per target; vertical red lines: "I\'m lagging now"; small ticks at the bottom: lost requests. The scale is capped for readability (higher spikes touch the top of the chart).',
- 'chart.traffic': 'Traffic of this computer (Mbps)', 'chart.dns': 'DNS resolution (ms)', 'chart.wifi': 'Wi-Fi (signal %, link rate Mbps)',
+ 'chart.traffic': 'Traffic of this computer (Mbps)', 'chart.dns': 'DNS resolution (ms)', 'chart.wifi': 'Wi-Fi (signal %, link rate Mbps)', 'chart.wifi_sig': 'Wi-Fi signal (%)', 'chart.wifi_rate': 'Wi-Fi link rate (Mbps)',
  'chart.wifi_note': 'The <b>link</b> rate is the radio speed negotiated with the access point, not your Internet speed. No interference data is invented: only the Wi-Fi neighbours visible on the same channel are counted.',
  'chart.traffic_note': 'PC traffic: network interface totals. Per-program attribution is not offered: without administrator rights or a capture, no reliable method exists. To identify a program, use Task Manager (Network column) or Resource Monitor.',
  's.pc_down': '↓ PC', 's.pc_up': '↑ PC', 's.test_down': '↓ test', 's.test_up': '↑ test', 's.dns_hit': 'System DNS (common name)', 's.dns_miss': 'System DNS (cold)', 's.dns_ref': '1.1.1.1 (cold, reference)', 's.sig': 'Signal %', 's.tx': 'Link transmit Mbps', 's.rx': 'Link receive Mbps', 'chart.nodata': 'No data',
@@ -273,7 +273,7 @@ fr: {
  'cards.h': 'Mesures en direct', 'cards.sub': '(60 dernières secondes)', 'cards.none': 'Aucune surveillance en cours.', 'cards.noicmp': "ne répond pas à l'ICMP", 'cards.waiting': 'En attente de mesures…',
  'm.median': 'médiane ms', 'm.p95': 'p95 ms', 'm.max': 'max ms', 'm.loss': 'perte %', 'm.jitter': 'gigue ms',
  'chart.latency': 'Latence (ms)', 'chart.latency_note': "Courbe par cible ; traits rouges verticaux : « Je lag maintenant » ; petits traits en bas : requêtes perdues. L'échelle est plafonnée pour garder la lisibilité (les pics plus hauts touchent le haut du graphique).",
- 'chart.traffic': 'Trafic de cet ordinateur (Mbps)', 'chart.dns': 'Résolution DNS (ms)', 'chart.wifi': 'Wi-Fi (signal %, débit de liaison Mbps)',
+ 'chart.traffic': 'Trafic de cet ordinateur (Mbps)', 'chart.dns': 'Résolution DNS (ms)', 'chart.wifi': 'Wi-Fi (signal %, débit de liaison Mbps)', 'chart.wifi_sig': 'Signal Wi-Fi (%)', 'chart.wifi_rate': 'Débit de liaison Wi-Fi (Mbps)',
  'chart.wifi_note': "Le débit de <b>liaison</b> est la vitesse radio négociée avec la borne, pas votre débit Internet. Aucune donnée d'interférence n'est inventée : seuls les voisins Wi-Fi visibles sur le même canal sont comptés.",
  'chart.traffic_note': "Trafic du PC : totaux de l'interface réseau. L'attribution par programme n'est pas proposée : sans droits administrateur ni capture, aucune méthode fiable n'existe. Pour identifier un programme, utilisez le Gestionnaire des tâches (colonne Réseau) ou le Moniteur de ressources.",
  's.pc_down': '↓ PC', 's.pc_up': '↑ PC', 's.test_down': '↓ test', 's.test_up': '↑ test', 's.dns_hit': 'DNS système (nom courant)', 's.dns_miss': 'DNS système (à froid)', 's.dns_ref': '1.1.1.1 (à froid, référence)', 's.sig': 'Signal %', 's.tx': 'Liaison émission Mbps', 's.rx': 'Liaison réception Mbps', 'chart.nodata': 'Aucune donnée',
@@ -435,7 +435,7 @@ function pingSeries(map, targets) {
   });
 }
 const simple = (map, key, name, color, scale = 1) => ({name, color, pts: (map[key] || []).filter(p => p[2] && p[1] != null).map(p => [p[0], p[1] / scale]), lost: (map[key] || []).filter(p => !p[2]).map(p => p[0])});
-function drawAll(map, targets, t0, t1, marks, phases, ids = {lat: 'c_lat', net: 'c_net', dns: 'c_dns', wifi: 'c_wifi', ll: 'l_lat', ln: 'l_net', ld: 'l_dns', lw: 'l_wifi', wc: 'wifi_card'}) {
+function drawAll(map, targets, t0, t1, marks, phases, ids = {lat: 'c_lat', net: 'c_net', dns: 'c_dns', wifi: 'c_wifi', wifir: 'c_wifi_rate', ll: 'l_lat', ln: 'l_net', ld: 'l_dns', lw: 'l_wifi', lwr: 'l_wifi_rate', wc: 'wifi_card'}) {
   const lat = pingSeries(map, targets); chart($('#' + ids.lat), {series: lat, t0, t1, marks, phases}); legend('#' + ids.ll, lat);
   const net = [simple(map, 'net:down_bps', t('s.pc_down'), '#0969da', 1e6), simple(map, 'net:up_bps', t('s.pc_up'), '#bc4c00', 1e6)];
   if (map['load:down_bps']) net.push(simple(map, 'load:down_bps', t('s.test_down'), '#1a7f37', 1e6));
@@ -443,9 +443,14 @@ function drawAll(map, targets, t0, t1, marks, phases, ids = {lat: 'c_lat', net: 
   chart($('#' + ids.net), {series: net, t0, t1, marks, phases, ymin_top: 1}); legend('#' + ids.ln, net);
   const dns = [simple(map, 'dns:sys_hit', t('s.dns_hit'), '#1a7f37'), simple(map, 'dns:sys_miss', t('s.dns_miss'), '#bc4c00'), simple(map, 'dns:ref_miss', t('s.dns_ref'), '#8250df')];
   chart($('#' + ids.dns), {series: dns, t0, t1, marks, phases, gap: 20}); legend('#' + ids.ld, dns);
-  const wf = map['wifi:signal'] ? [simple(map, 'wifi:signal', t('s.sig'), '#8250df'), simple(map, 'wifi:tx', t('s.tx'), '#0969da'), simple(map, 'wifi:rx', t('s.rx'), '#1a7f37')] : [];
-  $('#' + ids.wc).style.display = wf.length ? '' : 'none';
-  if (wf.length) { chart($('#' + ids.wifi), {series: wf, t0, t1, marks, phases, gap: 20}); legend('#' + ids.lw, wf); }
+  // signal (%, 0-100) and link rates (Mbps, hundreds) on ONE axis would flatten the signal drops: two charts, one unit each
+  const sig = map['wifi:signal'] ? [simple(map, 'wifi:signal', t('s.sig'), '#8250df')] : [];
+  const rates = map['wifi:signal'] ? [simple(map, 'wifi:tx', t('s.tx'), '#0969da'), simple(map, 'wifi:rx', t('s.rx'), '#1a7f37')] : [];
+  $('#' + ids.wc).style.display = sig.length ? '' : 'none';
+  if (sig.length) {
+    chart($('#' + ids.wifi), {series: sig, t0, t1, marks, phases, gap: 20}); legend('#' + ids.lw, sig);
+    chart($('#' + ids.wifir), {series: rates, t0, t1, marks, phases, gap: 20}); legend('#' + ids.lwr, rates);
+  }
 }
 
 // ---------------------------------------------------------------- live monitoring
@@ -557,7 +562,7 @@ async function showDiag(id) {
   h += '</div>';
   if (a.actions.length) h += `<div class="card"><h2>${t('diag.actions')}</h2><ol>${a.actions.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   h += `<div class="card"><h2>${t('diag.timeline')}</h2>` + (a.timeline.length ? a.timeline.map(i => `<div class="tl ${i.type}"><b>${hm(i.t)}</b> — ${esc(t('type.' + i.type))}${i.zone ? ' — <b>' + esc(t('zone.' + i.zone)) + '</b>' : ''}<div class="small">${esc(i.zone_text || '')}</div>${(i.details || []).map(d => `<div class="small muted">${esc(d)}</div>`).join('')}${i.note ? `<div class="small muted">${esc(i.note)}</div>` : ''}</div>`).join('') : `<p class="muted">${t('diag.noinc')}</p>`) + '</div>';
-  h += `<div class="card"><h2>${t('diag.curves')}</h2><canvas id="d_lat" role="img" aria-label="${t('chart.latency')}"></canvas><div class="legend" id="dl_lat"></div><canvas id="d_net" role="img" aria-label="${t('chart.traffic')}"></canvas><div class="legend" id="dl_net"></div><canvas id="d_dns" role="img" aria-label="${t('chart.dns')}" style="height:150px"></canvas><div class="legend" id="dl_dns"></div><div id="d_wc"><canvas id="d_wifi" role="img" aria-label="${t('chart.wifi')}" style="height:150px"></canvas><div class="legend" id="dl_wifi"></div></div></div>`;
+  h += `<div class="card"><h2>${t('diag.curves')}</h2><canvas id="d_lat" role="img" aria-label="${t('chart.latency')}"></canvas><div class="legend" id="dl_lat"></div><canvas id="d_net" role="img" aria-label="${t('chart.traffic')}"></canvas><div class="legend" id="dl_net"></div><canvas id="d_dns" role="img" aria-label="${t('chart.dns')}" style="height:150px"></canvas><div class="legend" id="dl_dns"></div><div id="d_wc"><canvas id="d_wifi" role="img" aria-label="${t('chart.wifi_sig')}" style="height:150px"></canvas><div class="legend" id="dl_wifi"></div><canvas id="d_wifi_rate" role="img" aria-label="${t('chart.wifi_rate')}" style="height:150px"></canvas><div class="legend" id="dl_wifi_rate"></div></div></div>`;
   h += `<div class="card"><h2>${t('diag.measures')}</h2><div style="overflow-x:auto"><table><tr><th>${t('th.target')}</th><th>${t('th.state')}</th><th class="n">${t('th.req')}</th><th class="n">${t('th.loss')}</th><th class="n">${t('th.median')}</th><th class="n">p95</th><th class="n">${t('th.max')}</th><th class="n">${t('th.jitter')}</th></tr>` +
     a.stats.targets.map(x => row(x.label + ' — ' + x.host, x.state_text, x.stats)).join('') + [['sys_hit', 'diag.dns_hit'], ['sys_miss', 'diag.dns_miss'], ['ref_miss', 'diag.dns_ref']].filter(k => a.stats.dns[k[0]]).map(k => row(t(k[1]), t('diag.measured'), a.stats.dns[k[0]])).join('') +
     `</table></div><p class="small muted">${t('diag.meas_note')}</p>`;
@@ -569,7 +574,7 @@ async function showDiag(id) {
     h += `</table><p class="small muted">${t('diag.grades')}</p></div>`; }
   $('#dbody').innerHTML = h;
   const mp = {}; for (const [k, v] of Object.entries(sd.series)) mp[k] = v.map(p => [p[0], p[1], p[2], '']);
-  drawAll(mp, sd.targets, sd.started, sd.ended ?? Date.now() / 1000, sd.marks.filter(m => m.kind === 'lag'), sd.phases, {lat: 'd_lat', net: 'd_net', dns: 'd_dns', wifi: 'd_wifi', ll: 'dl_lat', ln: 'dl_net', ld: 'dl_dns', lw: 'dl_wifi', wc: 'd_wc'});
+  drawAll(mp, sd.targets, sd.started, sd.ended ?? Date.now() / 1000, sd.marks.filter(m => m.kind === 'lag'), sd.phases, {lat: 'd_lat', net: 'd_net', dns: 'd_dns', wifi: 'd_wifi', wifir: 'd_wifi_rate', ll: 'dl_lat', ln: 'dl_net', ld: 'dl_dns', lw: 'dl_wifi', lwr: 'dl_wifi_rate', wc: 'd_wc'});
 }
 function row(l, state, s) {
   if (!s) return `<tr><td>${esc(l)}</td><td>${esc(state)}</td><td class="n" colspan="6">—</td></tr>`;

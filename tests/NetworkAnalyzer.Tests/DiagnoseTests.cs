@@ -401,6 +401,15 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void EnglishWritesPercentWithoutASpace()
+    {
+        // French puts a space before %, English does not: "5% loss"
+        var spaced = new Regex(@"(\{\d+\}|\d) %");
+        var bad = Loc.Keys.Where(k => spaced.IsMatch(Loc.Raw(k).En)).ToList();
+        Assert.Empty(bad);
+    }
+
+    [Fact]
     public void AMissingKeyIsRecordedOncePerKeyAndStillVisible()
     {
         var key = "test.missing." + Guid.NewGuid().ToString("N");

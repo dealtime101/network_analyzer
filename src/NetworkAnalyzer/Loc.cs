@@ -146,7 +146,7 @@ public static partial class Loc
         Add("trace.intermediate", "Loss at hop(s) {0} but the following hops answer: most likely ICMP rate-limiting by the router, NOT a real loss.", "Perte(s) au(x) saut(s) {0} mais les sauts suivants répondent : très probablement une limitation ICMP du routeur, PAS une perte réelle.");
         Add("trace.step", "Latency goes from {0} to {1} ms at hop {2} and does not come back down to the destination: the increase starts at this point of the path.", "La latence passe de {0} à {1} ms au saut {2} et ne redescend pas jusqu'à la destination : l'augmentation commence à ce niveau du trajet.");
         Add("trace.unreached", "The destination did not answer the traceroute (may be ICMP filtering, not necessarily an outage).", "La destination n'a pas répondu au traceroute (peut être un filtrage ICMP, pas forcément une panne).");
-        Add("trace.destloss", "{0} % loss at the destination (over {1} probes: too few to conclude alone).", "Perte de {0} % à la destination (sur {1} sondes : trop peu pour conclure seul).");
+        Add("trace.destloss", "{0}% loss at the destination (over {1} probes: too few to conclude alone).", "Perte de {0} % à la destination (sur {1} sondes : trop peu pour conclure seul).");
 
         // ---- load test phases
         Add("phase.idle", "Idle", "Repos");
@@ -158,7 +158,7 @@ public static partial class Loc
 
         // ---- definitions (shown in the UI, report and JSON export)
         Add("def.median", "Median: central value of the replies received.", "Médiane : valeur centrale des temps de réponse reçus.");
-        Add("def.p95", "p95: 95 % of the replies are faster than this value (nearest rank).", "p95 : 95 % des réponses sont plus rapides que cette valeur (rang le plus proche).");
+        Add("def.p95", "p95: 95% of the replies are faster than this value (nearest rank).", "p95 : 95 % des réponses sont plus rapides que cette valeur (rang le plus proche).");
         Add("def.loss", "Loss: requests without reply ÷ requests sent. System pauses (sleep) do not count.", "Perte : requêtes sans réponse ÷ requêtes envoyées. Les pauses système (veille) ne comptent pas.");
         Add("def.jitter", "Jitter: mean of |RTT(i) − RTT(i−1)| between two consecutive replies (a loss breaks the chain).", "Gigue : moyenne de |RTT(i) − RTT(i−1)| entre deux réponses consécutives (une perte interrompt la chaîne).");
     }

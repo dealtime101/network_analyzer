@@ -228,7 +228,7 @@ en: {
  'r.type.priority': 'Device / application prioritisation', 'r.type.limit': 'Upload/download rate limit', 'r.type.sqm': 'Queue management (SQM / Smart Queue)', 'r.sqm': 'SQM available on this model?', 'r.sqm.unknown': 'Unknown (check the documentation)', 'r.sqm.yes': 'Yes (documented)',
  'r.ld': 'Download limit', 'r.lu': 'Upload limit', 'r.unit': 'Unit entered in the router', 'r.plan': 'Advertised speed (Mbps): download / upload', 'r.plan_dl': 'Advertised download speed (Mbps)', 'r.plan_ul': 'Advertised upload speed (Mbps)', 'r.gw': 'Gateway (if not detected automatically)',
  'r.prio': 'Prioritised devices — one line per device: <code>Name | priority | duration</code> (e.g. <code>Gaming-PC | high | 4 hours</code> or <code>always</code>)', 'r.rules': 'Bandwidth rules — one line per rule: <code>Name | download | upload</code> (in the chosen unit)', 'r.notes': 'Notes',
- 'r.save': 'Save and analyse', 'r.saved': 'Saved.', 'r.shots': 'Router QoS page screenshots (optional)', 'r.shots_note': 'Stored locally and added to the report. Avoid or hide any screenshot showing a password, a Wi-Fi key or a token.',
+ 'r.save': 'Save and analyse', 'r.saved': 'Saved.', 'r.bad_number': 'Bandwidth rules, line {0}: "{1}" is not a number (nothing was saved).', 'r.shots': 'Router QoS page screenshots (optional)', 'r.shots_note': 'Stored locally and added to the report. Avoid or hide any screenshot showing a password, a Wi-Fi key or a token.',
  'r.analysis_h': 'Analysis', 'r.measures_from': 'Measured speeds taken from session #{0}: ↓ {1} Mbps, ↑ {2} Mbps.', 'r.no_test': 'No saturation test recorded: limits can only be compared with the advertised speed. Run the saturation test.',
  'r.nothing': 'Nothing to report for now (enter your configuration above).', 'r.proposals': 'Proposed changes (none is applied automatically)', 'r.why': 'Why:', 'r.rollback': 'Rollback:', 'r.protocol_h': 'Before/after protocol (evaluating a QoS setting)',
  'sev.ok': 'ok', 'sev.info': 'info', 'sev.warning': 'warning', 'sev.problem': 'problem',
@@ -310,7 +310,7 @@ fr: {
  'r.type.priority': "Priorisation d'appareils / d'applications", 'r.type.limit': 'Limite de débit montant/descendant', 'r.type.sqm': 'Gestion de file (SQM / Smart Queue)', 'r.sqm': 'SQM disponible sur ce modèle ?', 'r.sqm.unknown': 'Inconnu (à vérifier dans la doc)', 'r.sqm.yes': 'Oui (documenté)',
  'r.ld': 'Limite descendante', 'r.lu': 'Limite montante', 'r.unit': 'Unité saisie dans le routeur', 'r.plan': 'Débit annoncé par le fournisseur (Mbps) : descendant / montant', 'r.plan_dl': 'Débit descendant annoncé (Mbps)', 'r.plan_ul': 'Débit montant annoncé (Mbps)', 'r.gw': "Passerelle (si non détectée automatiquement)",
  'r.prio': 'Appareils prioritaires — une ligne par appareil : <code>Nom | priorité | durée</code> (ex. <code>PC-Jeu | haute | 4 heures</code> ou <code>toujours</code>)', 'r.rules': "Règles de bande passante — une ligne par règle : <code>Nom | descendant | montant</code> (dans l'unité choisie)", 'r.notes': 'Notes',
- 'r.save': 'Enregistrer et analyser', 'r.saved': 'Enregistré.', 'r.shots': "Captures d'écran des pages QoS (facultatif)", 'r.shots_note': "Stockées localement et ajoutées au rapport. Masquez ou évitez toute capture montrant un mot de passe, une clé Wi-Fi ou un jeton.",
+ 'r.save': 'Enregistrer et analyser', 'r.saved': 'Enregistré.', 'r.bad_number': 'Règles de bande passante, ligne {0} : « {1} » n\'est pas un nombre (rien n\'a été enregistré).', 'r.shots': "Captures d'écran des pages QoS (facultatif)", 'r.shots_note': "Stockées localement et ajoutées au rapport. Masquez ou évitez toute capture montrant un mot de passe, une clé Wi-Fi ou un jeton.",
  'r.analysis_h': 'Analyse', 'r.measures_from': 'Débits mesurés pris dans la session #{0} : ↓ {1} Mbps, ↑ {2} Mbps.', 'r.no_test': "Aucun test de saturation enregistré : les limites ne peuvent être comparées qu'au débit annoncé. Lancez le test de saturation.",
  'r.nothing': "Rien à signaler pour l'instant (saisissez votre configuration ci-dessus).", 'r.proposals': "Changements proposés (aucun n'est appliqué automatiquement)", 'r.why': 'Pourquoi :', 'r.rollback': 'Retour arrière :', 'r.protocol_h': 'Protocole avant/après (évaluer un réglage QoS)',
  'sev.ok': 'ok', 'sev.info': 'info', 'sev.warning': 'attention', 'sev.problem': 'problème',
@@ -597,11 +597,19 @@ async function loadRouter() {
     (an.proposals.length ? `<h3>${t('r.proposals')}</h3>` + an.proposals.map(p => `<div class="card"><b>${esc(p.change)}</b><br>${t('r.why')} ${esc(p.justification)}<br>${t('r.rollback')} ${esc(p.rollback)}</div>`).join('') : '') + `<p class="muted">${esc(an.reminder)}</p>`;
   $('#r_proto').innerHTML = an.protocol.map(x => `<li>${esc(x)}</li>`).join('');
 }
+// A number typed in a rules line. A decimal comma is accepted (French keyboards); a missing value is null; anything else that
+// is not a number is an error shown to the user: never a NaN that JSON turns into a silent null.
+function ruleNum(text, line) {
+  if (text === undefined || text === '') return null;
+  const n = Number(String(text).replace(',', '.'));
+  if (!Number.isFinite(n)) throw new Error(t('r.bad_number', line, text));
+  return n;
+}
 $('#r_save').onclick = guard(async () => {
   const num = id => $(id).value === '' ? null : +$(id).value;
   const router = {model: $('#r_model').value, hw_version: $('#r_hw').value, firmware: $('#r_fw').value, qos_enabled: $('#r_qos').value === '' ? null : $('#r_qos').value === 'true', qos_type: $('#r_type').value,
     sqm_available: $('#r_sqm').value, limit_down: num('#r_ld'), limit_up: num('#r_lu'), unit: $('#r_unit').value, notes: $('#r_notes').value,
-    priority_devices: lines($('#r_prio').value).map(p => ({name: p[0], priority: p[1] || '', duration: p[2] || ''})), bandwidth_rules: lines($('#r_rules').value).map(p => ({name: p[0], down: p[1] === '' ? null : +p[1], up: p[2] === '' ? null : +p[2]}))};
+    priority_devices: lines($('#r_prio').value).map(p => ({name: p[0], priority: p[1] || '', duration: p[2] || ''})), bandwidth_rules: lines($('#r_rules').value).map((p, i) => ({name: p[0], down: ruleNum(p[1], i + 1), up: ruleNum(p[2], i + 1)}))};
   await api('/api/config', {router, plan_down_mbps: num('#p_down'), plan_up_mbps: num('#p_up'), gateway_override: $('#g_over').value, custom_target: $('#custom').value});
   $('#r_msg').textContent = t('r.saved'); routerDirty = false; await loadRouter();
 });

@@ -124,6 +124,24 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void ANumberInABandwidthRuleIsReadWithADecimalCommaOrReportedNeverSentAsNull()
+    {
+        // the helper itself, extracted from the page and run as a function (no browser needed for a pure function)
+        var fn = Regex.Match(Page, @"function ruleNum\(text, line\) \{[\s\S]*?\n\}").Value;
+        Assert.NotEmpty(fn);
+        Assert.Contains("replace(',', '.')", fn);
+        Assert.Contains("Number.isFinite", fn);
+        Assert.Contains("throw new Error", fn);
+        // and the rules line uses it for both columns instead of a bare unary plus
+        var save = Regex.Match(Page, @"\$\('#r_save'\)\.onclick = guard\(async \(\) => \{[\s\S]*?\n\}\);").Value;
+        Assert.Contains("ruleNum(p[1]", save);
+        Assert.Contains("ruleNum(p[2]", save);
+        Assert.DoesNotMatch(@"\+p\[[12]\]", save);
+        foreach (var key in new[] { "r.bad_number" })
+            Assert.True(Regex.Matches(Page, $@"'{Regex.Escape(key)}'\s*:").Count >= 2, $"{key} must exist in both dictionaries");
+    }
+
+    [Fact]
     public void TabLoadersReportAFailureInsteadOfFailingSilently()
     {
         var show = Regex.Match(Page, @"function showTab\([^)]*\)\s*\{[\s\S]*?\n\}").Value;

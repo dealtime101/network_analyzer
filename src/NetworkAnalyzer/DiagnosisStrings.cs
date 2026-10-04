@@ -8,7 +8,7 @@ public static partial class Loc
         // ---- zones, window descriptions, levels, states
         Add("d.zone.local", "local network / Wi-Fi / router: the gateway is affected", "réseau local / Wi-Fi / routeur : la passerelle est affectée");
         Add("d.zone.upstream", "upstream of the router (Internet access, provider or path): the gateway is healthy but several Internet destinations are affected", "en amont du routeur (accès Internet, fournisseur ou trajet) : la passerelle est saine mais plusieurs destinations Internet sont affectées");
-        Add("d.zone.path", "path to a single Internet destination: the other destinations and the gateway are healthy", "trajet vers une seule destination Internet : les autres destinations et la passerelle sont sains");
+        Add("d.zone.path", "path to a single Internet destination: the other destinations and the gateway are healthy", "trajet vers une seule destination Internet : les autres destinations et la passerelle sont saines");
         Add("d.zone.custom_path", "path to your custom destination: the rest of the Internet and the gateway are healthy", "trajet vers votre destination personnalisée : le reste d'Internet et la passerelle sont sains");
         Add("d.zone.dns", "DNS resolution: pings are healthy but DNS is slow or failing", "résolution DNS : les pings sont sains mais le DNS est lent ou en échec");
         Add("d.zone.none", "no network anomaly measured over this period (the lag would come from elsewhere: PC, game, server — not measured here)", "aucune anomalie réseau mesurée sur ce créneau (le lag viendrait d'ailleurs : PC, jeu, serveur — non mesuré ici)");

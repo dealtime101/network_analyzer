@@ -401,6 +401,18 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void FrenchTextHasNoKnownAgreementMistakes()
+    {
+        // wording mistakes found in review: add the faulty phrase here when one is fixed
+        var faulty = new[] { "destinations et la passerelle sont sains" };
+        foreach (var k in Loc.Keys)
+        {
+            var fr = Loc.Raw(k).Fr;
+            foreach (var f in faulty) Assert.False(fr.Contains(f), $"{k}: '{f}'");
+        }
+    }
+
+    [Fact]
     public void EnglishIsTheDefaultAndScopeRestoresTheLanguage()
     {
         Assert.Equal("en", Loc.Lang);

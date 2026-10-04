@@ -115,7 +115,8 @@ public sealed class App
         if (Load is { State: "running" })
         {
             Load.Cancel();
-            if (Load.Task != null) try { await Load.Task.WaitAsync(TimeSpan.FromSeconds(10)); } catch (TimeoutException) { }
+            // whatever the load test ends with (timeout, cancellation, a fault), the recording below must still be stopped and saved
+            if (Load.Task != null) try { await Load.Task.WaitAsync(TimeSpan.FromSeconds(10)); } catch (Exception) { }
         }
         var sid = Rec.Sid;
         bool was = Rec.Running;

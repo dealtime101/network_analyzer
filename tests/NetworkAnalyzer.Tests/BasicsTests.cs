@@ -177,6 +177,41 @@ public class ProbeTests
     }
 
     [Fact]
+    public async Task AReplyFromAnotherSenderIsIgnored()
+    {
+        // the real server answers NXDOMAIN; a third party sends a "good" reply with the right id from another port just before
+        using var server = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        server.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        int port = ((IPEndPoint)server.LocalEndPoint!).Port;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var buf = new byte[512];
+                EndPoint from = new IPEndPoint(IPAddress.Any, 0);
+                int n = server.ReceiveFrom(buf, ref from);
+                byte[] Reply(int rcode, int answers)
+                {
+                    var r = buf[..n];
+                    BinaryPrimitives.WriteUInt16BigEndian(r.AsSpan(2), (ushort)(0x8180 | rcode));
+                    BinaryPrimitives.WriteUInt16BigEndian(r.AsSpan(6), (ushort)answers);
+                    return r;
+                }
+                using var rogue = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                rogue.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                rogue.SendTo(Reply(0, 1), from);      // forged: right id, wrong sender
+                Thread.Sleep(150);
+                server.SendTo(Reply(3, 0), from);     // the real answer
+            }
+            catch (SocketException) { }
+            catch (ObjectDisposedException) { }
+        });
+        var res = await Probes.DnsQueryAsync("127.0.0.1", "x.example.com", 2000, false, port);
+        Assert.False(res.Ok);
+        Assert.Equal("NXDOMAIN", res.Info);
+    }
+
+    [Fact]
     public async Task DnsNamesAreValidatedAndInternationalNamesEncoded()
     {
         Assert.Throws<ArgumentException>(() => Probes.BuildDnsQuery("a..b.example", 1));                        // empty label

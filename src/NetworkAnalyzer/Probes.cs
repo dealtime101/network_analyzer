@@ -143,8 +143,10 @@ public static class Probes
         try
         {
             using var sock = new Socket(ip.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            // a connected UDP socket only receives datagrams from the server we asked: another sender cannot answer for it
+            await sock.ConnectAsync(new IPEndPoint(ip, port), cts.Token);
             var sw = Stopwatch.StartNew();
-            await sock.SendToAsync(pkt, SocketFlags.None, new IPEndPoint(ip, port), cts.Token);
+            await sock.SendAsync(pkt, SocketFlags.None, cts.Token);
             while (true)
             {
                 int n = await sock.ReceiveAsync(buf, SocketFlags.None, cts.Token);

@@ -299,7 +299,7 @@ public static partial class Loc
         Add("rep.h.unlikely", "Leads that look unlikely given the measurements", "Pistes peu probables d'après les mesures");
         Add("rep.h.noteval", "Not evaluated", "Non évalué");
         Add("rep.h.actions", "Recommended actions (most relevant first)", "Actions recommandées (par ordre de pertinence)");
-        Add("rep.noactions", "No targeted action: restart a monitoring during a lag episode.", "Aucune action ciblée : relancez une surveillance pendant un épisode de lag.");
+        Add("rep.noactions", "No targeted action: run a new monitoring session during a lag episode.", "Aucune action ciblée : relancez une surveillance pendant un épisode de lag.");
         Add("rep.h.timeline", "Incident timeline", "Chronologie des incidents");
         Add("rep.th.time", "Time", "Heure");
         Add("rep.th.type", "Type", "Type");

@@ -401,6 +401,12 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void NoActionMessageReadsAsEnglish()
+    {
+        Assert.Equal("No targeted action: run a new monitoring session during a lag episode.", Loc.Raw("rep.noactions").En);
+    }
+
+    [Fact]
     public void TextUsesTheOrdinaryHyphenSoSearchFindsWiFi()
     {
         foreach (var k in Loc.Keys)

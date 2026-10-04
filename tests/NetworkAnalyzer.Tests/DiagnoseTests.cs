@@ -169,6 +169,15 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void IspCounterEvidenceIsNotClaimedWhenUpstreamEpisodesWereSetAsideAsPcBusy()
+    {
+        var a = Run("background");
+        Assert.Contains(a.Timeline, i => i.Zone is "upstream" or "path" && i.ZoneText.Contains("WARNING"));
+        var isp = a.Unlikely.FirstOrDefault(u => u.Id == "isp");
+        Assert.True(isp is null || !isp.Reasons.Any(r => r.Contains("No episode degrades the Internet")));
+    }
+
+    [Fact]
     public void IdleTrafficIsTheSumOfBothDirectionsPerSecond()
     {
         // Bursty background download in the idle phase (3 Mbps in 60 % of the seconds, nothing up):

@@ -779,7 +779,7 @@ public static partial class Diagnose
             h.Score += 3;
             h.Evidence.Add(T("isp.ev.custom", Z(zones, "custom_path")));
         }
-        if (total > 0 && Z(zones, "upstream") + Z(zones, "path") + Z(zones, "custom_path") == 0) h.Counter.Add(T("isp.counter.none"));
+        if (total > 0 && busy.Count == 0 && Z(zones, "upstream") + Z(zones, "path") + Z(zones, "custom_path") == 0) h.Counter.Add(T("isp.counter.none"));
         if (Z(zones, "local") > 0 && Z(zones, "upstream") > 0)
         {
             h.Score = Math.Min(h.Score, Math.Max(1.0, h.Score - 2));

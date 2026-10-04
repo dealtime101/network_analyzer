@@ -402,7 +402,7 @@ public class ProbeTests
         var a = Probes.AnalyzeTrace(hops, "1.1.1.1");
         Assert.True(a.Reached);
         Assert.Equal(new[] { 3 }, a.IntermediateLoss);
-        Assert.True(!a.DestLossPct.HasValue || a.DestLossPct == 0);
+        Assert.Equal(0.0, a.DestLossPct);   // the destination answered all 3 probes: exactly 0, not "not computed"
         Assert.Contains(Probes.TraceNotes(a), n => n.Contains("rate-limiting") && n.Contains("NOT a real loss"));
     }
 

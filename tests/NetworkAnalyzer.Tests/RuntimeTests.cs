@@ -190,6 +190,22 @@ public class LoadTestTests
     }
 
     [Fact]
+    public async Task AnInstanceRunsOnceASecondStartIsRefused()
+    {
+        await using var stub = await StubServer.StartAsync();
+        var cfg = new LoadConfig { BaseUrl = stub.Url, Phases = new() { new() { Name = "idle", DurationS = 1 } } };
+        var lt = new LoadTest(NewRec(), cfg);
+        lt.Start();
+        var first = lt.Task;
+        Assert.Throws<InvalidOperationException>(() => lt.Start());   // red before: a second run started on the same state
+        Assert.Same(first, lt.Task);
+        await lt.Task!.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal("done", lt.State);
+        Assert.Throws<InvalidOperationException>(() => lt.Start());   // a finished instance is not restarted either: build a new one
+        Assert.Equal("done", lt.State);
+    }
+
+    [Fact]
     public async Task CurrentRateFallsToZeroWhenALoadPhaseEnds()
     {
         await using var stub = await StubServer.StartAsync();

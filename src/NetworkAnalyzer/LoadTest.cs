@@ -115,9 +115,15 @@ public sealed class LoadTest
         };
     }
 
+    /// <summary>One run per instance: counters, results, cancellation source and recorder are shared by every phase, so a second
+    /// Start (running or finished) is refused; a new test is a new instance.</summary>
     public void Start()
     {
-        state = "running";
+        lock (gate)
+        {
+            if (state != "idle") throw new InvalidOperationException("The test has already been started.");
+            state = "running";
+        }
         clock.Restart();
         rec.SetMeta(m => m.Loadtest = new LoadMeta
         {

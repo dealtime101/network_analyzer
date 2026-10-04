@@ -124,6 +124,17 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void EveryHistoryCheckboxSaysWhichSessionAndWhichGroup()
+    {
+        var boxes = Regex.Matches(Page, @"<input type=""checkbox"" data-g=""[ab]""[^>]*>").Select(m => m.Value).ToList();
+        Assert.Equal(2, boxes.Count);   // the A box and the B box of each history row
+        foreach (var b in boxes)
+            Assert.Matches(@"aria-label=""\$\{esc\(t\('hist\.in_group', s\.id, '[AB]'\)\)\}""", b);
+        Assert.Contains("'A'", boxes[0]); Assert.Contains("'B'", boxes[1]);
+        Assert.True(Regex.Matches(Page, @"'hist\.in_group'\s*:").Count >= 2, "the key must exist in both dictionaries");
+    }
+
+    [Fact]
     public void RenamingASessionIsDoneWithAFocusableButton()
     {
         Assert.DoesNotContain("<span data-ren=", Page);                                  // a span cannot be reached with the keyboard

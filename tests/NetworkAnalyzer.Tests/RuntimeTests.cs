@@ -627,6 +627,25 @@ public class ServerTests : IAsyncLifetime
         Assert.DoesNotContain("Overflow", r.Body);
     }
 
+    [Theory]
+    [InlineData("/api/session/1/foo")] [InlineData("/api/session/1/export.xml")] [InlineData("/api/session/1/report.csv")]
+    public async Task AnUnknownSubResourceIsRejectedBeforeAnySessionWork(string path)
+    {
+        // no session 1 exists here: if the session were loaded and analysed first, the answer would be "Session not found."
+        var r = await Call(path);
+        Assert.Equal(404, r.Code);
+        Assert.Equal("Not found.", J(r.Body)["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task TheCsvExportWorksWithoutTheAnalysis()
+    {
+        int id = app.Store.SaveComplete(Simulator.Make("healthy", 7, p => p.Minutes = 1));
+        var r = await Call($"/api/session/{id}/export.csv");
+        Assert.Equal(200, r.Code);
+        Assert.StartsWith("session,local_time", r.Body);
+    }
+
     [Fact]
     public async Task TheEstimateReadsDecimalAndNegativeQueryValuesLikeNumbers()
     {

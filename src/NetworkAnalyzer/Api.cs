@@ -161,9 +161,14 @@ public static class Api
                 string? sub = m.Groups[2].Success ? m.Groups[2].Value : null, ext = m.Groups[3].Success ? m.Groups[3].Value : null;
                 if (sub is null) return app.SessionDetail(sid);
                 if (sub == "series") return app.SeriesPayload(sid);
-                var (d, a) = app.AnalysisOf(sid);
+                // the route is checked first: an unknown one costs nothing, and the CSV (raw data) needs no analysis
+                if ((sub, ext) is not (("export", "csv") or ("export", "json") or ("report", "html"))) throw new ApiException(Loc.T("err.not_found"), 404);
                 if (sub == "export" && ext == "csv")
-                    return new Raw(Encoding.UTF8.GetBytes(Report.ExportCsv(d)), "text/csv; charset=utf-8", new() { ["Content-Disposition"] = $"attachment; filename=\"measurements_session_{sid}.csv\"" });
+                {
+                    var raw = app.Store.Load(sid) ?? throw new ApiException(Loc.T("err.session_not_found"), 404);
+                    return new Raw(Encoding.UTF8.GetBytes(Report.ExportCsv(raw)), "text/csv; charset=utf-8", new() { ["Content-Disposition"] = $"attachment; filename=\"measurements_session_{sid}.csv\"" });
+                }
+                var (d, a) = app.AnalysisOf(sid);
                 if (sub == "export" && ext == "json")
                     return new Raw(Encoding.UTF8.GetBytes(Report.ExportJson(d, a)), "application/json; charset=utf-8", new() { ["Content-Disposition"] = $"attachment; filename=\"session_{sid}.json\"" });
                 if (sub == "report" && ext == "html")

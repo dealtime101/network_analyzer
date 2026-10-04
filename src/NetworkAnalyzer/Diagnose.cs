@@ -1027,7 +1027,7 @@ public static partial class Diagnose
     public static Metrics ComputeMetrics(StatsTables stat, BloatResult? bloat, int nIncidents)
     {
         var inet = stat.Targets.Where(t => t.Role == "internet" && t.Stats != null && t.State != "no_response").Select(t => t.Stats!).ToList();
-        var gw = stat.Targets.FirstOrDefault(t => t.Role == "gateway")?.Stats;
+        var gw = stat.Targets.FirstOrDefault(t => t.Role == "gateway" && t.Stats != null && t.State != "no_response")?.Stats;
         double? Med(Func<RttStats, double?> f) { var v = inet.Select(f).Where(x => x.HasValue).Select(x => x!.Value).ToList(); return v.Count > 0 ? Stats.Median(v) : null; }
         var d = bloat?.Directions ?? new();
         BloatRow? down = d.GetValueOrDefault("down"), up = d.GetValueOrDefault("up");

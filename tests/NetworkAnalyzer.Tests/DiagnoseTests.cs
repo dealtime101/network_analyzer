@@ -169,6 +169,15 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void ComparisonMetricsIgnoreAGatewayThatDoesNotAnswerIcmp()
+    {
+        var a = Run("healthy", null, p => p.IcmpBlocked.Add("gateway"));
+        Assert.Null(a.Metrics.GwLoss);
+        Assert.Null(a.Metrics.GwP95);
+        Assert.NotNull(a.Metrics.InetP95);
+    }
+
+    [Fact]
     public void EpisodeListIsCappedWithAWarning()
     {
         foreach (var lang in new[] { "en", "fr" })

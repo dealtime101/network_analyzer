@@ -44,6 +44,11 @@ public static partial class Loc
         public void Dispose() => current.Value = previous;
     }
 
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> missing = new();
+
+    /// <summary>Keys that were asked for and are not registered (each is also written once to stderr).</summary>
+    public static IReadOnlyCollection<string> MissingKeys => missing.Keys.ToList();
+
     // The application runs with InvariantGlobalization, so a "fr-FR" CultureInfo would still format with a dot: the French
     // separators are spelled out. Machine output (CSV, SVG coordinates, JSON) stays on the invariant culture.
     static readonly NumberFormatInfo FrNumbers = new() { NumberDecimalSeparator = ",", NumberGroupSeparator = " " };
@@ -54,7 +59,12 @@ public static partial class Loc
     /// <summary>Translated text with {0}, {1}… placeholders filled (numbers in the reader's format). A missing key shows as ‹key›.</summary>
     public static string T(string key, params object?[] args)
     {
-        if (!table.TryGetValue(key, out var v)) return $"‹{key}›";
+        if (!table.TryGetValue(key, out var v))
+        {
+            // a typo in a key or a forgotten translation: show it, and leave a trace once per key for the maintainers
+            if (missing.TryAdd(key, 0)) Console.Error.WriteLine($"[i18n] missing translation key: {key}");
+            return $"‹{key}›";
+        }
         var tpl = Lang == "fr" ? v.Fr : v.En;
         return args.Length == 0 ? tpl : string.Format(Fmt, tpl, args);
     }

@@ -401,6 +401,35 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void AMissingKeyIsRecordedOncePerKeyAndStillVisible()
+    {
+        var key = "test.missing." + Guid.NewGuid().ToString("N");
+        Assert.Equal($"‹{key}›", Loc.T(key));
+        Assert.Equal($"‹{key}›", Loc.T(key));
+        Assert.Single(Loc.MissingKeys, k => k == key);
+    }
+
+    [Fact]
+    public void EveryTranslationKeyWrittenInTheSourceIsRegistered()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !File.Exists(Path.Combine(dir, "NetworkAnalyzer.slnx"))) dir = Path.GetDirectoryName(dir);
+        Assert.NotNull(dir);
+        var literal = new Regex("""\b(?:Loc\.)?(?:T|In)\((?:"[a-z]{2}",\s*)?"([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+)"[,)]""");
+        var registered = new HashSet<string>(Loc.Keys);
+        var unknown = new List<string>();
+        int seen = 0;
+        foreach (var f in Directory.EnumerateFiles(Path.Combine(dir!, "src"), "*.cs", SearchOption.AllDirectories).Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")))
+            foreach (Match m in literal.Matches(File.ReadAllText(f)))
+            {
+                seen++;
+                if (!registered.Contains(m.Groups[1].Value)) unknown.Add($"{Path.GetFileName(f)}: {m.Groups[1].Value}");
+            }
+        Assert.True(seen > 150, $"only {seen} call sites matched: the pattern no longer sees the code");
+        Assert.Empty(unknown);
+    }
+
+    [Fact]
     public void FrenchTextUsesTheDecimalCommaAndEnglishTheDot()
     {
         // a raw double given to a template

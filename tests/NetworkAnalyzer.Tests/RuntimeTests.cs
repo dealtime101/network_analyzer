@@ -543,6 +543,30 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task EndingAPhaseKeepsWhatWasAlreadyRecordedInIt()
+    {
+        var rec = new Recorder(new SessionStore(Tmp.Dir()));
+        rec.Start(new EnvInfo(), new List<Target>(), 1);
+        rec.BeginPhase("download", new PhaseMeta { Bytes = 1234, VolumeCapReached = true, Streams = 4 });
+        rec.EndPhase(new PhaseMeta { Interrupted = true });
+        await rec.StopAsync();
+        var m = rec.Status().Phases.Single().Meta;
+        Assert.Equal(1234, m.Bytes);
+        Assert.True(m.VolumeCapReached);
+        Assert.Equal(4, m.Streams);
+        Assert.True(m.Interrupted);
+    }
+
+    [Fact]
+    public void EveryPhaseMetaPropertyCanBeUnset()
+    {
+        // Recorder merges PhaseMeta by copying the non-null properties: a non-nullable value type would always
+        // overwrite (false / 0). This fails if someone adds one.
+        foreach (var p in typeof(PhaseMeta).GetProperties())
+            Assert.True(!p.PropertyType.IsValueType || Nullable.GetUnderlyingType(p.PropertyType) != null, p.Name);
+    }
+
+    [Fact]
     public void CustomTargetAcceptsABracketedIpv6WithAPort()
     {
         var t = Recorder.ParseCustom("[2001:db8::1]:8443")!;

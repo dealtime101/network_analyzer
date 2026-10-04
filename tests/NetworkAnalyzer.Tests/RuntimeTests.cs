@@ -564,6 +564,23 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task AFailedTraceNeverPreventsTheSessionFromBeingFinalised()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store);
+        int sid = rec.Start(new EnvInfo(), new List<Target>(), 1);
+        Assert.True(rec.TraceAsync(new[] { "-not a host" }));   // makes the trace task throw
+        await Task.Delay(300);
+        await rec.StopAsync();
+        Assert.NotNull(store.Load(sid)!.Ended);
+        // and the finished trace is not waited for again by the next session
+        rec.Start(new EnvInfo(), new List<Target>(), 1);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await rec.StopAsync();
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public async Task GapMarksAreDeduplicated()
     {
         var store = new SessionStore(Tmp.Dir());

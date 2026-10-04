@@ -197,7 +197,7 @@ public sealed class Recorder
 
     public async Task StopAsync()
     {
-        Task[] pending;
+        Task[] pending, traces;
         CancellationTokenSource? c;
         lock (gate)
         {
@@ -205,11 +205,13 @@ public sealed class Recorder
             Running = false;
             c = cts;
             pending = tasks.ToArray();
+            traces = traceTasks.ToArray();  // Running is false now: TraceAsync adds no more
+            traceTasks.Clear();             // the next session must not wait for this one's traces
         }
         EndPhase(curPhase != null ? new PhaseMeta { Interrupted = true } : null);
         c?.Cancel();
         try { await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(8)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
-        try { await Task.WhenAll(traceTasks.ToArray()).WaitAsync(TimeSpan.FromSeconds(3)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
+        try { await Task.WhenAll(traces).WaitAsync(TimeSpan.FromSeconds(3)); } catch (Exception) { }  // a failed trace must not keep the session from being finalised
         lock (gate)
         {
             if (header != null) { header.Ended = Clock.Now(); store.SaveHeader(header); }

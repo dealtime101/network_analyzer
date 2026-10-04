@@ -401,6 +401,15 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void BothLanguagesNameTheSameInvalidFields()
+    {
+        // SaveConfig refuses a bad QoS TYPE or a bad unit: both messages must say so
+        var (en, fr) = Loc.Raw("err.invalid_qos_value");
+        Assert.Equal("Invalid QoS type or unit.", en);
+        Assert.Equal("Type de QoS ou unité invalide.", fr);
+    }
+
+    [Fact]
     public void NoActionMessageReadsAsEnglish()
     {
         Assert.Equal("No targeted action: run a new monitoring session during a lag episode.", Loc.Raw("rep.noactions").En);

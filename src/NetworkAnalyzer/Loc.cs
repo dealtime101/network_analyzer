@@ -95,7 +95,7 @@ public static partial class Loc
         Add("err.image_too_large", "Image too large (5 MB max).", "Image trop grande (5 Mo max).");
         Add("err.invalid_name", "Invalid name.", "Nom invalide.");
         Add("err.invalid_router", "Invalid router configuration.", "Configuration de routeur invalide.");
-        Add("err.invalid_qos_value", "Invalid QoS type or unit.", "Valeur de QoS ou d'unité invalide.");
+        Add("err.invalid_qos_value", "Invalid QoS type or unit.", "Type de QoS ou unité invalide.");
 
         // ---- default labels
         Add("label.auto_mark", "Auto (\"I'm lagging now\")", "Auto (« Je lag maintenant »)");

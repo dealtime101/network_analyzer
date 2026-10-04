@@ -351,7 +351,8 @@ public sealed class App
                 catch (JsonException) { throw new ApiException(Loc.T("err.invalid_router")); }
                 rc.QosType ??= "unknown";
                 rc.Unit ??= "Mbps";
-                if (!RouterQos.QosTypes.Contains(rc.QosType) || rc.Unit is not ("Kbps" or "Mbps" or "Gbps")) throw new ApiException(Loc.T("err.invalid_qos_value"));
+                if (!RouterQos.QosTypes.Contains(rc.QosType) || rc.Unit is not ("Kbps" or "Mbps" or "Gbps")
+                    || (!string.IsNullOrEmpty(rc.SqmAvailable) && !RouterConfig.SqmValues.Contains(rc.SqmAvailable))) throw new ApiException(Loc.T("err.invalid_qos_value"));
                 rc.PriorityDevices ??= new();
                 rc.BandwidthRules ??= new();
                 rc.Screenshots = c.Router?.Screenshots ?? new();

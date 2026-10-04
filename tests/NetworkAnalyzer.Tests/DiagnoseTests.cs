@@ -472,10 +472,10 @@ public class LocalizationTests
     [Fact]
     public void BothLanguagesNameTheSameInvalidFields()
     {
-        // SaveConfig refuses a bad QoS TYPE or a bad unit: both messages must say so
+        // SaveConfig refuses a bad QoS TYPE, a bad unit or a bad SQM answer: both messages must say so
         var (en, fr) = Loc.Raw("err.invalid_qos_value");
-        Assert.Equal("Invalid QoS type or unit.", en);
-        Assert.Equal("Type de QoS ou unité invalide.", fr);
+        Assert.Equal("Invalid QoS type, unit or SQM answer.", en);
+        Assert.Equal("Type de QoS, unité ou réponse SQM invalide.", fr);
     }
 
     [Fact]

@@ -36,6 +36,17 @@ public sealed class RouterConfig
     public List<BandwidthRule> BandwidthRules { get; set; } = new();
     public string? Notes { get; set; }
     public List<string> Screenshots { get; set; } = new();
+
+    /// <summary>The values the analysis understands for the two free-text choices.</summary>
+    public static readonly string[] SqmValues = { "unknown", "yes", "no" };
+
+    /// <summary>A value outside the documented ones (a typo in a hand-edited file) becomes "unknown": the analysis
+    /// then never meets a type or an SQM answer it was not written for. Empty/null stay as they are.</summary>
+    public void Normalize()
+    {
+        if (!RouterQos.QosTypes.Contains(QosType)) QosType = "unknown";
+        if (!string.IsNullOrEmpty(SqmAvailable) && !SqmValues.Contains(SqmAvailable)) SqmAvailable = "unknown";
+    }
 }
 
 /// <summary>Local settings (config.json). The application does not connect to the router: no router credential exists here.</summary>
@@ -84,7 +95,12 @@ public sealed class ConfigStore
                 Console.Error.WriteLine($"[config] cannot read {path} ({e.Message}); defaults are used");
                 return new AppConfig();
             }
-            try { return Json.From<AppConfig>(text) ?? new AppConfig(); }
+            try
+            {
+                var cfg = Json.From<AppConfig>(text) ?? new AppConfig();
+                cfg.Router?.Normalize();
+                return cfg;
+            }
             catch (JsonException e)
             {
                 // unreadable (truncated, bad hand edit): the next save would overwrite it with an empty one, so keep a copy first

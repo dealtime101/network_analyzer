@@ -490,6 +490,40 @@ public class RequestNumberTests
     }
 }
 
+public class RouterConfigValuesTests
+{
+    [Fact]
+    public void UnexpectedValuesInAHandEditedFileBecomeUnknown()
+    {
+        var dir = Tmp.Dir();
+        File.WriteAllText(Path.Combine(dir, "config.json"), "{\"router\":{\"qos_type\":\"bandwith_limit\",\"sqm_available\":\"maybe\",\"qos_enabled\":true}}");
+        var r = new ConfigStore(dir).Load().Router!;
+        Assert.Equal("unknown", r.QosType);          // a typo is not a type the analysis has to cope with
+        Assert.Equal("unknown", r.SqmAvailable);
+        Assert.True(r.QosEnabled);                   // the rest is kept
+    }
+
+    [Theory]
+    [InlineData("priority", "yes")] [InlineData("bandwidth_limit", "no")] [InlineData("sqm", "unknown")] [InlineData("unknown", null)]
+    public void DocumentedValuesAreKept(string type, string? sqm)
+    {
+        var dir = Tmp.Dir();
+        var store = new ConfigStore(dir);
+        store.Save(new AppConfig { Router = new RouterConfig { QosType = type, SqmAvailable = sqm } });
+        var r = store.Load().Router!;
+        Assert.Equal(type, r.QosType);
+        Assert.Equal(sqm, r.SqmAvailable);
+    }
+
+    [Fact]
+    public void SavingAnInvalidSqmValueIsRefused()
+    {
+        var app = new App(Tmp.Dir());
+        var body = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse("{\"router\":{\"qos_type\":\"sqm\",\"sqm_available\":\"maybe\"}}")!;
+        Assert.Throws<ApiException>(() => app.SaveConfig(body));
+    }
+}
+
 public class DurableFileTests
 {
     [Fact]

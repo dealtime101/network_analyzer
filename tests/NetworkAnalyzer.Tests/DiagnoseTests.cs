@@ -22,35 +22,35 @@ public class ScenarioTests
     [Fact]
     public void HealthySessionHasNoHypothesisAndFlagsNonNetworkLag()
     {
-        var a = Run("sain");
+        var a = Run("healthy");
         Assert.Empty(a.Hypotheses);
-        Assert.Equal(new[] { "aucune" }, a.Timeline.Where(i => i.Type == "lag").Select(i => i.Zone).ToArray());
-        Assert.Contains(a.Resume, r => r.Contains("hors réseau"));
-        Assert.Contains(a.PeuProbables, u => u.Id == "lan" && u.Raisons.Count > 0);
+        Assert.Equal(new[] { "none" }, a.Timeline.Where(i => i.Type == "lag").Select(i => i.Zone).ToArray());
+        Assert.Contains(a.Summary, r => r.Contains("outside the network"));
+        Assert.Contains(a.Unlikely, u => u.Id == "lan" && u.Reasons.Count > 0);
     }
 
     [Fact]
     public void WifiInstability()
     {
-        var a = Run("wifi_instable");
+        var a = Run("wifi_unstable");
         Assert.Equal("lan", Ids(a)[0]);
         var top = a.Hypotheses[0];
-        Assert.Equal("élevée", top.Niveau);
-        Assert.Contains(top.Preuves, p => p.Contains("Signal Wi‑Fi faible"));
-        Assert.Contains(top.Preuves, p => p.Contains("point d'accès"));
-        Assert.DoesNotContain("fai", Ids(a));
-        Assert.Contains("Ethernet", top.ProchainTest);
+        Assert.Equal("high", top.Level);
+        Assert.Contains(top.Evidence, p => p.Contains("Weak Wi‑Fi signal"));
+        Assert.Contains(top.Evidence, p => p.Contains("access point"));
+        Assert.DoesNotContain("isp", Ids(a));
+        Assert.Contains("Ethernet", top.NextTest);
     }
 
     [Fact]
     public void WiredGatewayProblemPointsToRouterNotWifi()
     {
-        var a = Run("filaire_routeur");
+        var a = Run("wired_router");
         Assert.Equal("lan", Ids(a)[0]);
-        Assert.Contains("routeur_qos", Ids(a));
+        Assert.Contains("router_qos", Ids(a));
         var lan = a.Hypotheses[0];
-        Assert.Contains(lan.Contre, c => c.Contains("filaire"));
-        Assert.DoesNotContain(lan.Preuves, p => p.Contains("Wi‑Fi faible"));
+        Assert.Contains(lan.Counter, c => c.Contains("Wired connection"));
+        Assert.DoesNotContain(lan.Evidence, p => p.Contains("Weak Wi‑Fi"));
     }
 
     [Fact]
@@ -60,9 +60,9 @@ public class ScenarioTests
         Assert.Equal(new[] { "bufferbloat" }, Ids(a));
         var h = a.Hypotheses[0];
         Assert.True(h.Score >= 7);
-        var up = h.Preuves.First(p => p.StartsWith("Envoi"));
+        var up = h.Evidence.First(p => p.StartsWith("Upload"));
         Assert.Contains("+2", up);
-        Assert.Contains(h.Preuves, p => p.Contains("passerelle reste stable"));
+        Assert.Contains(h.Evidence, p => p.Contains("gateway stays stable"));
         var bb = a.Bufferbloat!.Directions;
         Assert.True(bb["down"].Delta < 50);
         Assert.True(bb["up"].Delta > 200);
@@ -76,7 +76,7 @@ public class ScenarioTests
     {
         var a = Run("bufferbloat", null, p => p.Load = new LoadSim { MbpsDown = 0.2, MbpsUp = 0.2 });
         Assert.DoesNotContain("bufferbloat", Ids(a));
-        Assert.Contains(a.NonEvalue, n => n.Id == "bufferbloat" && n.Raison.Contains("non évalué"));
+        Assert.Contains(a.NotEvaluated, n => n.Id == "bufferbloat" && n.Reason.Contains("not evaluated"));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class ScenarioTests
         double eth = Run("bufferbloat").Hypotheses[0].Score;
         var wifi = Run("bufferbloat", null, p => p.Link = "wifi").Hypotheses[0];
         Assert.True(wifi.Score < eth);
-        Assert.Contains(wifi.Limites, l => l.Contains("Wi‑Fi"));
+        Assert.Contains(wifi.Limits, l => l.Contains("Wi‑Fi"));
     }
 
     [Fact]
@@ -106,33 +106,33 @@ public class ScenarioTests
         var bloat = a.Hypotheses.Where(h => h.Id == "bufferbloat").ToList();
         Assert.True(bloat.Count == 0 || bloat[0].Score < 4);
         var lan = a.Hypotheses.Where(h => h.Id == "lan").ToList();
-        Assert.True(lan.Count > 0 && lan[0].Preuves.Any(p => p.Contains("passerelle monte aussi") || p.Contains("sature")));
+        Assert.True(lan.Count > 0 && lan[0].Evidence.Any(p => p.Contains("also rises") || p.Contains("saturates")));
     }
 
     [Fact]
     public void IspUpstreamEpisodes()
     {
-        var a = Run("fai");
-        Assert.Equal("fai", Ids(a)[0]);
-        Assert.Equal("moyenne", a.Hypotheses[0].Niveau);
+        var a = Run("isp");
+        Assert.Equal("isp", Ids(a)[0]);
+        Assert.Equal("medium", a.Hypotheses[0].Level);
         Assert.DoesNotContain("lan", Ids(a));
-        Assert.Equal(new[] { "amont" }, a.Timeline.Where(i => i.Type is "lag" or "episode").Select(i => i.Zone!).Distinct().ToArray());
+        Assert.Equal(new[] { "upstream" }, a.Timeline.Where(i => i.Type is "lag" or "episode").Select(i => i.Zone!).Distinct().ToArray());
     }
 
     [Fact]
     public void SingleDestinationIsAPathNotTheIsp()
     {
-        var h = Run("fai_un_seul").Hypotheses[0];
-        Assert.Equal(("fai", "faible"), (h.Id, h.Niveau));
-        Assert.Contains(h.Preuves, p => p.Contains("UNE destination"));
+        var h = Run("isp_single_path").Hypotheses[0];
+        Assert.Equal(("isp", "low"), (h.Id, h.Level));
+        Assert.Contains(h.Evidence, p => p.Contains("ONE Internet destination"));
     }
 
     [Fact]
     public void CustomTargetOnly()
     {
-        var a = Run("custom_seul");
-        Assert.Contains(a.Hypotheses[0].Preuves, p => p.Contains("personnalisée"));
-        Assert.Equal("faible", a.Hypotheses[0].Niveau);
+        var a = Run("custom_only");
+        Assert.Contains(a.Hypotheses[0].Evidence, p => p.Contains("custom destination"));
+        Assert.Equal("low", a.Hypotheses[0].Level);
     }
 
     [Fact]
@@ -140,21 +140,21 @@ public class ScenarioTests
     {
         var a = Run("dns");
         Assert.Equal("dns", Ids(a)[0]);
-        Assert.Contains(a.Hypotheses[0].Preuves, p => p.Contains("1.1.1.1"));
-        Assert.DoesNotContain("fai", Ids(a));
+        Assert.Contains(a.Hypotheses[0].Evidence, p => p.Contains("1.1.1.1"));
+        Assert.DoesNotContain("isp", Ids(a));
         Assert.Equal(new[] { "dns" }, a.Timeline.Where(i => i.Type == "lag").Select(i => i.Zone).ToArray());
     }
 
     [Fact]
-    public void BackgroundTrafficDoesNotBecomAnIspAccusation()
+    public void BackgroundTrafficDoesNotBecomeAnIspAccusation()
     {
-        var a = Run("fond");
-        Assert.Equal(new[] { "fond" }, Ids(a));
+        var a = Run("background");
+        Assert.Equal(new[] { "background" }, Ids(a));
         var lag = a.Timeline.First(i => i.Type == "lag");
-        Assert.Contains("ATTENTION", lag.ZoneTexte);
+        Assert.Contains("WARNING", lag.ZoneText);
         var h = a.Hypotheses[0];
-        Assert.Contains(h.Limites, l => l.Contains("processus") || l.Contains("attribution"));
-        Assert.Contains("Gestionnaire des tâches", h.ProchainTest);
+        Assert.Contains(h.Limits, l => l.Contains("per-process"));
+        Assert.Contains("Task Manager", h.NextTest);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class ScenarioTests
     {
         var a = Run("saturation");
         Assert.Equal("saturation", Ids(a)[0]);
-        Assert.Contains(a.Hypotheses[0].Preuves, p => p.Contains("92") || p.Contains('%'));
+        Assert.Contains(a.Hypotheses[0].Evidence, p => p.Contains('%'));
         var unknown = Run("saturation", new AppConfig());
         Assert.NotEqual("saturation", Ids(unknown).FirstOrDefault());
     }
@@ -170,29 +170,29 @@ public class ScenarioTests
     [Fact]
     public void IcmpBlockedTargetIsExplicitAndExcluded()
     {
-        var a = Run("icmp_bloque");
+        var a = Run("icmp_blocked");
         var row = a.Stats.Targets.First(t => t.Id == "custom");
         Assert.Equal("no_response", row.State);
-        Assert.Contains("ne répond pas à l'ICMP", row.Etat);
-        Assert.Contains(a.Resume, r => r.Contains("Personnalisée") && r.Contains("ne répond pas à l'ICMP") && r.Contains(":443"));
+        Assert.Contains("does not answer ICMP", row.StateText);
+        Assert.Contains(a.Summary, r => r.Contains("Custom (game.example.net)") && r.Contains("does not answer ICMP") && r.Contains(":443"));
         Assert.Empty(a.Hypotheses);
     }
 
     [Fact]
     public void InsufficientData()
     {
-        var d = Simulator.Make("sain");
+        var d = Simulator.Make("healthy");
         d.Series = d.Series.ToDictionary(kv => kv.Key, kv => kv.Value.Where(s => s.T < Simulator.T0 + 30).ToList());  // 30 s only
         var a = Diagnose.Analyze(d, new AppConfig());
-        Assert.Contains(a.Resume, r => r.Contains("Données insuffisantes"));
-        Assert.DoesNotContain(a.Resume, r => r.Contains("Aucune dégradation nette"));
+        Assert.Contains(a.Summary, r => r.Contains("Not enough data"));
+        Assert.DoesNotContain(a.Summary, r => r.Contains("No clear degradation"));
     }
 
     [Fact]
     public void TotalOutageOrNoIcmpAtAll()
     {
-        var a = Diagnose.Analyze(Simulator.Make("sain", 7, p => p.IcmpBlocked.AddRange(new[] { "gateway", "cloudflare", "google", "quad9", "custom" })), new AppConfig());
-        Assert.Contains(a.Resume, r => r.Contains("Aucune cible n'a répondu"));
+        var a = Diagnose.Analyze(Simulator.Make("healthy", 7, p => p.IcmpBlocked.AddRange(new[] { "gateway", "cloudflare", "google", "quad9", "custom" })), new AppConfig());
+        Assert.Contains(a.Summary, r => r.Contains("No target answered"));
         Assert.Empty(a.Hypotheses);
     }
 
@@ -200,36 +200,36 @@ public class ScenarioTests
     public void EmptySessionDoesNotCrash()
     {
         var a = Diagnose.Analyze(new SessionData { Id = 1, Started = 1000 }, new AppConfig());
-        Assert.Equal(new[] { "Aucune mesure enregistrée." }, a.Resume.ToArray());
+        Assert.Equal(new[] { "No measurement recorded." }, a.Summary.ToArray());
     }
 
     [Fact]
     public void TracerouteEvidenceAndIcmpRateLimitCaveat()
     {
-        var d = Simulator.Make("fai");
+        var d = Simulator.Make("isp");
         d.Traces = new()
         {
             new TraceRec { T = Simulator.T0 + 320, Target = "1.1.1.1", Data = new TraceResult { Analysis = new TraceAnalysis { Step = new TraceStep { Hop = 4, Ip = "80.2.2.2", FromMs = 15, ToMs = 85 } } } },
             new TraceRec { T = Simulator.T0 + 330, Target = "8.8.8.8", Data = new TraceResult { Analysis = new TraceAnalysis { IntermediateLoss = new() { 3 } } } },
         };
-        var h = Diagnose.Analyze(d, new AppConfig()).Hypotheses.First(x => x.Id == "fai");
-        Assert.Contains(h.Preuves, p => p.Contains("saut 4"));
-        Assert.Contains(h.Contre, c => c.Contains("NON retrouvée") && c.Contains("limitation ICMP"));
+        var h = Diagnose.Analyze(d, new AppConfig()).Hypotheses.First(x => x.Id == "isp");
+        Assert.Contains(h.Evidence, p => p.Contains("hop 4"));
+        Assert.Contains(h.Counter, c => c.Contains("NOT found again") && c.Contains("rate-limiting"));
     }
 
     [Fact]
     public void GapMarksAreNotLosses()
     {
-        var d = Simulator.Make("sain");
+        var d = Simulator.Make("healthy");
         int baseN = Diagnose.Analyze(d, new AppConfig()).Stats.Targets[0].Stats!.N;
         double a = Simulator.T0 + 300, b = Simulator.T0 + 600;  // a 5-minute sleep: samples removed, as the recorder would
         d.Series = d.Series.ToDictionary(kv => kv.Key, kv => kv.Value.Where(s => !(a <= s.T && s.T <= b)).ToList());
-        d.Marks.Add(new Mark { T = a, Kind = "gap", Note = "veille" });
+        d.Marks.Add(new Mark { T = a, Kind = "gap" });
         var r = Diagnose.Analyze(d, new AppConfig());
         var st = r.Stats.Targets[0].Stats!;
         Assert.Equal(baseN - 301, st.N);  // these 301 seconds count neither as replies nor as losses
         Assert.True(st.LossPct < 2);
-        Assert.Contains(r.Timeline, i => i.Type == "gap");
+        Assert.Contains(r.Timeline, i => i.Type == "gap" && i.ZoneText.Contains("System pause"));
     }
 }
 
@@ -241,10 +241,10 @@ public class InvariantTests
         foreach (var scn in Simulator.Scenarios)
             foreach (var h in ScenarioTests.Run(scn).Hypotheses)
             {
-                Assert.True(h.Preuves.Count > 0, $"{scn}/{h.Id} preuves");
-                Assert.Contains(h.Niveau, new[] { "faible", "moyenne", "élevée" });
-                Assert.True(h.Limites.Count > 0, $"{scn}/{h.Id} limites");
-                Assert.False(string.IsNullOrEmpty(h.ProchainTest), $"{scn}/{h.Id} prochain test");
+                Assert.True(h.Evidence.Count > 0, $"{scn}/{h.Id} evidence");
+                Assert.Contains(h.Level, new[] { "low", "medium", "high" });
+                Assert.True(h.Limits.Count > 0, $"{scn}/{h.Id} limits");
+                Assert.False(string.IsNullOrEmpty(h.NextTest), $"{scn}/{h.Id} next test");
                 Assert.True(h.Actions.Count > 0, $"{scn}/{h.Id} actions");
             }
     }
@@ -252,32 +252,179 @@ public class InvariantTests
     [Fact]
     public void NeverPresentsHypothesisAsConfirmedCause()
     {
-        var bad = new Regex(@"cause (est )?(certaine|confirmée)|est confirmé|prouvé que|c'est sûr");
+        var bad = new Regex(@"cause is (certain|confirmed)|\bis confirmed\b|proven that|it is certain|certain cause", RegexOptions.IgnoreCase);
         foreach (var scn in Simulator.Scenarios)
         {
             var a = ScenarioTests.Run(scn);
             Assert.False(bad.IsMatch(ScenarioTests.Text(a)), scn);
-            if (a.Hypotheses.Count > 0) Assert.Contains(a.Resume, r => r.Contains("pas des causes confirmées"));
+            if (a.Hypotheses.Count > 0) Assert.Contains(a.Summary, r => r.Contains("not confirmed causes"));
         }
     }
 
     [Fact]
     public void GatewayStableExcludesLanHypothesis()
     {
-        foreach (var scn in new[] { "fai", "dns", "bufferbloat" }) Assert.DoesNotContain("lan", ScenarioTests.Ids(ScenarioTests.Run(scn)));
+        foreach (var scn in new[] { "isp", "dns", "bufferbloat" }) Assert.DoesNotContain("lan", ScenarioTests.Ids(ScenarioTests.Run(scn)));
     }
 
     [Fact]
-    public void Deterministic() => Assert.Equal(ScenarioTests.Text(ScenarioTests.Run("wifi_instable")), ScenarioTests.Text(ScenarioTests.Run("wifi_instable")));
+    public void Deterministic() => Assert.Equal(ScenarioTests.Text(ScenarioTests.Run("wifi_unstable")), ScenarioTests.Text(ScenarioTests.Run("wifi_unstable")));
 
     [Fact]
     public void JsonNamesMatchWhatTheInterfaceReads()
     {
         // The web page reads these exact snake_case keys.
-        var json = JsonSerializer.Serialize(ScenarioTests.Run("bufferbloat"), Json.Options) + JsonSerializer.Serialize(ScenarioTests.Run("fai"), Json.Options);
-        foreach (var key in new[] { "\"peu_probables\"", "\"non_evalue\"", "\"limites_generales\"", "\"prochain_test\"", "\"zone_texte\"", "\"loss_pct\"", "\"gw_delta\"", "\"idle_med\"",
-                                    "\"load_p95\"", "\"p95\"", "\"t0\"", "\"inet_p95\"", "\"bloat_up\"", "\"down_mbps\"" })
+        var json = JsonSerializer.Serialize(ScenarioTests.Run("bufferbloat"), Json.Options) + JsonSerializer.Serialize(ScenarioTests.Run("isp"), Json.Options);
+        foreach (var key in new[] { "\"summary\"", "\"unlikely\"", "\"not_evaluated\"", "\"general_limits\"", "\"next_test\"", "\"zone_text\"", "\"evidence\"", "\"counter\"", "\"level\"", "\"title\"",
+                                    "\"state_text\"", "\"loss_pct\"", "\"gw_delta\"", "\"idle_med\"", "\"load_p95\"", "\"p95\"", "\"t0\"", "\"inet_p95\"", "\"bloat_up\"", "\"down_mbps\"" })
             Assert.Contains(key, json);
+    }
+
+    [Fact]
+    public void StoredFilesNeverContainDisplayText()
+    {
+        // Session files hold codes, numbers and user input only: no sentence, no translated label.
+        var dir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "na-test-" + Guid.NewGuid().ToString("N"))).FullName;
+        var store = new SessionStore(dir);
+        foreach (var lang in Loc.Languages)
+            using (Loc.Scope(lang))
+            {
+                int id = store.SaveComplete(Simulator.Make("wifi_unstable", 7, p => p.Minutes = 1));
+                var meta = File.ReadAllText(Path.Combine(dir, "sessions", $"{id}.meta.json"));
+                Assert.DoesNotContain("Gateway", meta);
+                Assert.DoesNotContain("Passerelle", meta);
+                Assert.DoesNotContain("\"label\":\"Custom", meta);
+                Assert.Contains("\"host\":\"192.168.0.1\"", meta);
+            }
+        // …yet what the API returns carries the label of the current language
+        Assert.Contains("\"label\":\"Gateway (router)\"", Json.To(Simulator.Targets));
+    }
+}
+
+public class LocalizationTests
+{
+    static readonly Regex Placeholder = new(@"\{(\d+)\}");
+
+    [Fact]
+    public void EveryKeyExistsInBothLanguagesWithTheSamePlaceholders()
+    {
+        var keys = Loc.Keys.ToList();
+        Assert.True(keys.Count > 300);
+        foreach (var k in keys)
+        {
+            var (en, fr) = Loc.Raw(k);
+            Assert.False(string.IsNullOrWhiteSpace(en), $"{k}: English missing");
+            Assert.False(string.IsNullOrWhiteSpace(fr), $"{k}: French missing");
+            Assert.Equal(Placeholder.Matches(en).Select(m => m.Value).OrderBy(x => x), Placeholder.Matches(fr).Select(m => m.Value).OrderBy(x => x));
+        }
+    }
+
+    [Fact]
+    public void EnglishIsTheDefaultAndScopeRestoresTheLanguage()
+    {
+        Assert.Equal("en", Loc.Lang);
+        Assert.Equal("Download", Loc.In("en", "phase.download"));
+        Assert.Equal("Téléchargement", Loc.In("fr", "phase.download"));
+        using (Loc.Scope("fr")) Assert.Equal("fr", Loc.Lang);
+        Assert.Equal("en", Loc.Lang);
+        Assert.Equal("fr", Loc.Normalize("fr-CA"));
+        Assert.Equal("en", Loc.Normalize("de"));
+        Assert.Equal("en", Loc.Normalize(null));
+    }
+
+    [Fact]
+    public void AMissingKeyIsVisibleNotSilent() => Assert.Equal("‹no.such.key›", Loc.T("no.such.key"));
+
+    [Fact]
+    public void NoScenarioOutputContainsAMissingKeyInEitherLanguage()
+    {
+        foreach (var lang in Loc.Languages)
+            using (Loc.Scope(lang))
+                foreach (var scn in Simulator.Scenarios)
+                {
+                    var cfg = new AppConfig { PlanDownMbps = 100, PlanUpMbps = 20, Router = new RouterConfig { QosEnabled = true, QosType = "priority", LimitDown = 900, LimitUp = 900, BandwidthRules = { new BandwidthRule { Name = "Lounge", Down = 5 } }, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "2 hours" } } } };
+                    var d = Simulator.Make(scn);
+                    var a = Diagnose.Analyze(d, cfg);
+                    Assert.DoesNotContain("‹", ScenarioTests.Text(a));
+                    Assert.DoesNotContain("‹", Report.Html(d, a, cfg));
+                }
+    }
+
+    [Fact]
+    public void FrenchOutputIsReallyFrench()
+    {
+        using (Loc.Scope("fr"))
+        {
+            var a = ScenarioTests.Run("wifi_unstable");
+            Assert.Contains(a.Summary, r => r.Contains("Hypothèse la plus compatible"));
+            Assert.Equal("Instabilité du Wi‑Fi ou du réseau local", a.Hypotheses[0].Title);
+            Assert.Equal("high", a.Hypotheses[0].Level);  // codes never change with the language
+            Assert.Equal("local", a.Timeline.First(i => i.Type == "episode").Zone);
+            Assert.Contains("Passerelle", a.Stats.Targets[0].Label);
+            var html = Report.Html(Simulator.Make("wifi_unstable"), a);
+            Assert.Contains("Rapport de diagnostic réseau", System.Net.WebUtility.HtmlDecode(html));
+            Assert.Contains("<html lang='fr'>", html);
+        }
+    }
+
+    [Fact]
+    public void EnglishOutputIsReallyEnglish()
+    {
+        var a = ScenarioTests.Run("wifi_unstable");
+        Assert.Equal("Wi‑Fi or local network instability", a.Hypotheses[0].Title);
+        Assert.Contains("Gateway", a.Stats.Targets[0].Label);
+        var html = Report.Html(Simulator.Make("wifi_unstable"), a);
+        Assert.Contains("Network diagnosis report", html);
+        Assert.Contains("<html lang='en'>", html);
+        Assert.DoesNotContain("Rapport", html);
+    }
+
+    [Fact]
+    public void CsvAndJsonKeysAreEnglishWhateverTheLanguage()
+    {
+        var d = Simulator.Make("wifi_unstable");
+        foreach (var lang in Loc.Languages)
+            using (Loc.Scope(lang))
+            {
+                Assert.StartsWith("session,local_time,epoch_s,series,value,ok,info", Report.ExportCsv(d));
+                var json = Report.ExportJson(d, Diagnose.Analyze(d, new AppConfig()));
+                foreach (var k in new[] { "\"measurements\"", "\"marks\"", "\"traceroutes\"", "\"analysis\"", "\"definitions\"" }) Assert.Contains(k, json);
+            }
+    }
+
+    [Fact]
+    public void ComparisonVerdictsAreCodesWithATranslatedText()
+    {
+        using (Loc.Scope("fr"))
+        {
+            var rows = Diagnose.Compare(new[] { new Metrics { InetP95 = 100 }, new Metrics { InetP95 = 105 } }, new[] { new Metrics { InetP95 = 40 }, new Metrics { InetP95 = 42 } });
+            Assert.Equal("improvement", rows[0].Verdict);
+            Assert.Equal("amélioration", rows[0].VerdictText);
+            Assert.Equal("Latence Internet p95 (ms)", rows[0].Metric);
+        }
+    }
+
+    [Fact]
+    public void EnvironmentNotesAreDerivedNotStored()
+    {
+        var env = SysInfo.Summarize(new List<AdapterInfo>
+        {
+            new() { Name = "vEthernet (External Network Switch)", Status = "Up", Kind = "virtual", Gw4 = "192.168.0.1", Ipv4 = { "192.168.0.50" } },
+            new() { Name = "Ethernet", Status = "Up", Kind = "ethernet" },
+        });
+        Assert.Equal("Ethernet", env.Active!.BridgedPhysical);
+        Assert.Contains(SysInfo.Notes(env), n => n.Contains("virtual interface") && n.Contains("Ethernet"));
+        using (Loc.Scope("fr")) Assert.Contains(SysInfo.Notes(env), n => n.Contains("interface virtuelle"));
+        Assert.DoesNotContain("virtual interface", Json.To(env));
+    }
+
+    [Fact]
+    public void TraceNotesAreTranslatedAtDisplayTime()
+    {
+        var a = new TraceAnalysis { Reached = true, IntermediateLoss = { 5 }, Step = new TraceStep { Hop = 4, FromMs = 15, ToMs = 85 } };
+        Assert.Contains(Probes.TraceNotes(a), n => n.Contains("hop 4"));
+        using (Loc.Scope("fr")) Assert.Contains(Probes.TraceNotes(a), n => n.Contains("au saut 4"));
+        Assert.Contains(Probes.TraceNotes(new TraceAnalysis(), hasHops: false), n => n.Contains("No readable hop"));
     }
 }
 
@@ -285,7 +432,7 @@ public class RouterTests
 {
     static readonly (double? Down, double? Up) Meas = (300.0, 30.0);
 
-    static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severite, f.Texte)).ToList();
+    static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
     [Fact]
     public void UnitConversion()
@@ -298,17 +445,17 @@ public class RouterTests
 
     [Fact]
     public void LimitAboveRealSpeedDoesNothing()
-        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, QosType = "limite_bande_passante", LimitDown = 500, LimitUp = 50 }), k => k.Txt.Contains("ne limite rien"));
+        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 500, LimitUp = 50 }), k => k.Txt.Contains("limits nothing"));
 
     [Fact]
     public void MeasuredAboveLimitMeansLimitNotApplied()
-        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, QosType = "limite_bande_passante", LimitDown = 100 }), k => k.Sev == "probleme" && k.Txt.Contains("DÉPASSE"));
+        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 100 }), k => k.Sev == "problem" && k.Txt.Contains("EXCEEDS"));
 
     [Fact]
     public void UnitConfusionDetected()
     {
-        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, LimitDown = 300000 }), k => k.Sev == "probleme" && k.Txt.Contains("unité"));
-        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, LimitDown = 0.3 }), k => k.Txt.Contains("unité"));
+        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, LimitDown = 300000 }), k => k.Sev == "problem" && k.Txt.Contains("unit mix-up"));
+        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, LimitDown = 0.3 }), k => k.Txt.Contains("unit mix-up"));
     }
 
     [Fact]
@@ -316,28 +463,33 @@ public class RouterTests
 
     [Fact]
     public void PriorityIsNotQueueManagement()
-        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, QosType = "priorite" }), k => k.Txt.Contains("priorisation") && k.Txt.Contains("file d'attente"));
+        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, QosType = "priority" }), k => k.Txt.Contains("priority-based") && k.Txt.Contains("queue"));
 
     [Fact]
-    public void SqmIsNeverAssumed() => Assert.Contains(Kinds(new RouterConfig { QosEnabled = false }), k => k.Txt.Contains("SQM") && k.Txt.Contains("inconnue"));
+    public void SqmIsNeverAssumed() => Assert.Contains(Kinds(new RouterConfig { QosEnabled = false }), k => k.Txt.Contains("SQM") && k.Txt.Contains("unknown"));
 
     [Fact]
     public void TemporaryPriorityNoted()
-        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "2 heures" } } }), k => k.Txt.Contains("PC") && k.Txt.Contains("2 heures"));
+    {
+        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "2 hours" } } }), k => k.Txt.Contains("PC") && k.Txt.Contains("2 hours"));
+        Assert.DoesNotContain(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "always" } } }), k => k.Txt.Contains("\"PC\""));
+        Assert.DoesNotContain(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "toujours" } } }), k => k.Txt.Contains("\"PC\""));
+    }
 
     [Fact]
     public void BandwidthRuleBelowMeasuredSpeedIsFlagged()
-        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, BandwidthRules = { new BandwidthRule { Name = "Salon", Down = 50, Up = 5 } } }), k => k.Sev == "attention" && k.Txt.Contains("Salon"));
+        => Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, BandwidthRules = { new BandwidthRule { Name = "Lounge", Down = 50, Up = 5 } } }), k => k.Sev == "warning" && k.Txt.Contains("Lounge"));
 
     [Fact]
     public void ProposalsHaveJustificationAndRollbackAndNothingAutomatic()
     {
-        var rc = new RouterConfig { QosEnabled = true, QosType = "priorite", LimitDown = 500, LimitUp = 50 };
+        var rc = new RouterConfig { QosEnabled = true, QosType = "priority", LimitDown = 500, LimitUp = 50 };
         var props = RouterQos.Propose(rc, Meas, 200);
         Assert.NotEmpty(props);
-        Assert.Contains("276", props[0].Changement);  // 92 % of 300
-        foreach (var p in props) { Assert.NotEmpty(p.Justification); Assert.NotEmpty(p.RetourArriere); }
-        Assert.Contains("Aucun réglage n'est modifié", RouterQos.Analysis(rc, Meas, new AppConfig(), 200).Rappel);
+        Assert.Contains("276", props[0].Change);  // 92 % of 300
+        foreach (var p in props) { Assert.NotEmpty(p.Justification); Assert.NotEmpty(p.Rollback); }
+        Assert.Contains("No setting is changed", RouterQos.Analysis(rc, Meas, new AppConfig(), 200).Reminder);
+        using (Loc.Scope("fr")) Assert.Contains("Aucun réglage n'est modifié", RouterQos.Analysis(rc, Meas, new AppConfig(), 200).Reminder);
     }
 
     [Fact]
@@ -350,12 +502,15 @@ public class RouterTests
     [Fact]
     public void RouterRuleIntegration()
     {
-        var cfg = new AppConfig { Router = new RouterConfig { QosEnabled = true, QosType = "priorite", LimitDown = 900, LimitUp = 900 } };
+        var cfg = new AppConfig { Router = new RouterConfig { QosEnabled = true, QosType = "priority", LimitDown = 900, LimitUp = 900 } };
         var a = ScenarioTests.Run("bufferbloat", cfg);
-        var r = a.Hypotheses.Where(h => h.Id == "routeur_qos").ToList();
+        var r = a.Hypotheses.Where(h => h.Id == "router_qos").ToList();
         Assert.True(r.Count > 0 && r[0].Findings!.Count > 0);
-        Assert.Contains(r[0].Preuves, p => p.Contains("ne limite rien") || p.Contains("priorisation"));
+        Assert.Contains(r[0].Evidence, p => p.Contains("limits nothing") || p.Contains("priority-based"));
     }
+
+    [Fact]
+    public void ProtocolHasSixSteps() => Assert.Equal(6, RouterQos.Analysis(null, Meas, new AppConfig(), 0).Protocol.Count);
 }
 
 public class CompareTests
@@ -366,21 +521,21 @@ public class CompareTests
     public void ImprovementBeyondVariability()
     {
         var rows = Diagnose.Compare(new[] { M(100), M(105), M(95) }, new[] { M(40), M(45), M(42) });
-        Assert.All(rows, r => Assert.Equal("amélioration", r.Verdict));
+        Assert.All(rows, r => Assert.Equal("improvement", r.Verdict));
     }
 
     [Fact]
     public void DifferenceWithinVariabilityIsIndistinct()
-        => Assert.All(Diagnose.Compare(new[] { M(100), M(140) }, new[] { M(110), M(125) }), r => Assert.Contains("indistinct", r.Verdict));
+        => Assert.All(Diagnose.Compare(new[] { M(100), M(140) }, new[] { M(110), M(125) }), r => Assert.Equal("indistinct", r.Verdict));
 
     [Fact]
     public void SingleMeasureIsOnlyIndicative()
-        => Assert.All(Diagnose.Compare(new[] { M(100) }, new[] { M(40) }), r => Assert.Contains("indicatif", r.Verdict));
+        => Assert.All(Diagnose.Compare(new[] { M(100) }, new[] { M(40) }), r => Assert.Equal("indicative", r.Verdict));
 
     [Fact]
     public void DegradationAndThroughputDirection()
     {
         var rows = Diagnose.Compare(new[] { new Metrics { DownMbps = 300 }, new Metrics { DownMbps = 305 } }, new[] { new Metrics { DownMbps = 100 }, new Metrics { DownMbps = 102 } });
-        Assert.Equal("dégradation", rows[0].Verdict);
+        Assert.Equal("degradation", rows[0].Verdict);
     }
 }

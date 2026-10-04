@@ -75,27 +75,28 @@ public static class Api
 
     static async Task Handle(App app, HashSet<string> allowed, HttpContext ctx)
     {
-        if (!allowed.Contains(ctx.Request.Host.Value ?? "")) { await Write(ctx, 403, new { error = "Hôte refusé." }); return; }
+        Loc.Lang = ctx.Request.Query["lang"].FirstOrDefault() ?? ctx.Request.Headers["X-Lang"].FirstOrDefault() ?? Loc.Default;  // English unless French is asked for
+        if (!allowed.Contains(ctx.Request.Host.Value ?? "")) { await Write(ctx, 403, new { error = Loc.T("err.forbidden_host") }); return; }
         var method = ctx.Request.Method;
         var path = ctx.Request.Path.Value ?? "/";
         var q = ctx.Request.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
         var body = new JsonObject();
         if (method == "POST")
         {
-            if (!(ctx.Request.ContentType ?? "").StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) { await Write(ctx, 415, new { error = "Content-Type: application/json requis." }); return; }
-            if ((ctx.Request.ContentLength ?? 0) > MaxBody) { await Write(ctx, 413, new { error = "Requête trop grande." }); return; }
+            if (!(ctx.Request.ContentType ?? "").StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) { await Write(ctx, 415, new { error = Loc.T("err.content_type") }); return; }
+            if ((ctx.Request.ContentLength ?? 0) > MaxBody) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
             try
             {
                 using var ms = new MemoryStream();
                 await ctx.Request.Body.CopyToAsync(ms);
-                if (ms.Length > MaxBody) { await Write(ctx, 413, new { error = "Requête trop grande." }); return; }
+                if (ms.Length > MaxBody) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
                 var node = ms.Length == 0 ? new JsonObject() : JsonNode.Parse(ms.ToArray());
-                if (node is not JsonObject o) { await Write(ctx, 400, new { error = "Objet JSON attendu." }); return; }
+                if (node is not JsonObject o) { await Write(ctx, 400, new { error = Loc.T("err.object_expected") }); return; }
                 body = o;
             }
-            catch (JsonException) { await Write(ctx, 400, new { error = "JSON invalide." }); return; }
+            catch (JsonException) { await Write(ctx, 400, new { error = Loc.T("err.invalid_json") }); return; }
         }
-        else if (method != "GET") { await Write(ctx, 405, new { error = "Méthode non autorisée." }); return; }
+        else if (method != "GET") { await Write(ctx, 405, new { error = Loc.T("err.method") }); return; }
         try
         {
             var res = await Route(app, method, path, q, body);
@@ -123,8 +124,12 @@ public static class Api
         {
             if (path == "/") return new Raw(Encoding.UTF8.GetBytes(IndexHtml()), "text/html; charset=utf-8");
             if (path == "/favicon.ico") return new Raw(Array.Empty<byte>(), "image/x-icon");
-            if (path == "/api/identite") return new { app = "NetworkAnalyzer", version = AppVersion.Display };
-            if (path == "/api/env") return app.GetEnv(q.GetValueOrDefault("refresh") == "1");
+            if (path == "/api/identity") return new { app = "NetworkAnalyzer", version = AppVersion.Display };
+            if (path == "/api/env")
+            {
+                var e = app.GetEnv(q.GetValueOrDefault("refresh") == "1");
+                return new { interfaces = e.Interfaces, active = e.Active, vpn = e.Vpn, ipv6_global = e.Ipv6Global, platform = e.Platform, notes = SysInfo.Notes(e) };
+            }
             if (path == "/api/live")
             {
                 double since = ParseDouble(q.GetValueOrDefault("since"), 0);
@@ -146,7 +151,7 @@ public static class Api
             var ms = ShotRx.Match(path);
             if (ms.Success)
             {
-                var s = app.ReadShot(ms.Groups[1].Value) ?? throw new ApiException("Introuvable.", 404);
+                var s = app.ReadShot(ms.Groups[1].Value) ?? throw new ApiException(Loc.T("err.not_found"), 404);
                 return new Raw(s.Bytes, s.Mime);
             }
             var m = SessionRx.Match(path);
@@ -158,14 +163,14 @@ public static class Api
                 if (sub == "series") return app.SeriesPayload(sid);
                 var (d, a) = app.AnalysisOf(sid);
                 if (sub == "export" && ext == "csv")
-                    return new Raw(Encoding.UTF8.GetBytes(Report.ExportCsv(d)), "text/csv; charset=utf-8", new() { ["Content-Disposition"] = $"attachment; filename=\"mesures_session_{sid}.csv\"" });
+                    return new Raw(Encoding.UTF8.GetBytes(Report.ExportCsv(d)), "text/csv; charset=utf-8", new() { ["Content-Disposition"] = $"attachment; filename=\"measurements_session_{sid}.csv\"" });
                 if (sub == "export" && ext == "json")
                     return new Raw(Encoding.UTF8.GetBytes(Report.ExportJson(d, a)), "application/json; charset=utf-8", new() { ["Content-Disposition"] = $"attachment; filename=\"session_{sid}.json\"" });
                 if (sub == "report" && ext == "html")
                     return new Raw(Encoding.UTF8.GetBytes(Report.Html(d, a, app.CfgFor(d), app.ShotsForReport(), AppVersion.Short)), "text/html; charset=utf-8",
-                        new() { ["Content-Disposition"] = $"inline; filename=\"rapport_session_{sid}.html\"" });
+                        new() { ["Content-Disposition"] = $"inline; filename=\"report_session_{sid}.html\"" });
             }
-            throw new ApiException("Introuvable.", 404);
+            throw new ApiException(Loc.T("err.not_found"), 404);
         }
 
         switch (path)
@@ -186,6 +191,6 @@ public static class Api
             app.DeleteOrLabel(int.Parse(ma.Groups[1].Value), ma.Groups[2].Value, body);
             return new { ok = true };
         }
-        throw new ApiException("Introuvable.", 404);
+        throw new ApiException(Loc.T("err.not_found"), 404);
     }
 }

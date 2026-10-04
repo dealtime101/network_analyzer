@@ -9,14 +9,26 @@ public readonly record struct Sample(double T, double? V, bool Ok, string Info);
 public sealed class Target
 {
     public string Id { get; set; } = "";
-    public string Label { get; set; } = "";
     public string Host { get; set; } = "";
     /// <summary>gateway | internet | internet6 | custom</summary>
     public string Role { get; set; } = "";
     public int Family { get; set; }
     public int? TcpPort { get; set; }
+
+    /// <summary>Display name, derived from id/role/host in the current language (never stored: the setter does not exist).</summary>
+    public string Label => Id switch
+    {
+        "gateway" => Loc.T(Family == 6 ? "target.gateway6" : "target.gateway"),
+        "custom" => Loc.T("target.custom", Host),
+        "cloudflare" => $"Cloudflare ({Host})",
+        "google" => $"Google ({Host})",
+        "quad9" => $"Quad9 ({Host})",
+        "cloudflare6" => "Cloudflare IPv6",
+        _ => Id,
+    };
 }
 
+/// <summary>A user or system event. Kind: lag | gap | roam. For gap and roam the note is empty (the text is derived from the kind).</summary>
 public sealed class Mark
 {
     public double T { get; set; }
@@ -30,20 +42,22 @@ public sealed class PhaseMeta
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Name { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Label { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Direction { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? DureeS { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public long? Octets { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? MoyenMbps { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? SoutenuMbps { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? PicMbps { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? PlafondVolumeAtteint { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Flux { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? MonteeSeule { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<string>? Erreurs { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Annule { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Interrompu { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Erreur { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? DurationS { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public long? Bytes { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? AvgMbps { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? SustainedMbps { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? PeakMbps { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? VolumeCapReached { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Streams { get; set; }
+    /// <summary>True when the phase ended before the ramp-up period was over (the sustained rate then includes the ramp-up).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? RampOnly { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<string>? Errors { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Cancelled { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Interrupted { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Error { get; set; }
 }
 
+/// <summary>Phase names: idle | download | recovery1 | upload | recovery2.</summary>
 public sealed class Phase
 {
     public string Name { get; set; } = "";
@@ -69,17 +83,19 @@ public sealed class TraceStep
     public double ToMs { get; set; }
 }
 
+/// <summary>Structured reading of a traceroute (the sentences are built at display time, see <see cref="Probes.TraceNotes"/>).</summary>
 public sealed class TraceAnalysis
 {
     public bool Reached { get; set; }
-    public List<string> Notes { get; set; } = new();
     public List<int> IntermediateLoss { get; set; } = new();
     public TraceStep? Step { get; set; }
     public double? DestLossPct { get; set; }
+    public int DestSent { get; set; }
 }
 
 public sealed class TraceResult
 {
+    /// <summary>Error code: unsupported | name_not_found | failed (translated at display time).</summary>
     public string? Error { get; set; }
     public List<TraceHop>? Hops { get; set; }
     public TraceAnalysis? Analysis { get; set; }
@@ -99,14 +115,16 @@ public sealed class AdapterInfo
     public string Description { get; set; } = "";
     public string Status { get; set; } = "";
     public string LinkSpeed { get; set; } = "";
-    /// <summary>wifi | ethernet | vpn | virtuel | autre</summary>
-    public string Kind { get; set; } = "autre";
+    /// <summary>wifi | ethernet | vpn | virtual | other</summary>
+    public string Kind { get; set; } = "other";
     public List<string> Ipv4 { get; set; } = new();
     public List<string> Ipv6 { get; set; } = new();
     public string? Gw4 { get; set; }
     public string? Gw6 { get; set; }
     public List<string> Dns { get; set; } = new();
     public int Metric { get; set; }
+    /// <summary>When this is a virtual interface bridging a physical one (Hyper-V external switch): the physical adapter's name.</summary>
+    public string? BridgedPhysical { get; set; }
 }
 
 public sealed class VpnInfo
@@ -121,7 +139,6 @@ public sealed class EnvInfo
     public AdapterInfo? Active { get; set; }
     public VpnInfo Vpn { get; set; } = new();
     public bool Ipv6Global { get; set; }
-    public List<string> Notes { get; set; } = new();
     public string Platform { get; set; } = "";
 }
 
@@ -161,7 +178,6 @@ public sealed class LoadMeta
     public int CapDownMb { get; set; }
     public int CapUpMb { get; set; }
     public List<object?[]> Phases { get; set; } = new();
-    public string LinkNote { get; set; } = "";
 }
 
 public sealed class SessionMeta
@@ -208,6 +224,23 @@ public static class Json
     };
 
     public static readonly JsonSerializerOptions Indented = new(Options) { WriteIndented = true };
+
+    /// <summary>For files on disk: same as <see cref="Options"/> but the derived, language-dependent Target.label is never written.</summary>
+    public static readonly JsonSerializerOptions Storage = new(Options)
+    {
+        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver
+        {
+            Modifiers =
+            {
+                ti =>
+                {
+                    if (ti.Type != typeof(Target)) return;
+                    for (int i = ti.Properties.Count - 1; i >= 0; i--)
+                        if (ti.Properties[i].Name == "label") ti.Properties.RemoveAt(i);
+                },
+            },
+        },
+    };
 
     public static string To(object? o) => JsonSerializer.Serialize(o, Options);
     public static T? From<T>(string s) => JsonSerializer.Deserialize<T>(s, Options);

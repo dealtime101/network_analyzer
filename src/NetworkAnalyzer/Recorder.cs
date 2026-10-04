@@ -91,10 +91,10 @@ public sealed class Recorder
         {
             var parts = text.Split(':');
             host = parts[0];
-            if (!int.TryParse(parts[1], out port) || port is < 1 or > 65535) throw new ArgumentException($"Port invalide : '{parts[1]}'");
+            if (!int.TryParse(parts[1], out port) || port is < 1 or > 65535) throw new ArgumentException(Loc.T("err.invalid_port", parts[1]));
         }
         Probes.ValidateHost(host);
-        return new Target { Id = "custom", Label = $"Personnalisée ({host})", Host = host, Role = "custom", Family = 0, TcpPort = port };
+        return new Target { Id = "custom", Host = host, Role = "custom", Family = 0, TcpPort = port };
     }
 
     public static List<Target> BuildTargets(EnvInfo env, string? custom = "", string? gatewayOverride = "")
@@ -103,16 +103,16 @@ public sealed class Recorder
         var t = new List<Target>();
         var gw = string.IsNullOrWhiteSpace(gatewayOverride) ? a?.Gw4 : gatewayOverride;
         if (!string.IsNullOrEmpty(gw))
-            t.Add(new Target { Id = "gateway", Label = "Passerelle (routeur)", Host = Probes.ValidateHost(gw), Role = "gateway", Family = 4 });
+            t.Add(new Target { Id = "gateway", Host = Probes.ValidateHost(gw), Role = "gateway", Family = 4 });
         else if (a?.Gw6 != null)
         {
             var scope = OperatingSystem.IsWindows() && a.Gw6.StartsWith("fe80", StringComparison.OrdinalIgnoreCase) && !a.Gw6.Contains('%') ? $"%{a.Index}" : "";
-            t.Add(new Target { Id = "gateway", Label = "Passerelle IPv6", Host = a.Gw6 + scope, Role = "gateway", Family = 6 });
+            t.Add(new Target { Id = "gateway", Host = a.Gw6 + scope, Role = "gateway", Family = 6 });
         }
         foreach (var (id, label, host) in InternetTargets)
-            t.Add(new Target { Id = id, Label = label, Host = host, Role = "internet", Family = 4, TcpPort = 443 });
+            t.Add(new Target { Id = id, Host = host, Role = "internet", Family = 4, TcpPort = 443 });
         if (env.Ipv6Global)
-            t.Add(new Target { Id = "cloudflare6", Label = "Cloudflare IPv6", Host = "2606:4700:4700::1111", Role = "internet6", Family = 6, TcpPort = 443 });
+            t.Add(new Target { Id = "cloudflare6", Host = "2606:4700:4700::1111", Role = "internet6", Family = 6, TcpPort = 443 });
         var c = ParseCustom(custom);
         if (c != null) t.Add(c);
         return t;
@@ -163,8 +163,8 @@ public sealed class Recorder
     {
         lock (gate)
         {
-            if (Running) throw new InvalidOperationException("Une surveillance est déjà en cours.");
-            if (link == "auto") link = env.Active?.Kind ?? "inconnu";
+            if (Running) throw new InvalidOperationException(Loc.T("err.running"));
+            if (link == "auto") link = env.Active?.Kind ?? "unknown";
             Started = Clock.Now();
             PlannedS = (int)(minutes * 60);
             header = new SessionHeader
@@ -184,10 +184,10 @@ public sealed class Recorder
             var a = env.Active;
             foreach (var tg in targets) tasks.Add(Task.Run(() => PingLoop(tg, ct)));
             if (a?.Dns.Count > 0) tasks.Add(Task.Run(() => DnsLoop(a.Dns[0], ct)));
-            else notes.Add("DNS système non détecté : mesures DNS indisponibles.");
+            else notes.Add("no_dns");
             tasks.Add(Task.Run(() => TrafficLoop(a?.Name, ct)));
             if (a?.Kind == "wifi") tasks.Add(Task.Run(() => WifiLoop(ct)));
-            else notes.Add("Connexion non Wi-Fi (ou inconnue) : pas de mesures Wi-Fi.");
+            else notes.Add("not_wifi");
             tasks.Add(Task.Run(async () =>
             {
                 try { await Task.Delay(TimeSpan.FromSeconds(PlannedS), ct); } catch (OperationCanceledException) { return; }
@@ -208,7 +208,7 @@ public sealed class Recorder
             c = cts;
             pending = tasks.ToArray();
         }
-        EndPhase(curPhase != null ? new PhaseMeta { Interrompu = true } : null);
+        EndPhase(curPhase != null ? new PhaseMeta { Interrupted = true } : null);
         c?.Cancel();
         try { await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(8)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
         try { await Task.WhenAll(traceTasks.ToArray()).WaitAsync(TimeSpan.FromSeconds(3)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
@@ -252,7 +252,7 @@ public sealed class Recorder
     void TickGap(double last)
     {
         if (Clock.Now() - last > GapS)
-            MarkNow("gap", "Pause du système (veille ?) ou blocage : aucune mesure sur cet intervalle (pas compté comme perte).", last);
+            MarkNow("gap", "", last);
     }
 
     async Task PingLoop(Target tg, CancellationToken ct)
@@ -281,7 +281,7 @@ public sealed class Recorder
                         try { addr = await Probes.ResolveAsync(tg.Host, tg.Family, ct); resolvedAt = t; }
                         catch (Exception e) when (e is System.Net.Sockets.SocketException or ArgumentException) { addr = null; }
                     }
-                    r = addr is null ? new ProbeResult(false, null, "erreur") : await Probes.PingAsync(addr, 1000);
+                    r = addr is null ? new ProbeResult(false, null, "error") : await Probes.PingAsync(addr, 1000);
                 }
                 else r = await Probes.TcpAsync(tg.Host, tg.TcpPort!.Value);
                 last = Clock.Now();
@@ -307,7 +307,7 @@ public sealed class Recorder
                                 lock (gate) { state.Mode = "tcp"; state.Port = port; }
                             }
                             else lock (gate) state.NoResponse = true;
-                            foreach (var (ft, _) in pending) Emit(name, null, false, "icmp_sans_reponse", ft);
+                            foreach (var (ft, _) in pending) Emit(name, null, false, "icmp_no_reply", ft);
                             pending.Clear();
                         }
                     }
@@ -377,7 +377,7 @@ public sealed class Recorder
         try
         {
             var first = ReadCounters(nic);
-            if (first is null) { AddNote("Aucune interface réseau physique lisible : trafic de l'ordinateur indisponible."); return; }
+            if (first is null) { AddNote("no_iface"); return; }
             var prev = first.Value;
             double pt = Clock.Now();
             while (!ct.IsCancellationRequested)
@@ -398,7 +398,7 @@ public sealed class Recorder
             }
         }
         catch (OperationCanceledException) { }
-        catch (NetworkInformationException) { AddNote("Compteurs de l'interface réseau illisibles : trafic de l'ordinateur indisponible."); }
+        catch (NetworkInformationException) { AddNote("counters_unreadable"); }
     }
 
     async Task WifiLoop(CancellationToken ct)
@@ -415,7 +415,7 @@ public sealed class Recorder
                 last = Clock.Now();
                 if (w is null)
                 {
-                    if (first) AddNote("Infos Wi-Fi indisponibles (Windows peut exiger l'autorisation de localisation : Paramètres › Confidentialité › Localisation).");
+                    if (first) AddNote("wifi_unavailable");
                 }
                 else
                 {
@@ -430,7 +430,7 @@ public sealed class Recorder
                         if (n != null) SetMeta(m => m.WifiNeighbors = n);
                     }
                     if (lastBssid != null && !string.IsNullOrEmpty(w.Bssid) && w.Bssid != lastBssid)
-                        MarkNow("roam", "Changement de point d'accès Wi-Fi (itinérance) : micro-coupure possible.");
+                        MarkNow("roam");
                     if (!string.IsNullOrEmpty(w.Bssid)) lastBssid = w.Bssid;
                 }
                 first = false;
@@ -472,7 +472,7 @@ public sealed class Recorder
         foreach (var tg in Targets)
         {
             var smp = snap.GetValueOrDefault($"ping:{tg.Id}") ?? new List<Sample>();
-            smp = smp.Where(s => s.T >= t1 - seconds && s.Info != "icmp_sans_reponse").ToList();
+            smp = smp.Where(s => s.T >= t1 - seconds && s.Info != "icmp_no_reply").ToList();
             TargetState? st;
             lock (gate) targetState.TryGetValue(tg.Id, out st);
             res[tg.Id] = new LiveTarget { Label = tg.Label, Role = tg.Role, Host = tg.Host, Mode = st?.Mode ?? "icmp", Port = st?.Port, NoResponse = st?.NoResponse ?? false, Stats = Stats.Rtt(smp) };
@@ -487,7 +487,7 @@ public sealed class Recorder
             {
                 Running = Running, Sid = Sid, Started = Started, PlannedS = PlannedS,
                 RemainingS = Running ? Math.Max(0, Started + PlannedS - Clock.Now()) : 0,
-                Notes = notes.ToList(), Phase = curPhase?.Name,
+                Notes = notes.Select(c => Loc.T("note." + c)).ToList(), Phase = curPhase?.Name,
                 Marks = marks.TakeLast(50).ToList(), Phases = phases.TakeLast(20).ToList(),
             };
     }

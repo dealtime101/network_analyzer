@@ -27,9 +27,9 @@ public sealed class LoadConfig
         int idle = Math.Max(5, Math.Min(10, loadSeconds * 2 / 3));  // 15 s of load → 10 s of idle / recovery
         return new List<LoadPhase>
         {
-            new() { Name = "repos", DurationS = idle }, new() { Name = "download", DurationS = loadSeconds, Direction = "down" },
-            new() { Name = "recup1", DurationS = idle }, new() { Name = "upload", DurationS = loadSeconds, Direction = "up" },
-            new() { Name = "recup2", DurationS = idle },
+            new() { Name = "idle", DurationS = idle }, new() { Name = "download", DurationS = loadSeconds, Direction = "down" },
+            new() { Name = "recovery1", DurationS = idle }, new() { Name = "upload", DurationS = loadSeconds, Direction = "up" },
+            new() { Name = "recovery2", DurationS = idle },
         };
     }
 }
@@ -49,6 +49,7 @@ public sealed class LoadEstimate
 
 public sealed class LoadStatus
 {
+    /// <summary>idle | running | done | cancelled | error</summary>
     public string State { get; set; } = "idle";
     public string? Phase { get; set; }
     public string? PhaseLabel { get; set; }
@@ -74,11 +75,6 @@ public sealed class LoadTest
 {
     public const int WarmupS = 3;
     const int Chunk = 65536;
-    public static readonly Dictionary<string, string> PhaseLabels = new()
-    {
-        ["repos"] = "Repos", ["download"] = "Téléchargement", ["recup1"] = "Récupération (après téléchargement)",
-        ["upload"] = "Envoi", ["recup2"] = "Récupération (après envoi)",
-    };
 
     readonly Recorder rec;
     readonly LoadConfig cfg;
@@ -126,7 +122,6 @@ public sealed class LoadTest
         {
             Server = cfg.BaseUrl, Streams = cfg.Streams, CapDownMb = cfg.CapDownMb, CapUpMb = cfg.CapUpMb,
             Phases = cfg.Phases.Select(p => new object?[] { p.Name, p.DurationS, p.Direction }).ToList(),
-            LinkNote = "Débit indicatif : peut être borné par le serveur, le Wi-Fi ou le PC.",
         });
         Task = Task.Run(RunAsync);
     }
@@ -139,12 +134,16 @@ public sealed class LoadTest
         lock (gate)
             return new LoadStatus
             {
-                State = state, Phase = phase, PhaseLabel = phase != null && PhaseLabels.TryGetValue(phase, out var l) ? l : null,
+                State = state, Phase = phase, PhaseLabel = phase != null ? Loc.T("phase." + phase) : null,
                 ElapsedS = state == "running" ? clock.Elapsed.TotalSeconds : null, TotalS = cfg.Phases.Sum(p => p.DurationS),
-                CurrentMbps = current / 1e6, Errors = errors.Take(3).ToList(), Results = results.ToList(),
+                CurrentMbps = current / 1e6, Errors = errors.Take(3).ToList(),
+                Results = results.Select(r => { var c = (PhaseMeta)Clone(r); c.Label = Loc.T("phase." + r.Name); return c; }).ToList(),
             };
     }
 
+    static object Clone(PhaseMeta m) => Json.From<PhaseMeta>(Json.To(m))!;
+
+    // -------------------------------------------------------------- execution
     async Task RunAsync()
     {
         try
@@ -155,19 +154,18 @@ public sealed class LoadTest
                 phase = p.Name;
                 rec.BeginPhase(p.Name, new PhaseMeta { Direction = p.Direction });
                 var extra = p.Direction != null ? await Saturate(p.Direction, p.DurationS) : await Idle(p.DurationS);
-                if (cancel.IsCancellationRequested) extra.Annule = true;
+                if (cancel.IsCancellationRequested) extra.Cancelled = true;
                 rec.EndPhase(extra);
                 extra.Name = p.Name;
-                extra.Label = PhaseLabels.GetValueOrDefault(p.Name, p.Name);
                 lock (gate) results.Add(extra);
             }
-            state = cancel.IsCancellationRequested ? "annule" : "termine";
+            state = cancel.IsCancellationRequested ? "cancelled" : "done";
         }
         catch (Exception e)  // the test must never bring the application down
         {
             lock (gate) errors.Add($"{e.GetType().Name}: {e.Message}");
-            state = "erreur";
-            rec.EndPhase(new PhaseMeta { Erreur = e.Message });
+            state = "error";
+            rec.EndPhase(new PhaseMeta { Error = e.Message });
         }
         phase = null;
         current = 0;
@@ -176,7 +174,7 @@ public sealed class LoadTest
     async Task<PhaseMeta> Idle(int dur)
     {
         try { await Task.Delay(TimeSpan.FromSeconds(dur), cancel.Token); } catch (OperationCanceledException) { }
-        return new PhaseMeta { DureeS = dur };
+        return new PhaseMeta { DurationS = dur };
     }
 
     async Task<PhaseMeta> Saturate(string direction, int dur)
@@ -213,11 +211,11 @@ public sealed class LoadTest
         var src = rates.Count > 0 ? rates : all;
         var res = new PhaseMeta
         {
-            Direction = direction, DureeS = Math.Round(elapsed, 1), Octets = total, MoyenMbps = elapsed > 0 ? total * 8 / elapsed / 1e6 : 0,
-            SoutenuMbps = (Stats.Median(src) ?? 0) / 1e6, PicMbps = (all.Count > 0 ? all.Max() : 0) / 1e6,
-            PlafondVolumeAtteint = total >= cap, Flux = cfg.Streams, MonteeSeule = rates.Count == 0 && all.Count > 0,
+            Direction = direction, DurationS = Math.Round(elapsed, 1), Bytes = total, AvgMbps = elapsed > 0 ? total * 8 / elapsed / 1e6 : 0,
+            SustainedMbps = (Stats.Median(src) ?? 0) / 1e6, PeakMbps = (all.Count > 0 ? all.Max() : 0) / 1e6,
+            VolumeCapReached = total >= cap, Streams = cfg.Streams, RampOnly = rates.Count == 0 && all.Count > 0,
         };
-        lock (gate) if (errors.Count > errs0) res.Erreurs = errors.Skip(errs0).Take(3).ToList();
+        lock (gate) if (errors.Count > errs0) res.Errors = errors.Skip(errs0).Take(3).ToList();
         return res;
     }
 

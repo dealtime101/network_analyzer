@@ -37,12 +37,12 @@ public static partial class SysInfo
     public static string Kind(string name, string description, NetworkInterfaceType type)
     {
         var text = $"{name} {description}";
-        if (WindowsBuiltinRx.IsMatch(description)) return "virtuel";
+        if (WindowsBuiltinRx.IsMatch(description)) return "virtual";
         if (VpnRx.IsMatch(text) || type is NetworkInterfaceType.Tunnel or NetworkInterfaceType.Ppp) return "vpn";
-        if (VirtualRx.IsMatch(text)) return "virtuel";
+        if (VirtualRx.IsMatch(text)) return "virtual";
         if (type == NetworkInterfaceType.Wireless80211 || WifiRx.IsMatch(text)) return "wifi";
         if (type is NetworkInterfaceType.Ethernet or NetworkInterfaceType.GigabitEthernet or NetworkInterfaceType.FastEthernetT or NetworkInterfaceType.FastEthernetFx or NetworkInterfaceType.Ethernet3Megabit) return "ethernet";
-        return "autre";
+        return "other";
     }
 
     static string Speed(long bps) => bps <= 0 ? "" : bps >= 1_000_000_000 ? $"{bps / 1e9:0.#} Gbps" : $"{bps / 1e6:0.#} Mbps";
@@ -83,29 +83,41 @@ public static partial class SysInfo
 
     public static EnvInfo Summarize(List<AdapterInfo> ifaces)
     {
-        bool IsUp(AdapterInfo i) => i.Status.Equals("Up", StringComparison.OrdinalIgnoreCase) || i.Status.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
-        var vpnUp = ifaces.Where(i => i.Kind == "vpn" && IsUp(i) && (i.Ipv4.Count > 0 || i.Ipv6.Count > 0)).ToList();
-        // A virtual interface qualifies only if it carries the default gateway (e.g. a Hyper-V "External Network Switch" bridging the NIC).
-        var cands = ifaces.Where(i => (i.Gw4 != null || i.Gw6 != null) && i.Kind != "vpn" && IsUp(i)).OrderBy(i => i.Metric).ToList();
-        var active = cands.FirstOrDefault();
+        var vpnUp =ifaces.Where(i => i.Kind == "vpn" && IsUp(i) && (i.Ipv4.Count > 0 || i.Ipv6.Count > 0)).ToList();
+        var active = Candidates(ifaces).FirstOrDefault();
         var env = new EnvInfo { Interfaces = ifaces, Active = active, Vpn = new VpnInfo { Active = vpnUp.Count > 0, Adapters = vpnUp.Select(i => i.Name).ToList() } };
-        if (cands.Count > 1)
-            env.Notes.Add($"Plusieurs interfaces avec passerelle ({string.Join(", ", cands.Select(i => i.Name))}) : la plus prioritaire est mesurée ({active!.Name}).");
-        if (active is { Kind: "virtuel" })
+        if (active is { Kind: "virtual" })
         {
             var phys = ifaces.FirstOrDefault(i => i.Kind is "wifi" or "ethernet" && IsUp(i) && i.Gw4 == null && i.Gw6 == null);
             if (phys != null)
             {
-                env.Notes.Add($"« {active.Name} » est une interface virtuelle (pont Hyper-V / machine virtuelle) : la liaison physique serait « {phys.Name} » ({(phys.Kind == "wifi" ? "Wi-Fi" : "Ethernet")}), le type de liaison en est déduit.");
                 active.Kind = phys.Kind;
+                active.BridgedPhysical = phys.Name;
                 if (active.LinkSpeed.Length == 0) active.LinkSpeed = phys.LinkSpeed;
             }
         }
-        if (vpnUp.Count > 0)
-            env.Notes.Add($"VPN détecté ({string.Join(", ", vpnUp.Select(i => i.Name))}) : les mesures Internet passent peut-être par le tunnel ; la passerelle mesurée est celle de l'interface physique.");
-        if (active is null) env.Notes.Add("Aucune connexion active avec passerelle détectée.");
         env.Ipv6Global = active != null && active.Gw6 != null && active.Ipv6.Any(a => !a.StartsWith("fe80", StringComparison.OrdinalIgnoreCase) && !a.StartsWith("::1"));
         return env;
+    }
+
+    static bool IsUp(AdapterInfo i) => i.Status.Equals("Up", StringComparison.OrdinalIgnoreCase) || i.Status.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Interfaces that can carry Internet: up, with a gateway, not a VPN. A virtual interface qualifies only if it carries the gateway
+    /// (e.g. a Hyper-V "External Network Switch" bridging the physical NIC). Best route first.</summary>
+    static List<AdapterInfo> Candidates(IEnumerable<AdapterInfo> ifaces)
+        => ifaces.Where(i => (i.Gw4 != null || i.Gw6 != null) && i.Kind != "vpn" && IsUp(i)).OrderBy(i => i.Metric).ToList();
+
+    /// <summary>Explanations about the detected environment, derived from the stored data and translated into the current language.</summary>
+    public static List<string> Notes(EnvInfo env)
+    {
+        var notes = new List<string>();
+        var cands = Candidates(env.Interfaces);
+        if (cands.Count > 1) notes.Add(Loc.T("env.multiple", string.Join(", ", cands.Select(i => i.Name)), cands[0].Name));
+        if (env.Active?.BridgedPhysical != null)
+            notes.Add(Loc.T("env.bridged", env.Active.Name, env.Active.BridgedPhysical, Loc.T("kind." + env.Active.Kind)));
+        if (env.Vpn.Active) notes.Add(Loc.T("env.vpn", string.Join(", ", env.Vpn.Adapters)));
+        if (env.Active is null) notes.Add(Loc.T("env.noactive"));
+        return notes;
     }
 
     // ------------------------------------------------------------------ Wi-Fi (netsh wlan)
@@ -137,8 +149,8 @@ public static partial class SysInfo
     public static string? BandFromChannel(int? ch) => ch switch
     {
         null => null,
-        >= 1 and <= 14 => "2,4 GHz",
-        >= 36 and <= 177 => "5 GHz (ou 6 GHz : le numéro de canal seul ne permet pas de trancher)",
+        >= 1 and <= 14 => "2.4 GHz",
+        >= 36 and <= 177 => "5 GHz / 6 GHz",
         _ => null,
     };
 

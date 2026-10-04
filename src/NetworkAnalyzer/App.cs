@@ -73,7 +73,7 @@ public sealed class App
     {
         if (n is not JsonValue v) return null;
         if (v.TryGetValue<double>(out var d)) return d;
-        if (v.TryGetValue<string>(out var s)) return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ? x : throw new ApiException("Nombre invalide.");
+        if (v.TryGetValue<string>(out var s)) return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ? x : throw new ApiException(Loc.T("err.invalid_number"));
         return null;
     }
 
@@ -84,7 +84,7 @@ public sealed class App
     {
         lock (gate)
         {
-            if (Rec.Running) throw new ApiException("Une surveillance est déjà en cours.", 409);
+            if (Rec.Running) throw new ApiException(Loc.T("err.running"), 409);
             var cfg = Config.Load();
             var custom = Str(body, "custom_target")?.Trim() ?? cfg.CustomTarget;
             try { Recorder.ParseCustom(custom); }
@@ -92,9 +92,9 @@ public sealed class App
             if (custom != cfg.CustomTarget) cfg = Config.Update(c => c.CustomTarget = custom);
             double minutes;
             try { minutes = Math.Min(180.0, Math.Max(1.0, Num(body["minutes"]) ?? minutesDefault)); }
-            catch (ApiException) { throw new ApiException("Durée invalide."); }
+            catch (ApiException) { throw new ApiException(Loc.T("err.invalid_duration")); }
             var link = Str(body, "link") ?? "auto";
-            if (link is not ("auto" or "wifi" or "ethernet")) throw new ApiException("Type de liaison invalide.");
+            if (link is not ("auto" or "wifi" or "ethernet")) throw new ApiException(Loc.T("err.invalid_link"));
             var e2 = GetEnv(refresh: true);
             List<Target> targets;
             try { targets = Recorder.BuildTargets(e2, custom, cfg.GatewayOverride); }
@@ -125,7 +125,7 @@ public sealed class App
     public object Mark(string? note)
     {
         bool auto = false;
-        if (!Rec.Running) { StartSession(new JsonObject(), "Auto (« Je lag maintenant »)"); auto = true; }
+        if (!Rec.Running) { StartSession(new JsonObject(), Loc.T("label.auto_mark")); auto = true; }
         Rec.MarkNow("lag", (note ?? "").Length > 200 ? note![..200] : note ?? "");
         var hosts = Rec.Targets.Where(t => t.Id is "cloudflare" or "custom").Select(t => t.Host).ToList();
         Rec.TraceAsync(hosts);
@@ -144,11 +144,11 @@ public sealed class App
             c.CapUpMb = Clamp("cap_up_mb", 10, 1000, c.CapUpMb);
             if (body["phase_s"] != null) c.Phases = LoadConfig.DefaultPhases(Clamp("phase_s", 5, 30, 15));
         }
-        catch (ApiException) { throw new ApiException("Paramètre de test invalide."); }
+        catch (ApiException) { throw new ApiException(Loc.T("err.invalid_loadtest")); }
         var url = Str(body, "base_url");
         if (!string.IsNullOrEmpty(url))
         {
-            if (!UrlRx.IsMatch(url)) throw new ApiException("Adresse de serveur de test invalide.");
+            if (!UrlRx.IsMatch(url)) throw new ApiException(Loc.T("err.invalid_server_url"));
             c.BaseUrl = url;
         }
         return c;
@@ -166,12 +166,12 @@ public sealed class App
         var live = Config.Load();
         var est = LoadTest.Estimate(lc, live.PlanDownMbps, live.PlanUpMbps);
         if (!(body["confirm"] is JsonValue cv && cv.TryGetValue<bool>(out var ok) && ok))
-            throw new ApiException("Confirmation requise : ce test sature volontairement la connexion.", 412, new() { ["estimate"] = est });
-        if (Load is { State: "running" }) throw new ApiException("Un test est déjà en cours.", 409);
+            throw new ApiException(Loc.T("err.confirm_required"), 412, new() { ["estimate"] = est });
+        if (Load is { State: "running" }) throw new ApiException(Loc.T("err.test_running"), 409);
         if (!Rec.Running)
-            StartSession(new JsonObject { ["minutes"] = est.DurationS / 60.0 + 1, ["link"] = Str(body, "link") ?? "auto", ["label"] = Str(body, "label") ?? "Test de saturation" }, "Test de saturation");
+            StartSession(new JsonObject { ["minutes"] = est.DurationS / 60.0 + 1, ["link"] = Str(body, "link") ?? "auto", ["label"] = Str(body, "label") ?? Loc.T("label.saturation_test") }, Loc.T("label.saturation_test"));
         else if (Rec.Status().RemainingS < est.DurationS + 5)
-            throw new ApiException($"La surveillance en cours se termine avant la fin du test ({est.DurationS} s) : relancez-la avec plus de minutes.", 409);
+            throw new ApiException(Loc.T("err.session_too_short", est.DurationS), 409);
         Load = new LoadTest(Rec, lc);
         Load.Start();
         return est;
@@ -182,7 +182,7 @@ public sealed class App
 
     public (SessionData Data, Analysis A) AnalysisOf(int sid)
     {
-        var d = Store.Load(sid) ?? throw new ApiException("Session introuvable.", 404);
+        var d = Store.Load(sid) ?? throw new ApiException(Loc.T("err.session_not_found"), 404);
         return (d, Diagnose.Analyze(d, CfgFor(d)));
     }
 
@@ -209,7 +209,7 @@ public sealed class App
 
     public object SeriesPayload(int sid)
     {
-        var d = Store.Load(sid) ?? throw new ApiException("Session introuvable.", 404);
+        var d = Store.Load(sid) ?? throw new ApiException(Loc.T("err.session_not_found"), 404);
         return new
         {
             started = d.Started, ended = d.EndOrLast, targets = d.Targets, marks = d.Marks, phases = d.Phases,
@@ -255,11 +255,11 @@ public sealed class App
 
     public void DeleteOrLabel(int sid, string action, JsonObject body)
     {
-        if (Rec.Running && Rec.Sid == sid) throw new ApiException("Arrêtez d'abord la surveillance en cours.", 409);
+        if (Rec.Running && Rec.Sid == sid) throw new ApiException(Loc.T("err.stop_first"), 409);
         if (action == "delete") Store.Delete(sid);
         else
         {
-            var h = Store.LoadHeader(sid) ?? throw new ApiException("Session introuvable.", 404);
+            var h = Store.LoadHeader(sid) ?? throw new ApiException(Loc.T("err.session_not_found"), 404);
             var l = Str(body, "label") ?? "";
             h.Label = l.Length > 80 ? l[..80] : l;
             Store.SaveHeader(h);
@@ -272,11 +272,11 @@ public sealed class App
     public string AddShot(string? dataUri)
     {
         var m = DataUriRx.Match(dataUri ?? "");
-        if (!m.Success) throw new ApiException("Image invalide (PNG, JPEG ou WebP).");
+        if (!m.Success) throw new ApiException(Loc.T("err.invalid_image"));
         byte[] raw;
         try { raw = Convert.FromBase64String(m.Groups[2].Value); }
-        catch (FormatException) { throw new ApiException("Image invalide (PNG, JPEG ou WebP)."); }
-        if (raw.Length > MaxShot) throw new ApiException("Image trop grande (5 Mo max).");
+        catch (FormatException) { throw new ApiException(Loc.T("err.invalid_image")); }
+        if (raw.Length > MaxShot) throw new ApiException(Loc.T("err.image_too_large"));
         var name = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Convert.ToHexString(Random.Shared.GetItems(new byte[256], 4)).ToLowerInvariant()}.{(m.Groups[1].Value == "jpeg" ? "jpg" : m.Groups[1].Value)}";
         File.WriteAllBytes(Path.Combine(ShotsDir(), name), raw);
         Config.Update(c => { c.Router ??= new RouterConfig(); c.Router.Screenshots.Add(name); });
@@ -285,7 +285,7 @@ public sealed class App
 
     public void DelShot(string? name)
     {
-        if (name is null || !ShotRx.IsMatch(name)) throw new ApiException("Nom invalide.");
+        if (name is null || !ShotRx.IsMatch(name)) throw new ApiException(Loc.T("err.invalid_name"));
         Config.Update(c => c.Router?.Screenshots.RemoveAll(n => n == name));
         try { File.Delete(Path.Combine(ShotsDir(), name)); } catch (IOException) { }
     }
@@ -332,10 +332,10 @@ public sealed class App
             {
                 RouterConfig rc;
                 try { rc = Json.From<RouterConfig>(r.ToJsonString()) ?? new RouterConfig(); }
-                catch (JsonException) { throw new ApiException("Configuration de routeur invalide."); }
-                rc.QosType ??= "inconnu";
+                catch (JsonException) { throw new ApiException(Loc.T("err.invalid_router")); }
+                rc.QosType ??= "unknown";
                 rc.Unit ??= "Mbps";
-                if (!RouterQos.QosTypes.Contains(rc.QosType) || rc.Unit is not ("Kbps" or "Mbps" or "Gbps")) throw new ApiException("Valeur de QoS ou d'unité invalide.");
+                if (!RouterQos.QosTypes.Contains(rc.QosType) || rc.Unit is not ("Kbps" or "Mbps" or "Gbps")) throw new ApiException(Loc.T("err.invalid_qos_value"));
                 rc.PriorityDevices ??= new();
                 rc.BandwidthRules ??= new();
                 rc.Screenshots = c.Router?.Screenshots ?? new();

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace NetworkAnalyzer;
 
+/// <summary>Outcome of one probe. Info holds a short code: "" (ok), timeout, unreachable, error, port_closed, tcp, or a DNS rcode name.</summary>
 public readonly record struct ProbeResult(bool Ok, double? Ms, string Info);
 
 /// <summary>
@@ -25,7 +26,7 @@ public static class Probes
     {
         host = (host ?? "").Trim();
         if (host.Length == 0 || host.StartsWith('-') || host.Length > 253 || !HostOk.IsMatch(host))
-            throw new ArgumentException($"Adresse invalide : '{host}'");
+            throw new ArgumentException(Loc.T("err.invalid_host", host));
         return host;
     }
 
@@ -44,7 +45,7 @@ public static class Probes
         IPStatus.TimedOut => "timeout",
         IPStatus.DestinationNetworkUnreachable or IPStatus.DestinationHostUnreachable or IPStatus.DestinationUnreachable
             or IPStatus.DestinationProtocolUnreachable or IPStatus.DestinationPortUnreachable or IPStatus.DestinationProhibited
-            or IPStatus.DestinationScopeMismatch => "injoignable",
+            or IPStatus.DestinationScopeMismatch => "unreachable",
         _ => s.ToString().ToLowerInvariant(),
     };
 
@@ -62,10 +63,10 @@ public static class Probes
             using var ping = new Ping();
             return FromReply(await ping.SendPingAsync(address, timeoutMs));
         }
-        catch (PlatformNotSupportedException) { return new ProbeResult(false, null, "erreur: ping indisponible"); }
+        catch (PlatformNotSupportedException) { return new ProbeResult(false, null, "ping_unavailable"); }
         catch (Exception e) when (e is PingException or SocketException or InvalidOperationException)
         {
-            return new ProbeResult(false, null, "erreur: " + (e.InnerException ?? e).GetType().Name);
+            return new ProbeResult(false, null, "error:" + (e.InnerException ?? e).GetType().Name);
         }
     }
 
@@ -81,8 +82,8 @@ public static class Probes
             return new ProbeResult(true, sw.Elapsed.TotalMilliseconds, "tcp");
         }
         catch (OperationCanceledException) { return new ProbeResult(false, null, "timeout"); }
-        catch (SocketException e) when (e.SocketErrorCode == SocketError.ConnectionRefused) { return new ProbeResult(false, null, "port fermé"); }
-        catch (SocketException) { return new ProbeResult(false, null, "injoignable"); }
+        catch (SocketException e) when (e.SocketErrorCode == SocketError.ConnectionRefused) { return new ProbeResult(false, null, "port_closed"); }
+        catch (SocketException) { return new ProbeResult(false, null, "unreachable"); }
     }
 
     // ------------------------------------------------------------------ DNS
@@ -123,7 +124,7 @@ public static class Probes
     /// <summary>Queries <paramref name="server"/> over UDP. <paramref name="acceptNxdomain"/>: NXDOMAIN counts as a valid reply.</summary>
     public static async Task<ProbeResult> DnsQueryAsync(string server, string name, int timeoutMs = 2000, bool acceptNxdomain = false, int port = 53)
     {
-        if (!IPAddress.TryParse(server, out var ip)) return new ProbeResult(false, null, "erreur: serveur DNS invalide");
+        if (!IPAddress.TryParse(server, out var ip)) return new ProbeResult(false, null, "error:invalid_dns_server");
         var qid = (ushort)Random.Shared.Next(65536);
         var pkt = BuildDnsQuery(name, qid);
         var buf = new byte[4096];
@@ -145,7 +146,7 @@ public static class Probes
             }
         }
         catch (OperationCanceledException) { return new ProbeResult(false, null, "timeout"); }
-        catch (SocketException e) { return new ProbeResult(false, null, "erreur: " + e.SocketErrorCode); }
+        catch (SocketException e) { return new ProbeResult(false, null, "error:" + e.SocketErrorCode); }
     }
 
     // ------------------------------------------------------------------ traceroute
@@ -156,13 +157,11 @@ public static class Probes
     public static TraceAnalysis AnalyzeTrace(IReadOnlyList<TraceHop> hops, string? destIp = null)
     {
         var res = new TraceAnalysis();
-        if (hops.Count == 0) { res.Notes.Add("Aucun saut lisible."); return res; }
+        if (hops.Count == 0) return res;
         var last = hops[^1];
         res.Reached = last.Rtts.Count > 0 && (destIp is null || last.Ip == destIp);
         for (int i = 0; i < hops.Count - 1; i++)
             if (hops[i].Lost > 0 && hops.Skip(i + 1).Any(x => x.Rtts.Count > 0)) res.IntermediateLoss.Add(hops[i].Hop);
-        if (res.IntermediateLoss.Count > 0)
-            res.Notes.Add($"Perte(s) au(x) saut(s) {string.Join(", ", res.IntermediateLoss)} mais les sauts suivants répondent : très probablement une limitation ICMP du routeur, PAS une perte réelle.");
         var meds = hops.Where(h => h.Rtts.Count > 0).Select(h => (h.Hop, Ms: h.Rtts.Average(), h.Ip)).ToList();
         for (int i = 1; i < meds.Count; i++)
         {
@@ -170,14 +169,25 @@ public static class Probes
             if (meds[i].Ms - b >= 40 && meds.Skip(i).All(m => m.Ms >= b + 30))
             {
                 res.Step = new TraceStep { Hop = meds[i].Hop, Ip = meds[i].Ip, FromMs = b, ToMs = meds[i].Ms };
-                res.Notes.Add($"La latence passe de {b:0} à {meds[i].Ms:0} ms au saut {meds[i].Hop} et ne redescend pas jusqu'à la destination : l'augmentation commence à ce niveau du trajet.");
                 break;
             }
         }
+        res.DestSent = last.Sent;
         res.DestLossPct = last.Sent > 0 ? 100.0 * last.Lost / last.Sent : null;
-        if (!res.Reached) res.Notes.Add("La destination n'a pas répondu au traceroute (peut être un filtrage ICMP, pas forcément une panne).");
-        else if (res.DestLossPct is > 0) res.Notes.Add($"Perte de {res.DestLossPct:0} % à la destination (sur {last.Sent} sondes : trop peu pour conclure seul).");
         return res;
+    }
+
+    /// <summary>The sentences explaining a traceroute analysis, in the current language.</summary>
+    public static List<string> TraceNotes(TraceAnalysis? a, bool hasHops = true)
+    {
+        var notes = new List<string>();
+        if (a is null) return notes;
+        if (!hasHops) { notes.Add(Loc.T("trace.nohops")); return notes; }
+        if (a.IntermediateLoss.Count > 0) notes.Add(Loc.T("trace.intermediate", string.Join(", ", a.IntermediateLoss)));
+        if (a.Step != null) notes.Add(Loc.T("trace.step", a.Step.FromMs.ToString("0"), a.Step.ToMs.ToString("0"), a.Step.Hop));
+        if (!a.Reached) notes.Add(Loc.T("trace.unreached"));
+        else if (a.DestLossPct is > 0) notes.Add(Loc.T("trace.destloss", a.DestLossPct.Value.ToString("0"), a.DestSent));
+        return notes;
     }
 
     public static async Task<TraceResult> TracerouteAsync(string host, int maxHops = 20, CancellationToken ct = default)
@@ -185,8 +195,8 @@ public static class Probes
         host = ValidateHost(host);
         IPAddress? dest;
         try { dest = await ResolveAsync(host, 4, ct); }
-        catch (SocketException) { return new TraceResult { Error = "Nom introuvable." }; }
-        if (dest is null) return new TraceResult { Error = "Nom introuvable." };
+        catch (SocketException) { return new TraceResult { Error = "name_not_found" }; }
+        if (dest is null) return new TraceResult { Error = "name_not_found" };
         var hops = new List<TraceHop>();
         try
         {
@@ -213,8 +223,8 @@ public static class Probes
                 if (reached) break;
             }
         }
-        catch (PlatformNotSupportedException) { return new TraceResult { Error = "Traceroute indisponible sur ce système (privilèges requis)." }; }
-        catch (Exception e) when (e is PingException or SocketException) { return new TraceResult { Error = "Traceroute impossible : " + (e.InnerException ?? e).GetType().Name }; }
+        catch (PlatformNotSupportedException) { return new TraceResult { Error = "unsupported" }; }
+        catch (Exception e) when (e is PingException or SocketException) { return new TraceResult { Error = "failed" }; }
         return new TraceResult { Hops = hops, Analysis = AnalyzeTrace(hops, dest.ToString()) };
     }
 }

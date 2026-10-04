@@ -61,7 +61,7 @@ public class LoadTestTests
     static LoadConfig Cfg(string url, int capDown, int capUp) => new()
     {
         BaseUrl = url, Streams = 2, CapDownMb = capDown, CapUpMb = capUp,
-        Phases = new() { new() { Name = "repos", DurationS = 1 }, new() { Name = "download", DurationS = 4, Direction = "down" }, new() { Name = "recup1", DurationS = 1 }, new() { Name = "upload", DurationS = 4, Direction = "up" } },
+        Phases = new() { new() { Name = "idle", DurationS = 1 }, new() { Name = "download", DurationS = 4, Direction = "down" }, new() { Name = "recovery1", DurationS = 1 }, new() { Name = "upload", DurationS = 4, Direction = "up" } },
     };
 
     [Fact]
@@ -72,13 +72,13 @@ public class LoadTestTests
         var lt = new LoadTest(rec, Cfg(stub.Url, 30, 30));
         lt.Start();
         await lt.Task!.WaitAsync(TimeSpan.FromSeconds(40));
-        Assert.Equal("termine", lt.State);
-        Assert.Equal(new[] { "repos", "download", "recup1", "upload" }, rec.Status().Phases.Select(p => p.Name).ToArray());
+        Assert.Equal("done", lt.State);
+        Assert.Equal(new[] { "idle", "download", "recovery1", "upload" }, rec.Status().Phases.Select(p => p.Name).ToArray());
         var res = lt.Status().Results;
-        Assert.True(res[1].PlafondVolumeAtteint == true && res[3].PlafondVolumeAtteint == true);
-        Assert.True(res[1].Octets < 30_000_000L + 4 * 25_000_000L);
-        Assert.True(res[1].DureeS < 4.5);
-        Assert.True(res[1].MoyenMbps > 1);
+        Assert.True(res[1].VolumeCapReached == true && res[3].VolumeCapReached == true);
+        Assert.True(res[1].Bytes < 30_000_000L + 4 * 25_000_000L);
+        Assert.True(res[1].DurationS < 4.5);
+        Assert.True(res[1].AvgMbps > 1);
         var live = rec.LiveSince(0);
         Assert.True(live.ContainsKey("load:down_bps") && live.ContainsKey("load:up_bps"));
     }
@@ -91,8 +91,8 @@ public class LoadTestTests
         lt.Start();
         await lt.Task!.WaitAsync(TimeSpan.FromSeconds(40));
         var r = lt.Status().Results[1];
-        Assert.True(r.DureeS < 6);
-        Assert.False(r.PlafondVolumeAtteint);
+        Assert.True(r.DurationS < 6);
+        Assert.False(r.VolumeCapReached);
     }
 
     [Fact]
@@ -107,8 +107,8 @@ public class LoadTestTests
         lt.Cancel();
         await lt.Task!.WaitAsync(TimeSpan.FromSeconds(15));
         Assert.True((DateTime.UtcNow - t0).TotalSeconds < 8);
-        Assert.Equal("annule", lt.State);
-        Assert.Contains(rec.Status().Phases, p => p.Meta.Annule == true);
+        Assert.Equal("cancelled", lt.State);
+        Assert.Contains(rec.Status().Phases, p => p.Meta.Cancelled == true);
         Assert.DoesNotContain(rec.Status().Phases, p => p.Name == "upload");
     }
 
@@ -118,9 +118,9 @@ public class LoadTestTests
         var lt = new LoadTest(NewRec(), Cfg("http://127.0.0.1:1", 600, 200));
         lt.Start();
         await lt.Task!.WaitAsync(TimeSpan.FromSeconds(40));
-        Assert.Equal("termine", lt.State);
-        Assert.NotNull(lt.Status().Results[1].Erreurs);
-        Assert.Equal(0, lt.Status().Results[1].Octets);
+        Assert.Equal("done", lt.State);
+        Assert.NotNull(lt.Status().Results[1].Errors);
+        Assert.Equal(0, lt.Status().Results[1].Bytes);
     }
 
     [Fact]
@@ -147,10 +147,10 @@ public class ReportTests
     [Fact]
     public void SectionsAndNoCertainty()
     {
-        foreach (var scn in new[] { "wifi_instable", "bufferbloat", "fai", "dns", "sain", "icmp_bloque" })
+        foreach (var scn in new[] { "wifi_unstable", "bufferbloat", "isp", "dns", "healthy", "icmp_blocked" })
         {
             var html = Html(scn);
-            foreach (var s in new[] { "Rapport de diagnostic réseau", "Chronologie des incidents", "<svg", "Mesures", "Environnement et limites", "pas des causes confirmées" })
+            foreach (var s in new[] { "Network diagnosis report", "Incident timeline", "<svg", "Measurements", "Environment and limits", "not confirmed causes" })
                 Assert.True(html.Contains(s), $"{scn}: {s}");
             Assert.DoesNotContain("http://", html.Replace("http://www.w3.org", ""));  // no external resource
         }
@@ -159,7 +159,7 @@ public class ReportTests
     [Fact]
     public void HtmlEscapingOfUserText()
     {
-        var html = Html("sain", null, d => { d.Label = "<script>alert(1)</script>"; d.Targets[^1].Label = "<img src=x onerror=alert(1)>"; });
+        var html = Html("healthy", null, d => { d.Label = "<script>alert(1)</script>"; d.Targets[^1].Host = "<img src=x onerror=alert(1)>"; });
         Assert.DoesNotContain("<script>alert", html);
         Assert.DoesNotContain("<img src=x", html);
     }
@@ -167,31 +167,31 @@ public class ReportTests
     [Fact]
     public void RouterSectionHasProposalsAndProtocol()
     {
-        var html = Html("bufferbloat", new AppConfig { Router = new RouterConfig { Model = "X", QosEnabled = true, QosType = "priorite", LimitDown = 900, LimitUp = 90 } });
-        Assert.Contains("Changements PROPOSÉS", html);
-        Assert.Contains("Retour arrière", html);
-        Assert.Contains("Protocole avant/après", html);
+        var html = Html("bufferbloat", new AppConfig { Router = new RouterConfig { Model = "X", QosEnabled = true, QosType = "priority", LimitDown = 900, LimitUp = 90 } });
+        Assert.Contains("PROPOSED changes", html);
+        Assert.Contains("Rollback:", html);
+        Assert.Contains("Before/after protocol", html);
     }
 
     [Fact]
     public void CsvAndJsonExports()
     {
-        var d = Simulator.Make("wifi_instable");
+        var d = Simulator.Make("wifi_unstable");
         var a = Diagnose.Analyze(d, new AppConfig());
         var rows = Report.ExportCsv(d).Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal("session,horodatage_local,epoch_s,serie,valeur,ok,info", rows[0]);
+        Assert.Equal("session,local_time,epoch_s,series,value,ok,info", rows[0]);
         Assert.True(rows.Length > 4000);
-        Assert.Contains(rows, r => r.Contains(",marque:lag,"));
+        Assert.Contains(rows, r => r.Contains(",mark:lag,"));
         var j = JsonNode.Parse(Report.ExportJson(d, a))!.AsObject();
-        Assert.Equal(new[] { "analyse", "definitions", "marques", "mesures", "phases", "session", "traceroutes" }, j.Select(kv => kv.Key).OrderBy(x => x).ToArray());
-        Assert.True(j["mesures"]!.AsObject().ContainsKey("ping:gateway"));
-        Assert.True(j["definitions"]!.AsObject().ContainsKey("gigue"));
+        Assert.Equal(new[] { "analysis", "definitions", "marks", "measurements", "phases", "session", "traceroutes" }, j.Select(kv => kv.Key).OrderBy(x => x).ToArray());
+        Assert.True(j["measurements"]!.AsObject().ContainsKey("ping:gateway"));
+        Assert.True(j["definitions"]!.AsObject().ContainsKey("jitter"));
     }
 
     [Fact]
     public void CsvProtectsAgainstSpreadsheetFormulas()
     {
-        var d = Simulator.Make("sain");
+        var d = Simulator.Make("healthy");
         d.Series["ping:gateway"].Add(new Sample(Simulator.T0 + 1, null, false, "=HYPERLINK(\"http://x\")"));
         Assert.Contains("'=HYPERLINK", Report.ExportCsv(d));
     }
@@ -199,7 +199,7 @@ public class ReportTests
     [Fact]
     public void ChartSurvivesEmptyAndSingleSeries()
     {
-        Assert.Contains("Aucune donnée", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));
+        Assert.Contains("No data for this chart", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));
         Assert.Contains("<polyline", Report.SvgChart(new() { new Report.ChartSeries { Name = "a", Pts = new() { (1, 5.0) }, Lost = new() { 2.0 } } }, 0, 10));
     }
 }
@@ -227,7 +227,7 @@ public class StoreTests
     {
         var dir = Tmp.Dir();
         var store = new SessionStore(dir);
-        int id = store.SaveComplete(Simulator.Make("sain", 7, p => p.Minutes = 1));
+        int id = store.SaveComplete(Simulator.Make("healthy", 7, p => p.Minutes = 1));
         File.AppendAllText(Path.Combine(dir, "sessions", $"{id}.jsonl"), "[\"s\", 12.5, \"ping:gat");
         Assert.NotNull(store.Load(id));
         store.Delete(id);
@@ -274,10 +274,11 @@ public class ServerTests : IAsyncLifetime
         http.Dispose();
     }
 
-    async Task<(int Code, string Body)> Call(string path, object? body = null, string? host = null, string ctype = "application/json")
+    async Task<(int Code, string Body)> Call(string path, object? body = null, string? host = null, string ctype = "application/json", string? lang = null)
     {
         var req = new HttpRequestMessage(body is null ? HttpMethod.Get : HttpMethod.Post, path);
         if (host != null) req.Headers.Host = host;
+        if (lang != null) req.Headers.Add("X-Lang", lang);
         if (body != null) req.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, ctype);
         var r = await http.SendAsync(req);
         return ((int)r.StatusCode, await r.Content.ReadAsStringAsync());
@@ -295,6 +296,29 @@ public class ServerTests : IAsyncLifetime
         Assert.Equal(400, (await Call("/api/session/start", new { custom_target = "-n 5" })).Code);
         Assert.Equal(400, (await Call("/api/session/start", new { link = "satellite" })).Code);
         Assert.False(app.Rec.Running);
+    }
+
+    [Fact]
+    public async Task LanguageIsEnglishByDefaultThenHeaderThenQuery()
+    {
+        string Err(string json) => J(json)["error"]!.GetValue<string>();
+        var bad = new { link = "satellite" };
+        Assert.Equal("Invalid link type.", Err((await Call("/api/session/start", bad)).Body));
+        Assert.Equal("Type de liaison invalide.", Err((await Call("/api/session/start", bad, lang: "fr")).Body));
+        Assert.Equal("Type de liaison invalide.", Err((await Call("/api/session/start?lang=fr", bad)).Body));
+        Assert.Equal("Invalid link type.", Err((await Call("/api/session/start?lang=en", bad, lang: "fr")).Body));  // the query wins over the header
+        Assert.Equal("Invalid link type.", Err((await Call("/api/session/start", bad, lang: "de")).Body));          // unknown language → English
+        Assert.Equal("Hôte refusé.", Err((await Call("/api/env", host: "evil.example", lang: "fr")).Body));
+        Assert.Equal("Host refused.", Err((await Call("/api/env", host: "evil.example")).Body));
+        // report and exports follow the language too
+        int id = app.Store.SaveComplete(Simulator.Make("wifi_unstable", 7, p => p.Minutes = 2));
+        Assert.Contains("Network diagnosis report", (await Call($"/api/session/{id}/report.html")).Body);
+        Assert.Contains("Rapport de diagnostic r", (await Call($"/api/session/{id}/report.html?lang=fr")).Body);
+        var fr = J((await Call($"/api/session/{id}", lang: "fr")).Body)["analysis"]!["stats"]!["targets"]![0]!["label"]!.GetValue<string>();
+        Assert.Equal("Passerelle (routeur)", fr);
+        var en = J((await Call($"/api/session/{id}")).Body)["analysis"]!["stats"]!["targets"]![0]!["label"]!.GetValue<string>();
+        Assert.Equal("Gateway (router)", en);
+        Assert.Equal("NetworkAnalyzer", J((await Call("/api/identity")).Body)["app"]!.GetValue<string>());
     }
 
     [Fact]
@@ -316,7 +340,7 @@ public class ServerTests : IAsyncLifetime
     [Fact]
     public async Task ConfigNeverStoresCredentials()
     {
-        var (code, _) = await Call("/api/config", new { router = new { model = "X", password = "hunter2", token = "t", cookie = "c", qos_type = "priorite" } });
+        var (code, _) = await Call("/api/config", new { router = new { model = "X", password = "hunter2", token = "t", cookie = "c", qos_type = "priority" } });
         Assert.Equal(200, code);
         var raw = File.ReadAllText(Path.Combine(dir, "config.json"));
         Assert.DoesNotContain("hunter2", raw);
@@ -328,7 +352,7 @@ public class ServerTests : IAsyncLifetime
     public async Task InvalidRouterValuesRejected()
     {
         Assert.Equal(400, (await Call("/api/config", new { router = new { unit = "Tbps" } })).Code);
-        Assert.Equal(400, (await Call("/api/config", new { router = new { qos_type = "magie" } })).Code);
+        Assert.Equal(400, (await Call("/api/config", new { router = new { qos_type = "magic" } })).Code);
     }
 
     [Fact]
@@ -369,8 +393,8 @@ public class ServerTests : IAsyncLifetime
         var sessions = J((await Call("/api/sessions")).Body).AsArray();
         Assert.Equal("e2e", sessions[0]!["label"]!.GetValue<string>());
         Assert.NotNull(sessions[0]!["metrics"]);
-        Assert.Equal(200, (await Call($"/api/session/{sid}/label", new { label = "renommée" })).Code);
-        Assert.Equal("renommée", J((await Call("/api/sessions")).Body)[0]!["label"]!.GetValue<string>());
+        Assert.Equal(200, (await Call($"/api/session/{sid}/label", new { label = "renamed" })).Code);
+        Assert.Equal("renamed", J((await Call("/api/sessions")).Body)[0]!["label"]!.GetValue<string>());
         Assert.Equal(200, (await Call($"/api/session/{sid}/delete", new { })).Code);
         Assert.Equal(404, (await Call($"/api/session/{sid}")).Code);
     }
@@ -393,7 +417,9 @@ public class ServerTests : IAsyncLifetime
         foreach (var s in new[] { 1, 2 }) ids.Add(app.Store.SaveComplete(Simulator.Make("bufferbloat", s)));
         foreach (var s in new[] { 3, 4 }) ids.Add(app.Store.SaveComplete(Simulator.Make("bufferbloat", s, good)));
         var rows = J((await Call("/api/compare", new { a = ids.Take(2), b = ids.Skip(2) })).Body)["rows"]!.AsArray();
-        Assert.Equal("amélioration", rows.First(r => r!["metrique"]!.GetValue<string>() == "Hausse de latence en envoi (ms)")!["verdict"]!.GetValue<string>());
+        var up = rows.First(r => r!["metric"]!.GetValue<string>() == "Latency increase during upload (ms)")!;
+        Assert.Equal("improvement", up["verdict"]!.GetValue<string>());
+        Assert.Equal("improvement", up["verdict_text"]!.GetValue<string>());
     }
 
     [Fact]
@@ -404,11 +430,11 @@ public class ServerTests : IAsyncLifetime
         var h = app.Store.List()[0];
         h.Meta.Loadtest = new LoadMeta { Server = "x" };
         app.Store.SaveHeader(h);
-        await Call("/api/config", new { router = new { qos_enabled = true, qos_type = "priorite", limit_down = 900, limit_up = 900, unit = "Mbps" } });
+        await Call("/api/config", new { router = new { qos_enabled = true, qos_type = "priority", limit_down = 900, limit_up = 900, unit = "Mbps" } });
         var v = J((await Call("/api/router")).Body);
         Assert.Equal(h.Id, v["measures_from_session"]!.GetValue<int>());
         Assert.True(v["measured"]!["down"]!.GetValue<double>() > 250);
-        Assert.Contains(v["analysis"]!["findings"]!.AsArray(), f => f!["texte"]!.GetValue<string>().Contains("ne limite rien"));
+        Assert.Contains(v["analysis"]!["findings"]!.AsArray(), f => f!["text"]!.GetValue<string>().Contains("limits nothing"));
     }
 }
 
@@ -418,7 +444,7 @@ public class RecorderTests
     public void BuildTargetsRolesAndCustomParsing()
     {
         var env = new EnvInfo { Active = new AdapterInfo { Gw4 = "192.168.0.1", Index = 3 }, Ipv6Global = true };
-        var t = Recorder.BuildTargets(env, "jeu.example.net:27015");
+        var t = Recorder.BuildTargets(env, "game.example.net:27015");
         Assert.Equal(new[] { "gateway", "internet", "internet", "internet", "internet6", "custom" }, t.Select(x => x.Role).ToArray());
         Assert.Equal(27015, t[^1].TcpPort);
         Assert.Equal(3, t.Where(x => x.Role == "internet").Select(x => x.Host).Distinct().Count());  // independent destinations

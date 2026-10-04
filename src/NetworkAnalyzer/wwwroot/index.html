@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Analyseur réseau local</title>
+<title>Network Analyzer</title>
 <style>
 :root{--bg:#f6f8fa;--card:#fff;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--accent:#0969da;--danger:#cf222e;--ok:#1a7f37;--warn:#9a6700;--warnbg:#fff8c5}
 @media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--accent:#58a6ff;--danger:#ff7b72;--ok:#3fb950;--warn:#d29922;--warnbg:#3b2e0a}}
@@ -12,7 +12,9 @@ header{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;padding:10px 
 header h1{font-size:17px;margin:0}nav{display:flex;flex-wrap:wrap;gap:4px}
 nav button{border:1px solid transparent;background:none;color:var(--fg);padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit}
 nav button[aria-selected=true]{background:var(--accent);color:#fff}
-#pill{margin-left:auto;padding:3px 12px;border-radius:12px;font-size:13px;border:1px solid var(--line)}#pill.on{background:var(--ok);color:#fff;border-color:var(--ok)}
+.right{margin-left:auto;display:flex;gap:10px;align-items:center}
+#langs{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}#langs button{border:0;background:none;color:var(--fg);padding:3px 10px;cursor:pointer;font:inherit;font-size:13px}#langs button.on{background:var(--accent);color:#fff}
+#pill{padding:3px 12px;border-radius:12px;font-size:13px;border:1px solid var(--line)}#pill.on{background:var(--ok);color:#fff;border-color:var(--ok)}
 main{max-width:1180px;margin:0 auto;padding:14px 16px 60px}.tab{display:none}.tab.on{display:block}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:0 0 14px}.card h2{font-size:16px;margin:0 0 8px}.card h3{font-size:14px;margin:12px 0 4px}
 .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -24,203 +26,373 @@ input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1
 textarea{width:100%;min-height:60px}.muted{color:var(--muted)}.small{font-size:13px}
 .warn{background:var(--warnbg);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;margin:8px 0}.err{color:var(--danger)}
 table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
-.badge{display:inline-block;border-radius:10px;padding:0 9px;font-size:12px;color:#fff;background:var(--muted)}.b-faible{background:#9a6700}.b-moyenne{background:#bc4c00}.b-élevée{background:#cf222e}
+.badge{display:inline-block;border-radius:10px;padding:0 9px;font-size:12px;color:#fff;background:var(--muted)}.b-low{background:#9a6700}.b-medium{background:#bc4c00}.b-high{background:#cf222e}
 .tcard{border:1px solid var(--line);border-radius:8px;padding:8px 12px}.tcard b{font-size:14px}.tcard .m{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center;margin-top:4px}
 .tcard .m span{display:block;font-size:11px;color:var(--muted)}.tcard .m div{font-variant-numeric:tabular-nums;font-size:15px}.bad{color:var(--danger)}
 canvas{width:100%;height:210px;display:block}.legend{font-size:12px;margin:2px 0 8px}.legend span{margin-right:14px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
 ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:8px;display:none;max-width:90vw;z-index:9}
 .tl{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:8px 0}.tl.lag{border-color:var(--danger)}.tl.episode{border-color:var(--warn)}
-.sev-probleme{color:var(--danger)}.sev-attention{color:var(--warn)}.sev-ok{color:var(--ok)}img.thumb{max-height:90px;border:1px solid var(--line);margin:4px}
+.sev-problem{color:var(--danger)}.sev-warning{color:var(--warn)}.sev-ok{color:var(--ok)}img.thumb{max-height:90px;border:1px solid var(--line);margin:4px}
 @media(max-width:640px){button.lag{width:100%}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Analyseur réseau local <small id="ver" class="muted" style="font-weight:normal"></small></h1>
+  <h1><span data-i18n="app.title">Network Analyzer</span> <small id="ver" class="muted" style="font-weight:normal"></small></h1>
   <nav role="tablist">
-    <button role="tab" data-tab="live" aria-selected="true">Surveillance</button>
-    <button role="tab" data-tab="sat">Test de saturation</button>
-    <button role="tab" data-tab="diag">Diagnostic</button>
-    <button role="tab" data-tab="router">Routeur &amp; QoS</button>
-    <button role="tab" data-tab="hist">Historique</button>
-    <button role="tab" data-tab="help">Aide &amp; protocole</button>
+    <button role="tab" data-tab="live" aria-selected="true" data-i18n="nav.live"></button>
+    <button role="tab" data-tab="sat" data-i18n="nav.sat"></button>
+    <button role="tab" data-tab="diag" data-i18n="nav.diag"></button>
+    <button role="tab" data-tab="router" data-i18n="nav.router"></button>
+    <button role="tab" data-tab="hist" data-i18n="nav.hist"></button>
+    <button role="tab" data-tab="help" data-i18n="nav.help"></button>
   </nav>
-  <span id="pill">Arrêtée</span>
+  <div class="right"><div id="langs" role="group" aria-label="Language"><button data-lang="en">EN</button><button data-lang="fr">FR</button></div><span id="pill"></span></div>
 </header>
 <main>
 
-<!-- ============ SURVEILLANCE ============ -->
+<!-- ============ MONITORING ============ -->
 <section id="tab-live" class="tab on">
   <div class="grid">
     <div class="card">
-      <h2>Lancer une surveillance</h2>
+      <h2 data-i18n="live.start_h"></h2>
       <div class="row" id="dur">
         <button class="btn" data-min="10">10 min</button><button class="btn on" data-min="15">15 min</button>
         <button class="btn" data-min="20">20 min</button><button class="btn" data-min="30">30 min</button>
       </div>
-      <label for="label">Libellé (facultatif, ex. « avant QoS », « Ethernet »)</label><input id="label" maxlength="80" style="width:100%">
+      <label for="label" data-i18n="live.label"></label><input id="label" maxlength="80" style="width:100%">
       <div class="row">
-        <div style="flex:1"><label for="link">Connexion utilisée</label><select id="link" style="width:100%"><option value="auto">Détection automatique</option><option value="wifi">Wi‑Fi</option><option value="ethernet">Ethernet (câble)</option></select></div>
-        <div style="flex:2"><label for="custom">Destination personnalisée (serveur de jeu…) : <code>hôte</code> ou <code>hôte:port</code></label><input id="custom" placeholder="ex. 203.0.113.10 ou jeu.example.net:27015" style="width:100%"></div>
+        <div style="flex:1"><label for="link" data-i18n="live.link"></label><select id="link" style="width:100%"><option value="auto" data-i18n="link.auto"></option><option value="wifi" data-i18n="link.wifi"></option><option value="ethernet" data-i18n="link.ethernet"></option></select></div>
+        <div style="flex:2"><label for="custom" data-i18n-html="live.custom"></label><input id="custom" data-i18n-ph="live.custom_ph" style="width:100%"></div>
       </div>
-      <p class="small muted">Pings toutes les secondes vers la passerelle, 3 destinations Internet indépendantes (Cloudflare, Google, Quad9) et votre destination ; DNS toutes les 5 s. Trafic généré : ≈ 1 à 2 Ko/s (≈ 2 à 4 Mo pour 30 min). Si une cible ne répond pas au ping, elle est signalée (et mesurée en TCP si possible).</p>
-      <div class="row"><button class="btn primary" id="start">▶ Démarrer</button><button class="btn" id="stop" disabled>■ Arrêter</button><span id="remain" class="muted"></span></div>
+      <p class="small muted" data-i18n="live.blurb"></p>
+      <div class="row"><button class="btn primary" id="start" data-i18n="live.start"></button><button class="btn" id="stop" disabled data-i18n="live.stop"></button><span id="remain" class="muted"></span></div>
       <ul id="notes" class="small muted"></ul>
     </div>
     <div class="card" style="text-align:center">
-      <h2>Pendant un lag</h2>
-      <button class="lag" id="lag">Je lag maintenant</button>
-      <div style="margin-top:8px"><input id="lagnote" placeholder="Note (facultatif) : ce que vous faisiez" maxlength="200" style="width:90%"></div>
-      <p class="small muted">Marque l'instant, conserve les mesures avant/après (45 s avant, 30 s après analysées) et lance un diagnostic de trajet (traceroute) en arrière-plan. Sans surveillance en cours, une session de 15 min démarre automatiquement.</p>
+      <h2 data-i18n="lag.h"></h2>
+      <button class="lag" id="lag" data-i18n="lag.btn"></button>
+      <div style="margin-top:8px"><input id="lagnote" data-i18n-ph="lag.note_ph" maxlength="200" style="width:90%"></div>
+      <p class="small muted" data-i18n="lag.blurb"></p>
       <ul id="marks" class="small" style="text-align:left"></ul>
-      <button class="btn" id="seediag" style="display:none">Voir le diagnostic de cette session →</button>
+      <button class="btn" id="seediag" style="display:none" data-i18n="lag.see"></button>
     </div>
     <div class="card">
-      <h2>Connexion détectée <button class="btn small" id="envr" style="float:right;padding:2px 10px">Actualiser</button></h2>
+      <h2><span data-i18n="env.h"></span> <button class="btn small" id="envr" style="float:right;padding:2px 10px" data-i18n="env.refresh"></button></h2>
       <div id="env" class="small">…</div>
     </div>
   </div>
-  <div class="card"><h2>Mesures en direct <span class="muted small">(60 dernières secondes)</span></h2><div class="grid" id="tcards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"><span class="muted">Aucune surveillance en cours.</span></div></div>
-  <div class="card"><h2>Latence (ms)</h2><canvas id="c_lat"></canvas><div class="legend" id="l_lat"></div>
-    <p class="small muted">Courbe par cible ; traits rouges verticaux : « Je lag maintenant » ; petits traits en bas : requêtes perdues. L'échelle est plafonnée pour garder la lisibilité (les pics plus hauts touchent le haut du graphique).</p></div>
+  <div class="card"><h2><span data-i18n="cards.h"></span> <span class="muted small" data-i18n="cards.sub"></span></h2><div class="grid" id="tcards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div></div>
+  <div class="card"><h2 data-i18n="chart.latency"></h2><canvas id="c_lat"></canvas><div class="legend" id="l_lat"></div><p class="small muted" data-i18n="chart.latency_note"></p></div>
   <div class="grid">
-    <div class="card"><h2>Trafic de cet ordinateur (Mbps)</h2><canvas id="c_net"></canvas><div class="legend" id="l_net"></div></div>
-    <div class="card"><h2>Résolution DNS (ms)</h2><canvas id="c_dns"></canvas><div class="legend" id="l_dns"></div></div>
+    <div class="card"><h2 data-i18n="chart.traffic"></h2><canvas id="c_net"></canvas><div class="legend" id="l_net"></div></div>
+    <div class="card"><h2 data-i18n="chart.dns"></h2><canvas id="c_dns"></canvas><div class="legend" id="l_dns"></div></div>
   </div>
-  <div class="card" id="wifi_card"><h2>Wi‑Fi (signal %, débit de liaison Mbit/s)</h2><canvas id="c_wifi"></canvas><div class="legend" id="l_wifi"></div>
-    <p class="small muted">Le débit de <b>liaison</b> est la vitesse radio négociée avec la borne, pas votre débit Internet. Aucune donnée d'interférence n'est inventée : seuls les voisins Wi‑Fi visibles sur le même canal sont comptés.</p></div>
-  <p class="small muted">Trafic du PC : totaux de l'interface réseau. L'attribution par programme n'est pas proposée : sans droits administrateur ni capture, aucune méthode fiable n'existe. Pour identifier un programme, utilisez le Gestionnaire des tâches (colonne Réseau) ou le Moniteur de ressources.</p>
+  <div class="card" id="wifi_card"><h2 data-i18n="chart.wifi"></h2><canvas id="c_wifi"></canvas><div class="legend" id="l_wifi"></div><p class="small muted" data-i18n-html="chart.wifi_note"></p></div>
+  <p class="small muted" data-i18n="chart.traffic_note"></p>
 </section>
 
-<!-- ============ TEST DE SATURATION ============ -->
+<!-- ============ SATURATION TEST ============ -->
 <section id="tab-sat" class="tab">
   <div class="card">
-    <h2>Test de saturation et bufferbloat</h2>
-    <p>Charge volontairement la connexion pour comparer la latence <b>au repos</b> et <b>sous charge</b> : repos → téléchargement → récupération → envoi → récupération. Les pings (passerelle + Internet) continuent pendant chaque phase.</p>
-    <p class="small muted">Méthode : plusieurs flux HTTPS vers le service de mesure public de Cloudflare (speed.cloudflare.com). Durée et volume sont plafonnés par phase, le test est annulable à tout instant. Résultats <b>indicatifs</b> : le serveur, le Wi‑Fi ou l'ordinateur peuvent borner le débit.</p>
+    <h2 data-i18n="sat.h"></h2>
+    <p data-i18n-html="sat.p1"></p>
+    <p class="small muted" data-i18n-html="sat.p2"></p>
     <div class="row">
-      <div><label for="phase_s">Durée des phases de charge</label><select id="phase_s"><option value="10">10 s</option><option value="15" selected>15 s</option><option value="20">20 s</option><option value="30">30 s</option></select></div>
-      <div><label for="cap">Plafond de volume (téléchargement + envoi)</label><select id="cap"><option value="300">≈ 400 Mo (lignes ≤ 100 Mbps)</option><option value="600" selected>≈ 800 Mo (jusqu'à ~300 Mbps)</option><option value="1000">≈ 1,3 Go (jusqu'à ~500 Mbps)</option><option value="2000">≈ 2,7 Go (ligne gigabit)</option></select></div>
-      <div><label for="streams">Flux parallèles</label><select id="streams"><option>2</option><option selected>4</option><option>6</option></select></div>
-      <div><label for="slink">Connexion utilisée</label><select id="slink"><option value="auto">Détection automatique</option><option value="wifi">Wi‑Fi</option><option value="ethernet">Ethernet (câble)</option></select></div>
-      <div style="flex:1"><label for="slabel">Libellé (ex. « avant QoS Ethernet »)</label><input id="slabel" style="width:100%" maxlength="80"></div>
+      <div><label for="phase_s" data-i18n="sat.phase_s"></label><select id="phase_s"><option value="10">10 s</option><option value="15" selected>15 s</option><option value="20">20 s</option><option value="30">30 s</option></select></div>
+      <div><label for="cap" data-i18n="sat.cap"></label><select id="cap"><option value="300" data-i18n="sat.cap.300"></option><option value="600" selected data-i18n="sat.cap.600"></option><option value="1000" data-i18n="sat.cap.1000"></option><option value="2000" data-i18n="sat.cap.2000"></option></select></div>
+      <div><label for="streams" data-i18n="sat.streams"></label><select id="streams"><option>2</option><option selected>4</option><option>6</option></select></div>
+      <div><label for="slink" data-i18n="live.link"></label><select id="slink"><option value="auto" data-i18n="link.auto"></option><option value="wifi" data-i18n="link.wifi"></option><option value="ethernet" data-i18n="link.ethernet"></option></select></div>
+      <div style="flex:1"><label for="slabel" data-i18n="sat.label"></label><input id="slabel" style="width:100%" maxlength="80"></div>
     </div>
     <div class="warn" id="est">…</div>
-    <p class="small">Avant de lancer : fermez les autres applications qui utilisent Internet, laissez le PC tranquille pendant environ <span id="dur_s">1 min</span>.</p>
-    <label style="display:flex;gap:8px;align-items:center;color:var(--fg)"><input type="checkbox" id="confirm"> Je confirme que ce test va saturer ma connexion Internet et consommer jusqu'au volume indiqué.</label>
-    <div class="row" style="margin-top:8px"><button class="btn danger" id="lt_start" disabled>Lancer le test</button><button class="btn" id="lt_cancel" disabled>Annuler</button><span id="lt_state" class="muted"></span></div>
+    <p class="small" id="before"></p>
+    <label style="display:flex;gap:8px;align-items:center;color:var(--fg)"><input type="checkbox" id="confirm"> <span data-i18n="sat.confirm"></span></label>
+    <div class="row" style="margin-top:8px"><button class="btn danger" id="lt_start" disabled data-i18n="sat.start"></button><button class="btn" id="lt_cancel" disabled data-i18n="sat.cancel"></button><span id="lt_state" class="muted"></span></div>
     <ul id="lt_res" class="small"></ul>
-    <div class="row"><button class="btn" id="lt_diag" style="display:none">Voir le résultat dans le diagnostic →</button></div>
+    <div class="row"><button class="btn" id="lt_diag" style="display:none" data-i18n="lt.see"></button></div>
   </div>
-  <div class="card"><h2>Comparer Ethernet et Wi‑Fi avec le même protocole</h2>
-    <ol class="small"><li>Faites le test en Wi‑Fi avec le libellé « Wi‑Fi 1 » (2–3 répétitions).</li><li>Branchez l'ordinateur en Ethernet, mêmes réglages, libellés « Ethernet 1 »…</li><li>Onglet Historique : cochez les Wi‑Fi dans A, les Ethernet dans B, « Comparer ».</li></ol>
-    <p class="small muted">Si la hausse de latence est nettement plus faible en Ethernet, le Wi‑Fi contribue au problème ; si elle reste identique, la cause est plutôt la ligne ou le routeur.</p></div>
+  <div class="card"><h2 data-i18n="cmp.h"></h2>
+    <ol class="small"><li data-i18n="cmp.1"></li><li data-i18n="cmp.2"></li><li data-i18n="cmp.3"></li></ol>
+    <p class="small muted" data-i18n="cmp.p"></p></div>
 </section>
 
-<!-- ============ DIAGNOSTIC ============ -->
+<!-- ============ DIAGNOSIS ============ -->
 <section id="tab-diag" class="tab">
-  <div class="card"><div class="row"><label for="dsess" style="margin:0">Session :</label><select id="dsess" style="min-width:320px"></select>
-    <a class="btn" id="x_html" target="_blank">Rapport HTML</a><a class="btn" id="x_csv">CSV</a><a class="btn" id="x_json">JSON</a></div></div>
-  <div id="dbody"><p class="muted">Aucune session.</p></div>
+  <div class="card"><div class="row"><label for="dsess" style="margin:0" data-i18n="diag.session"></label><select id="dsess" style="min-width:320px"></select>
+    <a class="btn" id="x_html" target="_blank" data-i18n="diag.report"></a><a class="btn" id="x_csv">CSV</a><a class="btn" id="x_json">JSON</a></div></div>
+  <div id="dbody"></div>
 </section>
 
-<!-- ============ ROUTEUR ============ -->
+<!-- ============ ROUTER ============ -->
 <section id="tab-router" class="tab">
   <div class="card">
-    <h2>Routeur TP‑Link : configuration QoS (saisie manuelle, lecture seule)</h2>
-    <p class="small">L'application <b>ne se connecte pas à votre routeur</b>, ne demande aucun mot de passe et ne modifie aucun réglage. TP‑Link ne documente pas d'interface automatisable commune à tous les modèles : relevez les valeurs dans la page d'administration de votre routeur (souvent « Avancé › QoS ») ou joignez des captures d'écran.
-      Indiquez d'abord le modèle exact, la version matérielle et le firmware (étiquette sous le routeur et page d'état) : la documentation officielle (<a href="https://www.tp-link.com/fr/support/" target="_blank" rel="noopener noreferrer">tp-link.com/fr/support</a>) dit alors si votre modèle propose de la priorisation, des limites de débit ou une gestion de file (SQM). Ne supposez pas que SQM existe.</p>
+    <h2 data-i18n="router.h"></h2>
+    <p class="small" data-i18n-html="router.p"></p>
     <div class="grid">
-      <div><label>Modèle exact</label><input id="r_model" style="width:100%" placeholder="ex. Archer AX55"><label>Version matérielle</label><input id="r_hw" style="width:100%" placeholder="ex. 1.0"><label>Firmware</label><input id="r_fw" style="width:100%" placeholder="ex. 1.1.4 Build …"></div>
-      <div><label>QoS activée ?</label><select id="r_qos"><option value="">Je ne sais pas</option><option value="true">Oui</option><option value="false">Non</option></select>
-        <label>Type de QoS</label><select id="r_type"><option value="inconnu">Je ne sais pas</option><option value="priorite">Priorisation d'appareils / d'applications</option><option value="limite_bande_passante">Limite de débit montant/descendant</option><option value="sqm">Gestion de file (SQM / Smart Queue)</option></select>
-        <label>SQM disponible sur ce modèle ?</label><select id="r_sqm"><option value="inconnu">Inconnu (à vérifier dans la doc)</option><option value="oui">Oui (documenté)</option><option value="non">Non</option></select></div>
-      <div><label>Limite descendante</label><input id="r_ld" type="number" min="0" step="any" style="width:100%"><label>Limite montante</label><input id="r_lu" type="number" min="0" step="any" style="width:100%">
-        <label>Unité saisie dans le routeur</label><select id="r_unit"><option>Mbps</option><option>Kbps</option><option>Gbps</option></select></div>
-      <div><label>Débit annoncé par le fournisseur (Mbps) : descendant / montant</label><div class="row"><input id="p_down" type="number" min="0" step="any" style="width:48%"><input id="p_up" type="number" min="0" step="any" style="width:48%"></div>
-        <label>Passerelle (si non détectée automatiquement)</label><input id="g_over" style="width:100%" placeholder="ex. 192.168.0.1"></div>
+      <div><label data-i18n="r.model"></label><input id="r_model" style="width:100%" data-i18n-ph="r.model_ph"><label data-i18n="r.hw"></label><input id="r_hw" style="width:100%" data-i18n-ph="r.hw_ph"><label data-i18n="r.fw"></label><input id="r_fw" style="width:100%" data-i18n-ph="r.fw_ph"></div>
+      <div><label data-i18n="r.qos"></label><select id="r_qos"><option value="" data-i18n="opt.dontknow"></option><option value="true" data-i18n="opt.yes"></option><option value="false" data-i18n="opt.no"></option></select>
+        <label data-i18n="r.type"></label><select id="r_type"><option value="unknown" data-i18n="opt.dontknow"></option><option value="priority" data-i18n="r.type.priority"></option><option value="bandwidth_limit" data-i18n="r.type.limit"></option><option value="sqm" data-i18n="r.type.sqm"></option></select>
+        <label data-i18n="r.sqm"></label><select id="r_sqm"><option value="unknown" data-i18n="r.sqm.unknown"></option><option value="yes" data-i18n="r.sqm.yes"></option><option value="no" data-i18n="opt.no"></option></select></div>
+      <div><label data-i18n="r.ld"></label><input id="r_ld" type="number" min="0" step="any" style="width:100%"><label data-i18n="r.lu"></label><input id="r_lu" type="number" min="0" step="any" style="width:100%">
+        <label data-i18n="r.unit"></label><select id="r_unit"><option>Mbps</option><option>Kbps</option><option>Gbps</option></select></div>
+      <div><label data-i18n="r.plan"></label><div class="row"><input id="p_down" type="number" min="0" step="any" style="width:48%"><input id="p_up" type="number" min="0" step="any" style="width:48%"></div>
+        <label data-i18n="r.gw"></label><input id="g_over" style="width:100%" placeholder="192.168.0.1"></div>
     </div>
-    <label>Appareils prioritaires — une ligne par appareil : <code>Nom | priorité | durée</code> (ex. <code>PC-Jeu | haute | 4 heures</code> ou <code>toujours</code>)</label><textarea id="r_prio"></textarea>
-    <label>Règles de bande passante — une ligne par règle : <code>Nom | descendant | montant</code> (dans l'unité choisie)</label><textarea id="r_rules"></textarea>
-    <label>Notes</label><textarea id="r_notes"></textarea>
-    <div class="row" style="margin-top:8px"><button class="btn primary" id="r_save">Enregistrer et analyser</button><span id="r_msg" class="muted"></span></div>
-    <h3>Captures d'écran des pages QoS (facultatif)</h3>
-    <p class="small muted">Stockées localement et ajoutées au rapport. Masquez ou évitez toute capture montrant un mot de passe, une clé Wi‑Fi ou un jeton.</p>
+    <label data-i18n-html="r.prio"></label><textarea id="r_prio"></textarea>
+    <label data-i18n-html="r.rules"></label><textarea id="r_rules"></textarea>
+    <label data-i18n="r.notes"></label><textarea id="r_notes"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="r_save" data-i18n="r.save"></button><span id="r_msg" class="muted"></span></div>
+    <h3 data-i18n="r.shots"></h3>
+    <p class="small muted" data-i18n="r.shots_note"></p>
     <input type="file" id="r_file" accept="image/png,image/jpeg,image/webp" multiple><div id="r_shots"></div>
   </div>
-  <div class="card"><h2>Analyse</h2><div id="r_analysis" class="small">…</div></div>
-  <div class="card"><h2>Protocole avant/après (évaluer un réglage QoS)</h2><ol id="r_proto" class="small"></ol></div>
+  <div class="card"><h2 data-i18n="r.analysis_h"></h2><div id="r_analysis" class="small">…</div></div>
+  <div class="card"><h2 data-i18n="r.protocol_h"></h2><ol id="r_proto" class="small"></ol></div>
 </section>
 
-<!-- ============ HISTORIQUE ============ -->
+<!-- ============ HISTORY ============ -->
 <section id="tab-hist" class="tab">
-  <div class="card"><h2>Historique des sessions (local)</h2><div style="overflow-x:auto"><table id="htab"></table></div>
-    <div class="row" style="margin-top:8px"><button class="btn primary" id="cmp">Comparer A et B</button><span class="small muted">A = « avant » / Wi‑Fi, B = « après » / Ethernet. Répétez 2–3 fois chaque condition pour un verdict fiable.</span></div>
+  <div class="card"><h2 data-i18n="hist.h"></h2><div style="overflow-x:auto"><table id="htab"></table></div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="cmp" data-i18n="hist.compare"></button><span class="small muted" data-i18n="hist.hint"></span></div>
     <div id="cmpres"></div></div>
 </section>
 
-<!-- ============ AIDE ============ -->
+<!-- ============ HELP ============ -->
 <section id="tab-help" class="tab">
-  <div class="card"><h2>Protocole pour capturer votre prochain épisode de lag</h2>
-    <ol>
-      <li>Quand vous êtes à l'ordinateur, sur la connexion habituelle, démarrez une <b>surveillance de 30 minutes</b> (onglet Surveillance). Indiquez votre serveur de jeu en destination personnalisée si vous le connaissez.</li>
-      <li>Jouez / travaillez normalement. Au premier ressenti de lag, cliquez <b>« Je lag maintenant »</b> (une fois par épisode, même plusieurs fois par session).</li>
-      <li>Notez à côté : quoi (jeu, appel, page web), Wi‑Fi ou câble, les autres personnes/appareils qui utilisaient Internet.</li>
-      <li>Quand la session est finie, ouvrez <b>Diagnostic</b> : lisez l'hypothèse principale, ses preuves, ses limites et le « prochain test utile ».</li>
-      <li>Si le lag n'est pas survenu pendant la session, recommencez un autre jour/heure : sans épisode capturé, l'outil ne peut rien affirmer.</li>
-      <li>Faites ensuite <b>un test de saturation</b> (hors période de lag) en Wi‑Fi puis en Ethernet.</li>
-      <li>Exportez le <b>rapport HTML</b> (et le CSV/JSON si besoin) pour le conserver ou le montrer à votre fournisseur.</li>
-    </ol></div>
-  <div class="card"><h2>Définitions</h2><ul>
-    <li><b>Médiane</b> : valeur centrale des temps de réponse reçus.</li><li><b>p95</b> : 95 % des réponses sont plus rapides que cette valeur.</li>
-    <li><b>Perte</b> : requêtes sans réponse ÷ requêtes envoyées. Une mise en veille n'est pas comptée comme perte.</li>
-    <li><b>Gigue (jitter)</b> : moyenne de |RTT(i) − RTT(i−1)| entre deux réponses consécutives (une perte interrompt la chaîne).</li>
-    <li><b>Bufferbloat</b> : hausse de latence quand la ligne est chargée, due à de trop longues files d'attente (modem, routeur).</li>
-    <li><b>QoS de priorisation ≠ SQM</b> : la priorisation ordonne les paquets ; la gestion de file (SQM : fq_codel, CAKE…) empêche les files de grossir. Votre modèle n'en a pas forcément.</li></ul></div>
-  <div class="card"><h2>Ce que l'outil ne peut pas savoir</h2><ul>
-    <li>Une perte de ping n'est pas toujours une vraie perte (routeurs qui répondent peu aux pings) ; une perte sur un saut intermédiaire d'un traceroute sans perte à destination n'est pas une perte réelle.</li>
-    <li>Le trafic mesuré est celui de <b>cet</b> ordinateur, pas de toute la maison ; aucun programme coupable n'est désigné.</li>
-    <li>Les interférences radio ne sont pas mesurées ; seuls le signal, le canal, les débits de liaison et les voisins Wi‑Fi visibles sont lus.</li>
-    <li>Le jeu peut lagger sans problème réseau (ordinateur surchargé, serveur) : l'outil le dit quand le réseau est sain pendant votre signalement.</li></ul></div>
-  <div class="card"><h2>Confidentialité et droits</h2><ul>
-    <li>Tout reste sur cet ordinateur (<code id="datadir">dossier de données</code>). Le seul trafic externe : les pings/DNS vers les cibles et, uniquement à votre demande, le test de saturation.</li>
-    <li>Aucun contenu de communication n'est capturé. Aucun mot de passe de routeur n'est demandé ni enregistré. Le serveur n'écoute que sur 127.0.0.1.</li>
-    <li>Aucun droit administrateur n'est nécessaire : les pings utilisent l'API ICMP de Windows (sans socket brut), le DNS est interrogé par une simple requête UDP, le trafic vient des compteurs de l'interface. Il en faudrait pour attribuer le trafic par programme (capture ETW/pilote) — volontairement non utilisé.</li></ul></div>
+  <div class="card"><h2 data-i18n="help.proto_h"></h2>
+    <ol><li data-i18n-html="help.p1"></li><li data-i18n-html="help.p2"></li><li data-i18n="help.p3"></li><li data-i18n-html="help.p4"></li><li data-i18n="help.p5"></li><li data-i18n-html="help.p6"></li><li data-i18n-html="help.p7"></li></ol></div>
+  <div class="card"><h2 data-i18n="help.defs_h"></h2><ul>
+    <li data-i18n-html="help.d1"></li><li data-i18n-html="help.d2"></li><li data-i18n-html="help.d3"></li><li data-i18n-html="help.d4"></li><li data-i18n-html="help.d5"></li><li data-i18n-html="help.d6"></li></ul></div>
+  <div class="card"><h2 data-i18n="help.limits_h"></h2><ul>
+    <li data-i18n="help.l1"></li><li data-i18n-html="help.l2"></li><li data-i18n="help.l3"></li><li data-i18n="help.l4"></li></ul></div>
+  <div class="card"><h2 data-i18n="help.priv_h"></h2><ul>
+    <li data-i18n-html="help.v1"></li><li data-i18n="help.v2"></li><li data-i18n="help.v3"></li></ul></div>
 </section>
 </main>
 <div id="toast"></div>
 
 <script>
+// ---------------------------------------------------------------- translations (English is the default and the fallback)
+const I18N = {
+en: {
+ 'app.title': 'Network Analyzer', 'nav.live': 'Monitoring', 'nav.sat': 'Saturation test', 'nav.diag': 'Diagnosis', 'nav.router': 'Router & QoS', 'nav.hist': 'History', 'nav.help': 'Help & protocol',
+ 'pill.stopped': 'Stopped', 'pill.running': 'Monitoring in progress', 'pill.down': 'Server unreachable',
+ 'live.start_h': 'Start a monitoring session', 'live.label': 'Label (optional, e.g. "before QoS", "Ethernet")', 'live.link': 'Connection used', 'link.auto': 'Automatic detection', 'link.wifi': 'Wi‑Fi', 'link.ethernet': 'Ethernet (cable)',
+ 'live.custom': 'Custom destination (game server…): <code>host</code> or <code>host:port</code>', 'live.custom_ph': 'e.g. 203.0.113.10 or game.example.net:27015',
+ 'live.blurb': 'Pings every second to the gateway, 3 independent Internet destinations (Cloudflare, Google, Quad9) and your destination; DNS every 5 s. Traffic generated: ≈ 1 to 2 KB/s (≈ 2 to 4 MB for 30 min). A target that does not answer ping is flagged (and measured over TCP when possible).',
+ 'live.start': '▶ Start', 'live.stop': '■ Stop', 'live.remaining': '{0} min {1} s left', 'live.phase': ' — phase: {0}', 'live.started': 'Monitoring started. Use your computer normally.', 'live.stopped': 'Monitoring stopped.',
+ 'lag.h': 'During a lag', 'lag.btn': "I'm lagging now", 'lag.note_ph': 'Note (optional): what you were doing',
+ 'lag.blurb': 'Marks the moment, keeps the measurements before/after (45 s before and 30 s after are analysed) and starts a path diagnosis (traceroute) in the background. Without a running monitoring, a 15-minute session starts automatically.',
+ 'lag.none': 'No incident marked.', 'lag.see': "See this session's diagnosis →", 'lag.toast': 'Incident marked at {0}.', 'lag.toast_auto': ' Monitoring started automatically (15 min).', 'lag.toast_trace': ' Traceroute running in the background.',
+ 'env.h': 'Detected connection', 'env.refresh': 'Refresh', 'env.iface': 'Interface', 'env.ipv4': 'IPv4 address', 'env.gateway': 'Gateway', 'env.dns': 'DNS', 'env.ipv6': 'Global IPv6', 'env.vpn': 'VPN', 'env.vpn_yes': 'detected: {0}', 'env.vpn_no': 'not detected', 'env.noconn': 'No connection detected.',
+ 'opt.yes': 'Yes', 'opt.no': 'No', 'opt.dontknow': "I don't know", 'kind.wifi': 'Wi‑Fi', 'kind.ethernet': 'Ethernet',
+ 'cards.h': 'Live measurements', 'cards.sub': '(last 60 seconds)', 'cards.none': 'No monitoring in progress.', 'cards.noicmp': 'does not answer ICMP', 'cards.waiting': 'Waiting for measurements…',
+ 'm.median': 'median ms', 'm.p95': 'p95 ms', 'm.max': 'max ms', 'm.loss': 'loss %', 'm.jitter': 'jitter ms',
+ 'chart.latency': 'Latency (ms)', 'chart.latency_note': 'One curve per target; vertical red lines: "I\'m lagging now"; small ticks at the bottom: lost requests. The scale is capped for readability (higher spikes touch the top of the chart).',
+ 'chart.traffic': 'Traffic of this computer (Mbps)', 'chart.dns': 'DNS resolution (ms)', 'chart.wifi': 'Wi‑Fi (signal %, link rate Mbit/s)',
+ 'chart.wifi_note': 'The <b>link</b> rate is the radio speed negotiated with the access point, not your Internet speed. No interference data is invented: only the Wi‑Fi neighbours visible on the same channel are counted.',
+ 'chart.traffic_note': 'PC traffic: network interface totals. Per-program attribution is not offered: without administrator rights or a capture, no reliable method exists. To identify a program, use Task Manager (Network column) or Resource Monitor.',
+ 's.pc_down': '↓ PC', 's.pc_up': '↑ PC', 's.test_down': '↓ test', 's.test_up': '↑ test', 's.dns_hit': 'System DNS (common name)', 's.dns_miss': 'System DNS (cold)', 's.dns_ref': '1.1.1.1 (cold, reference)', 's.sig': 'Signal %', 's.tx': 'Link transmit Mbit/s', 's.rx': 'Link receive Mbit/s', 'chart.nodata': 'No data',
+ 'sat.h': 'Saturation and bufferbloat test',
+ 'sat.p1': 'Deliberately loads the connection to compare latency <b>at idle</b> and <b>under load</b>: idle → download → recovery → upload → recovery. Pings (gateway + Internet) continue during every phase.',
+ 'sat.p2': 'Method: several HTTPS streams to Cloudflare\'s public speed service (speed.cloudflare.com). Duration and volume are capped per phase and the test can be cancelled at any time. <b>Indicative</b> results: the server, the Wi‑Fi or the computer may cap the throughput.',
+ 'sat.phase_s': 'Duration of the load phases', 'sat.cap': 'Volume cap (download + upload)', 'sat.cap.300': '≈ 400 MB (lines ≤ 100 Mbps)', 'sat.cap.600': '≈ 800 MB (up to ~300 Mbps)', 'sat.cap.1000': '≈ 1.3 GB (up to ~500 Mbps)', 'sat.cap.2000': '≈ 2.7 GB (gigabit line)',
+ 'sat.streams': 'Parallel streams', 'sat.label': 'Label (e.g. "before QoS Ethernet")',
+ 'sat.est.max': '<b>Maximum consumption: {0} MB</b> (cap: {1} MB download + {2} MB upload), duration ≈ {3} s, {4} streams to {5}.', 'sat.est.typ': '<br>Estimate from your advertised speeds: ≈ {0} MB.',
+ 'sat.est.notyp': '<br>Enter your advertised speed (Router & QoS tab) for a finer estimate. The real volume depends on your speed (≈ speed × duration).', 'sat.est.warn': '<br>During the test your connection will be saturated: any other Internet use will be slowed.',
+ 'sat.before': 'Before starting: close the other applications using the Internet and leave the PC alone for about {0}.', 'sat.minutes': '{0} min',
+ 'sat.confirm': 'I confirm that this test will saturate my Internet connection and consume up to the volume shown.', 'sat.start': 'Start the test', 'sat.cancel': 'Cancel',
+ 'lt.idle': '', 'lt.running': 'Running', 'lt.done': 'Done', 'lt.cancelled': 'Cancelled', 'lt.error': 'Error', 'lt.line': ' — {0} ({1} s / {2} s), current rate {3} Mbps',
+ 'lt.res': '<b>{0}</b>: sustained throughput {1} Mbps (average {2}, peak {3}), {4} MB', 'lt.res_idle': '{0} s', 'lt.cap_reached': ' — volume cap reached', 'lt.was_cancelled': ' — cancelled',
+ 'lt.see': 'See the result in the diagnosis →', 'lt.toast_started': 'Test started: do not touch anything for the duration shown.', 'lt.toast_cancel': 'Cancellation requested.',
+ 'cmp.h': 'Compare Ethernet and Wi‑Fi with the same protocol', 'cmp.1': 'Run the test over Wi‑Fi with the label "Wi‑Fi 1" (2–3 repetitions).', 'cmp.2': 'Plug the computer into Ethernet, same settings, labels "Ethernet 1"…', 'cmp.3': 'History tab: tick the Wi‑Fi ones in A, the Ethernet ones in B, "Compare".',
+ 'cmp.p': 'If the latency increase is clearly lower over Ethernet, Wi‑Fi contributes to the problem; if it stays the same, the cause is more likely the line or the router.',
+ 'diag.session': 'Session:', 'diag.report': 'HTML report', 'diag.none': 'No session: start a monitoring.', 'diag.nolabel': 'no label',
+ 'diag.sum_h': 'Summary — session #{0} "{1}", {2} → {3}, link: {4}', 'diag.hyp_h': 'Hypotheses (ranked)', 'diag.hyp_note': 'These are hypotheses deduced from measurements, never confirmed causes.',
+ 'diag.confidence': 'confidence {0}', 'diag.evidence': 'Evidence', 'diag.counter': 'Counter-evidence / nuances', 'diag.limits': 'Limits', 'diag.next': 'Next useful test:', 'diag.nohyp': 'No hypothesis exceeds the evidence threshold.',
+ 'diag.unlikely': 'Leads that look unlikely given the measurements', 'diag.noteval': 'Not evaluated', 'diag.actions': 'Recommended actions (most relevant first)', 'diag.timeline': 'Incident timeline', 'diag.noinc': 'No incident reported and no episode detected.',
+ 'diag.curves': 'Charts', 'diag.measures': 'Measurements', 'th.target': 'Target', 'th.state': 'State', 'th.req': 'Req.', 'th.loss': 'Loss %', 'th.median': 'Median', 'th.max': 'Max', 'th.jitter': 'Jitter',
+ 'diag.meas_note': 'ms. Outside the load phases (except idle). Median = central value; p95 = 95 % of replies are faster; jitter = mean of |RTT(i) − RTT(i−1)| between consecutive replies; a system pause is not a loss.',
+ 'diag.traffic_line': 'PC traffic outside the test: ↓ median {0} Mbps (max {1}), ↑ median {2} Mbps (max {3}). Computer totals, no per-program attribution.',
+ 'diag.wifi_line': 'Wi‑Fi: median signal {0} % (min {1} %), channel {2}, band {3}; link rate (≠ Internet speed) {4} / {5} Mbit/s.',
+ 'diag.dns_hit': 'DNS — common names', 'diag.dns_miss': 'DNS — cold', 'diag.dns_ref': 'DNS 1.1.1.1 — cold', 'diag.measured': 'measured',
+ 'diag.sat_h': 'Saturation test (indicative)', 'th.dir': 'Direction', 'th.sustained': 'Sustained throughput', 'th.idle_load': 'Internet latency idle → load', 'th.increase': 'Increase', 'th.p95load': 'p95 under load', 'th.maxloss': 'Max loss', 'th.gwinc': 'Gateway increase', 'th.grade': 'Grade',
+ 'diag.grades': 'Indicative grades from the median latency increase: A+ < 5 ms, A < 30, B < 60, C < 200, D < 400, F beyond.', 'dir.down': 'Download', 'dir.up': 'Upload', 'diag.inconclusive': ' (inconclusive)',
+ 'type.lag': '"I\'m lagging now"', 'type.episode': 'Detected episode', 'type.gap': 'System pause', 'type.roam': 'Access point change',
+ 'zone.local': 'Local network', 'zone.upstream': 'Upstream (ISP/Internet)', 'zone.path': 'Single path', 'zone.custom_path': 'Custom destination', 'zone.dns': 'DNS', 'zone.none': 'Nothing measured', 'zone.undetermined': 'Undetermined',
+ 'lvl.low': 'low', 'lvl.medium': 'medium', 'lvl.high': 'high',
+ 'router.h': 'TP‑Link router: QoS configuration (manual entry, read-only)',
+ 'router.p': 'The application <b>does not connect to your router</b>, asks for no password and changes no setting. TP‑Link does not document an automatable interface common to all models: read the values in your router\'s admin page (often "Advanced › QoS") or attach screenshots. First give the exact model, the hardware version and the firmware (label under the router and status page): the official documentation (<a href="https://www.tp-link.com/en/support/" target="_blank" rel="noopener noreferrer">tp-link.com/en/support</a>) then says whether your model offers prioritisation, rate limits or queue management (SQM). Do not assume SQM exists.',
+ 'r.model': 'Exact model', 'r.model_ph': 'e.g. Archer AX55', 'r.hw': 'Hardware version', 'r.hw_ph': 'e.g. 1.0', 'r.fw': 'Firmware', 'r.fw_ph': 'e.g. 1.1.4 Build …', 'r.qos': 'QoS enabled?', 'r.type': 'QoS type',
+ 'r.type.priority': 'Device / application prioritisation', 'r.type.limit': 'Upload/download rate limit', 'r.type.sqm': 'Queue management (SQM / Smart Queue)', 'r.sqm': 'SQM available on this model?', 'r.sqm.unknown': 'Unknown (check the documentation)', 'r.sqm.yes': 'Yes (documented)',
+ 'r.ld': 'Download limit', 'r.lu': 'Upload limit', 'r.unit': 'Unit entered in the router', 'r.plan': 'Advertised speed (Mbps): download / upload', 'r.gw': 'Gateway (if not detected automatically)',
+ 'r.prio': 'Prioritised devices — one line per device: <code>Name | priority | duration</code> (e.g. <code>Gaming-PC | high | 4 hours</code> or <code>always</code>)', 'r.rules': 'Bandwidth rules — one line per rule: <code>Name | download | upload</code> (in the chosen unit)', 'r.notes': 'Notes',
+ 'r.save': 'Save and analyse', 'r.saved': 'Saved.', 'r.shots': 'Router QoS page screenshots (optional)', 'r.shots_note': 'Stored locally and added to the report. Avoid or hide any screenshot showing a password, a Wi‑Fi key or a token.',
+ 'r.analysis_h': 'Analysis', 'r.measures_from': 'Measured speeds taken from session #{0}: ↓ {1} Mbps, ↑ {2} Mbps.', 'r.no_test': 'No saturation test recorded: limits can only be compared with the advertised speed. Run the saturation test.',
+ 'r.nothing': 'Nothing to report for now (enter your configuration above).', 'r.proposals': 'Proposed changes (none is applied automatically)', 'r.why': 'Why:', 'r.rollback': 'Rollback:', 'r.protocol_h': 'Before/after protocol (evaluating a QoS setting)',
+ 'sev.ok': 'ok', 'sev.info': 'info', 'sev.warning': 'warning', 'sev.problem': 'problem',
+ 'hist.h': 'Session history (local)', 'hist.compare': 'Compare A and B', 'hist.hint': 'A = "before" / Wi‑Fi, B = "after" / Ethernet. Repeat each condition 2–3 times for a reliable verdict.', 'hist.running': 'running', 'hist.open': 'Open', 'hist.delete': 'Delete',
+ 'hist.rename': 'click to rename', 'hist.confirm_delete': 'Permanently delete session #{0}?', 'hist.rename_prompt': 'New label:', 'hist.th.date': 'Date', 'hist.th.label': 'Label', 'hist.th.link': 'Link', 'hist.th.duration': 'Duration', 'hist.th.incidents': 'Incidents',
+ 'hist.th.gw': 'Gateway p95', 'hist.th.inet': 'Internet p95', 'hist.th.loss': 'Loss %', 'hist.th.dup': 'Δ upload', 'hist.th.ddown': 'Δ download', 'hist.th.speed': '↓ / ↑ Mbps',
+ 'cmp.res_h': 'B compared with A ({0} session(s) versus {1})', 'cmp.th.metric': 'Metric', 'cmp.th.gap': 'Gap', 'cmp.th.var': 'Variability', 'cmp.th.verdict': 'Verdict',
+ 'cmp.note': 'A difference is kept only if it exceeds the variability observed between the repetitions of each group.', 'cmp.empty': 'Select at least one session in A and one in B (with comparable measurements).',
+ 'help.proto_h': 'Protocol to capture your next lag episode',
+ 'help.p1': 'When you are at the computer, on your usual connection, start a <b>30-minute monitoring</b> (Monitoring tab). Enter your game server as the custom destination if you know it.',
+ 'help.p2': 'Play / work normally. At the first sign of lag, click <b>"I\'m lagging now"</b> (once per episode, as many times as needed in a session).',
+ 'help.p3': 'Note on the side: what (game, call, web page), Wi‑Fi or cable, which other people/devices were using the Internet.',
+ 'help.p4': 'When the session is over, open <b>Diagnosis</b>: read the main hypothesis, its evidence, its limits and the "next useful test".',
+ 'help.p5': 'If the lag did not occur during the session, try again another day/time: without a captured episode, the tool cannot state anything.',
+ 'help.p6': 'Then run <b>a saturation test</b> (outside a lag period) over Wi‑Fi and then over Ethernet.',
+ 'help.p7': 'Export the <b>HTML report</b> (and CSV/JSON if needed) to keep it or show it to your provider.',
+ 'help.defs_h': 'Definitions', 'help.d1': '<b>Median</b>: central value of the replies received.', 'help.d2': '<b>p95</b>: 95 % of the replies are faster than this value.',
+ 'help.d3': '<b>Loss</b>: requests without reply ÷ requests sent. Putting the computer to sleep is not counted as loss.', 'help.d4': '<b>Jitter</b>: mean of |RTT(i) − RTT(i−1)| between two consecutive replies (a loss breaks the chain).',
+ 'help.d5': '<b>Bufferbloat</b>: latency increase when the line is loaded, caused by queues that are too long (modem, router).', 'help.d6': '<b>Priority QoS ≠ SQM</b>: prioritisation orders the packets; queue management (SQM: fq_codel, CAKE…) stops queues from growing. Your model does not necessarily have it.',
+ 'help.limits_h': 'What the tool cannot know',
+ 'help.l1': 'A ping loss is not always a real loss (routers that rarely answer pings); a loss on an intermediate traceroute hop with no loss at the destination is not a real loss.',
+ 'help.l2': 'The measured traffic is that of <b>this</b> computer, not of the whole home; no guilty program is named.', 'help.l3': 'Radio interference is not measured; only the signal, channel, link rates and visible Wi‑Fi neighbours are read.',
+ 'help.l4': 'The game can lag without any network problem (overloaded computer, server): the tool says so when the network is healthy during your report.',
+ 'help.priv_h': 'Privacy and rights',
+ 'help.v1': 'Everything stays on this computer (<code id="datadir">data folder</code>). The only external traffic: pings/DNS to the targets and, only on your request, the saturation test.',
+ 'help.v2': 'No communication content is captured. No router password is requested or stored. The server only listens on 127.0.0.1.',
+ 'help.v3': 'No administrator rights are needed: pings use the Windows ICMP API (no raw socket), DNS is queried with a plain UDP request, traffic comes from the interface counters. Per-program attribution would need them (ETW/driver capture) — deliberately not used.'
+},
+fr: {
+ 'app.title': 'Analyseur réseau', 'nav.live': 'Surveillance', 'nav.sat': 'Test de saturation', 'nav.diag': 'Diagnostic', 'nav.router': 'Routeur & QoS', 'nav.hist': 'Historique', 'nav.help': 'Aide & protocole',
+ 'pill.stopped': 'Arrêtée', 'pill.running': 'Surveillance en cours', 'pill.down': 'Serveur injoignable',
+ 'live.start_h': 'Lancer une surveillance', 'live.label': 'Libellé (facultatif, ex. « avant QoS », « Ethernet »)', 'live.link': 'Connexion utilisée', 'link.auto': 'Détection automatique', 'link.wifi': 'Wi‑Fi', 'link.ethernet': 'Ethernet (câble)',
+ 'live.custom': 'Destination personnalisée (serveur de jeu…) : <code>hôte</code> ou <code>hôte:port</code>', 'live.custom_ph': 'ex. 203.0.113.10 ou jeu.example.net:27015',
+ 'live.blurb': 'Pings toutes les secondes vers la passerelle, 3 destinations Internet indépendantes (Cloudflare, Google, Quad9) et votre destination ; DNS toutes les 5 s. Trafic généré : ≈ 1 à 2 Ko/s (≈ 2 à 4 Mo pour 30 min). Une cible qui ne répond pas au ping est signalée (et mesurée en TCP si possible).',
+ 'live.start': '▶ Démarrer', 'live.stop': '■ Arrêter', 'live.remaining': 'reste {0} min {1} s', 'live.phase': ' — phase : {0}', 'live.started': 'Surveillance démarrée. Utilisez votre ordinateur normalement.', 'live.stopped': 'Surveillance arrêtée.',
+ 'lag.h': 'Pendant un lag', 'lag.btn': 'Je lag maintenant', 'lag.note_ph': 'Note (facultatif) : ce que vous faisiez',
+ 'lag.blurb': "Marque l'instant, conserve les mesures avant/après (45 s avant, 30 s après analysées) et lance un diagnostic de trajet (traceroute) en arrière-plan. Sans surveillance en cours, une session de 15 min démarre automatiquement.",
+ 'lag.none': 'Aucun incident marqué.', 'lag.see': 'Voir le diagnostic de cette session →', 'lag.toast': 'Incident marqué à {0}.', 'lag.toast_auto': ' Surveillance démarrée automatiquement (15 min).', 'lag.toast_trace': ' Traceroute en cours en arrière-plan.',
+ 'env.h': 'Connexion détectée', 'env.refresh': 'Actualiser', 'env.iface': 'Interface', 'env.ipv4': 'Adresse IPv4', 'env.gateway': 'Passerelle', 'env.dns': 'DNS', 'env.ipv6': 'IPv6 global', 'env.vpn': 'VPN', 'env.vpn_yes': 'détecté : {0}', 'env.vpn_no': 'non détecté', 'env.noconn': 'Aucune connexion détectée.',
+ 'opt.yes': 'Oui', 'opt.no': 'Non', 'opt.dontknow': 'Je ne sais pas', 'kind.wifi': 'Wi‑Fi', 'kind.ethernet': 'Ethernet',
+ 'cards.h': 'Mesures en direct', 'cards.sub': '(60 dernières secondes)', 'cards.none': 'Aucune surveillance en cours.', 'cards.noicmp': "ne répond pas à l'ICMP", 'cards.waiting': 'En attente de mesures…',
+ 'm.median': 'médiane ms', 'm.p95': 'p95 ms', 'm.max': 'max ms', 'm.loss': 'perte %', 'm.jitter': 'gigue ms',
+ 'chart.latency': 'Latence (ms)', 'chart.latency_note': "Courbe par cible ; traits rouges verticaux : « Je lag maintenant » ; petits traits en bas : requêtes perdues. L'échelle est plafonnée pour garder la lisibilité (les pics plus hauts touchent le haut du graphique).",
+ 'chart.traffic': 'Trafic de cet ordinateur (Mbps)', 'chart.dns': 'Résolution DNS (ms)', 'chart.wifi': 'Wi‑Fi (signal %, débit de liaison Mbit/s)',
+ 'chart.wifi_note': "Le débit de <b>liaison</b> est la vitesse radio négociée avec la borne, pas votre débit Internet. Aucune donnée d'interférence n'est inventée : seuls les voisins Wi‑Fi visibles sur le même canal sont comptés.",
+ 'chart.traffic_note': "Trafic du PC : totaux de l'interface réseau. L'attribution par programme n'est pas proposée : sans droits administrateur ni capture, aucune méthode fiable n'existe. Pour identifier un programme, utilisez le Gestionnaire des tâches (colonne Réseau) ou le Moniteur de ressources.",
+ 's.pc_down': '↓ PC', 's.pc_up': '↑ PC', 's.test_down': '↓ test', 's.test_up': '↑ test', 's.dns_hit': 'DNS système (nom courant)', 's.dns_miss': 'DNS système (à froid)', 's.dns_ref': '1.1.1.1 (à froid, référence)', 's.sig': 'Signal %', 's.tx': 'Liaison émission Mbit/s', 's.rx': 'Liaison réception Mbit/s', 'chart.nodata': 'Aucune donnée',
+ 'sat.h': 'Test de saturation et bufferbloat',
+ 'sat.p1': 'Charge volontairement la connexion pour comparer la latence <b>au repos</b> et <b>sous charge</b> : repos → téléchargement → récupération → envoi → récupération. Les pings (passerelle + Internet) continuent pendant chaque phase.',
+ 'sat.p2': "Méthode : plusieurs flux HTTPS vers le service de mesure public de Cloudflare (speed.cloudflare.com). Durée et volume sont plafonnés par phase, le test est annulable à tout instant. Résultats <b>indicatifs</b> : le serveur, le Wi‑Fi ou l'ordinateur peuvent borner le débit.",
+ 'sat.phase_s': 'Durée des phases de charge', 'sat.cap': 'Plafond de volume (téléchargement + envoi)', 'sat.cap.300': '≈ 400 Mo (lignes ≤ 100 Mbps)', 'sat.cap.600': "≈ 800 Mo (jusqu'à ~300 Mbps)", 'sat.cap.1000': "≈ 1,3 Go (jusqu'à ~500 Mbps)", 'sat.cap.2000': '≈ 2,7 Go (ligne gigabit)',
+ 'sat.streams': 'Flux parallèles', 'sat.label': 'Libellé (ex. « avant QoS Ethernet »)',
+ 'sat.est.max': '<b>Consommation maximale : {0} Mo</b> (plafond : {1} Mo en téléchargement + {2} Mo en envoi), durée ≈ {3} s, {4} flux vers {5}.', 'sat.est.typ': "<br>Estimation d'après vos débits annoncés : ≈ {0} Mo.",
+ 'sat.est.notyp': '<br>Renseignez votre débit annoncé (onglet Routeur &amp; QoS) pour une estimation plus fine. Le volume réel dépend de votre débit (≈ débit × durée).', 'sat.est.warn': "<br>Pendant le test, votre connexion sera saturée : tout autre usage d'Internet sera ralenti.",
+ 'sat.before': "Avant de lancer : fermez les autres applications qui utilisent Internet, laissez le PC tranquille pendant environ {0}.", 'sat.minutes': '{0} min',
+ 'sat.confirm': "Je confirme que ce test va saturer ma connexion Internet et consommer jusqu'au volume indiqué.", 'sat.start': 'Lancer le test', 'sat.cancel': 'Annuler',
+ 'lt.idle': '', 'lt.running': 'En cours', 'lt.done': 'Terminé', 'lt.cancelled': 'Annulé', 'lt.error': 'Erreur', 'lt.line': ' — {0} ({1} s / {2} s), débit actuel {3} Mbps',
+ 'lt.res': '<b>{0}</b> : débit soutenu {1} Mbps (moyen {2}, pic {3}), {4} Mo', 'lt.res_idle': '{0} s', 'lt.cap_reached': ' — plafond de volume atteint', 'lt.was_cancelled': ' — annulé',
+ 'lt.see': 'Voir le résultat dans le diagnostic →', 'lt.toast_started': 'Test lancé : ne touchez à rien pendant la durée indiquée.', 'lt.toast_cancel': 'Annulation demandée.',
+ 'cmp.h': 'Comparer Ethernet et Wi‑Fi avec le même protocole', 'cmp.1': 'Faites le test en Wi‑Fi avec le libellé « Wi‑Fi 1 » (2–3 répétitions).', 'cmp.2': 'Branchez l\'ordinateur en Ethernet, mêmes réglages, libellés « Ethernet 1 »…', 'cmp.3': 'Onglet Historique : cochez les Wi‑Fi dans A, les Ethernet dans B, « Comparer ».',
+ 'cmp.p': "Si la hausse de latence est nettement plus faible en Ethernet, le Wi‑Fi contribue au problème ; si elle reste identique, la cause est plutôt la ligne ou le routeur.",
+ 'diag.session': 'Session :', 'diag.report': 'Rapport HTML', 'diag.none': 'Aucune session : lancez une surveillance.', 'diag.nolabel': 'sans libellé',
+ 'diag.sum_h': 'Résumé — session #{0} « {1} », {2} → {3}, liaison : {4}', 'diag.hyp_h': 'Hypothèses (classées)', 'diag.hyp_note': 'Ce sont des hypothèses déduites de mesures, jamais des causes confirmées.',
+ 'diag.confidence': 'confiance {0}', 'diag.evidence': 'Preuves', 'diag.counter': 'Éléments contre / nuances', 'diag.limits': 'Limites', 'diag.next': 'Prochain test utile :', 'diag.nohyp': "Aucune hypothèse ne dépasse le seuil d'indices.",
+ 'diag.unlikely': "Pistes peu probables d'après les mesures", 'diag.noteval': 'Non évalué', 'diag.actions': 'Actions recommandées (par ordre de pertinence)', 'diag.timeline': 'Chronologie des incidents', 'diag.noinc': 'Aucun incident signalé ni épisode détecté.',
+ 'diag.curves': 'Courbes', 'diag.measures': 'Mesures', 'th.target': 'Cible', 'th.state': 'État', 'th.req': 'Req.', 'th.loss': 'Perte %', 'th.median': 'Médiane', 'th.max': 'Max', 'th.jitter': 'Gigue',
+ 'diag.meas_note': "ms. Hors phases de charge (sauf repos). Médiane = valeur centrale ; p95 = 95 % des réponses sont plus rapides ; gigue = moyenne de |RTT(i) − RTT(i−1)| entre réponses consécutives ; une pause système n'est pas une perte.",
+ 'diag.traffic_line': "Trafic du PC hors test : ↓ médiane {0} Mbps (max {1}), ↑ médiane {2} Mbps (max {3}). Totaux de l'ordinateur, sans attribution par programme.",
+ 'diag.wifi_line': 'Wi‑Fi : signal médian {0} % (min {1} %), canal {2}, bande {3} ; débit de liaison (≠ débit Internet) {4} / {5} Mbit/s.',
+ 'diag.dns_hit': 'DNS — noms courants', 'diag.dns_miss': 'DNS — à froid', 'diag.dns_ref': 'DNS 1.1.1.1 — à froid', 'diag.measured': 'mesuré',
+ 'diag.sat_h': 'Test de saturation (indicatif)', 'th.dir': 'Sens', 'th.sustained': 'Débit soutenu', 'th.idle_load': 'Latence Internet repos → charge', 'th.increase': 'Hausse', 'th.p95load': 'p95 en charge', 'th.maxloss': 'Perte max', 'th.gwinc': 'Hausse passerelle', 'th.grade': 'Note',
+ 'diag.grades': 'Notes indicatives selon la hausse de latence médiane : A+ < 5 ms, A < 30, B < 60, C < 200, D < 400, F au-delà.', 'dir.down': 'Téléchargement', 'dir.up': 'Envoi', 'diag.inconclusive': ' (non concluant)',
+ 'type.lag': '« Je lag maintenant »', 'type.episode': 'Épisode détecté', 'type.gap': 'Pause du système', 'type.roam': "Changement de point d'accès",
+ 'zone.local': 'Réseau local', 'zone.upstream': 'En amont (FAI/Internet)', 'zone.path': 'Un seul trajet', 'zone.custom_path': 'Destination personnalisée', 'zone.dns': 'DNS', 'zone.none': 'Rien de mesuré', 'zone.undetermined': 'Indéterminé',
+ 'lvl.low': 'faible', 'lvl.medium': 'moyenne', 'lvl.high': 'élevée',
+ 'router.h': 'Routeur TP‑Link : configuration QoS (saisie manuelle, lecture seule)',
+ 'router.p': "L'application <b>ne se connecte pas à votre routeur</b>, ne demande aucun mot de passe et ne modifie aucun réglage. TP‑Link ne documente pas d'interface automatisable commune à tous les modèles : relevez les valeurs dans la page d'administration de votre routeur (souvent « Avancé › QoS ») ou joignez des captures d'écran. Indiquez d'abord le modèle exact, la version matérielle et le firmware (étiquette sous le routeur et page d'état) : la documentation officielle (<a href=\"https://www.tp-link.com/fr/support/\" target=\"_blank\" rel=\"noopener noreferrer\">tp-link.com/fr/support</a>) dit alors si votre modèle propose de la priorisation, des limites de débit ou une gestion de file (SQM). Ne supposez pas que SQM existe.",
+ 'r.model': 'Modèle exact', 'r.model_ph': 'ex. Archer AX55', 'r.hw': 'Version matérielle', 'r.hw_ph': 'ex. 1.0', 'r.fw': 'Firmware', 'r.fw_ph': 'ex. 1.1.4 Build …', 'r.qos': 'QoS activée ?', 'r.type': 'Type de QoS',
+ 'r.type.priority': "Priorisation d'appareils / d'applications", 'r.type.limit': 'Limite de débit montant/descendant', 'r.type.sqm': 'Gestion de file (SQM / Smart Queue)', 'r.sqm': 'SQM disponible sur ce modèle ?', 'r.sqm.unknown': 'Inconnu (à vérifier dans la doc)', 'r.sqm.yes': 'Oui (documenté)',
+ 'r.ld': 'Limite descendante', 'r.lu': 'Limite montante', 'r.unit': 'Unité saisie dans le routeur', 'r.plan': 'Débit annoncé par le fournisseur (Mbps) : descendant / montant', 'r.gw': "Passerelle (si non détectée automatiquement)",
+ 'r.prio': 'Appareils prioritaires — une ligne par appareil : <code>Nom | priorité | durée</code> (ex. <code>PC-Jeu | haute | 4 heures</code> ou <code>toujours</code>)', 'r.rules': "Règles de bande passante — une ligne par règle : <code>Nom | descendant | montant</code> (dans l'unité choisie)", 'r.notes': 'Notes',
+ 'r.save': 'Enregistrer et analyser', 'r.saved': 'Enregistré.', 'r.shots': "Captures d'écran des pages QoS (facultatif)", 'r.shots_note': "Stockées localement et ajoutées au rapport. Masquez ou évitez toute capture montrant un mot de passe, une clé Wi‑Fi ou un jeton.",
+ 'r.analysis_h': 'Analyse', 'r.measures_from': 'Débits mesurés pris dans la session #{0} : ↓ {1} Mbps, ↑ {2} Mbps.', 'r.no_test': "Aucun test de saturation enregistré : les limites ne peuvent être comparées qu'au débit annoncé. Lancez le test de saturation.",
+ 'r.nothing': "Rien à signaler pour l'instant (saisissez votre configuration ci-dessus).", 'r.proposals': "Changements proposés (aucun n'est appliqué automatiquement)", 'r.why': 'Pourquoi :', 'r.rollback': 'Retour arrière :', 'r.protocol_h': 'Protocole avant/après (évaluer un réglage QoS)',
+ 'sev.ok': 'ok', 'sev.info': 'info', 'sev.warning': 'attention', 'sev.problem': 'problème',
+ 'hist.h': 'Historique des sessions (local)', 'hist.compare': 'Comparer A et B', 'hist.hint': 'A = « avant » / Wi‑Fi, B = « après » / Ethernet. Répétez 2–3 fois chaque condition pour un verdict fiable.', 'hist.running': 'en cours', 'hist.open': 'Ouvrir', 'hist.delete': 'Supprimer',
+ 'hist.rename': 'cliquer pour renommer', 'hist.confirm_delete': 'Supprimer définitivement la session #{0} ?', 'hist.rename_prompt': 'Nouveau libellé :', 'hist.th.date': 'Date', 'hist.th.label': 'Libellé', 'hist.th.link': 'Liaison', 'hist.th.duration': 'Durée', 'hist.th.incidents': 'Incidents',
+ 'hist.th.gw': 'Passerelle p95', 'hist.th.inet': 'Internet p95', 'hist.th.loss': 'Perte %', 'hist.th.dup': 'Δ envoi', 'hist.th.ddown': 'Δ téléch.', 'hist.th.speed': '↓ / ↑ Mbps',
+ 'cmp.res_h': 'B par rapport à A ({0} session(s) contre {1})', 'cmp.th.metric': 'Mesure', 'cmp.th.gap': 'Écart', 'cmp.th.var': 'Variabilité', 'cmp.th.verdict': 'Verdict',
+ 'cmp.note': "Une différence n'est retenue que si elle dépasse la variabilité observée entre les répétitions de chaque groupe.", 'cmp.empty': 'Sélectionnez au moins une session dans A et une dans B (avec des mesures comparables).',
+ 'help.proto_h': 'Protocole pour capturer votre prochain épisode de lag',
+ 'help.p1': "Quand vous êtes à l'ordinateur, sur la connexion habituelle, démarrez une <b>surveillance de 30 minutes</b> (onglet Surveillance). Indiquez votre serveur de jeu en destination personnalisée si vous le connaissez.",
+ 'help.p2': 'Jouez / travaillez normalement. Au premier ressenti de lag, cliquez <b>« Je lag maintenant »</b> (une fois par épisode, même plusieurs fois par session).',
+ 'help.p3': "Notez à côté : quoi (jeu, appel, page web), Wi‑Fi ou câble, les autres personnes/appareils qui utilisaient Internet.",
+ 'help.p4': 'Quand la session est finie, ouvrez <b>Diagnostic</b> : lisez l\'hypothèse principale, ses preuves, ses limites et le « prochain test utile ».',
+ 'help.p5': "Si le lag n'est pas survenu pendant la session, recommencez un autre jour/heure : sans épisode capturé, l'outil ne peut rien affirmer.",
+ 'help.p6': 'Faites ensuite <b>un test de saturation</b> (hors période de lag) en Wi‑Fi puis en Ethernet.',
+ 'help.p7': 'Exportez le <b>rapport HTML</b> (et le CSV/JSON si besoin) pour le conserver ou le montrer à votre fournisseur.',
+ 'help.defs_h': 'Définitions', 'help.d1': '<b>Médiane</b> : valeur centrale des temps de réponse reçus.', 'help.d2': '<b>p95</b> : 95 % des réponses sont plus rapides que cette valeur.',
+ 'help.d3': "<b>Perte</b> : requêtes sans réponse ÷ requêtes envoyées. Une mise en veille n'est pas comptée comme perte.", 'help.d4': '<b>Gigue (jitter)</b> : moyenne de |RTT(i) − RTT(i−1)| entre deux réponses consécutives (une perte interrompt la chaîne).',
+ 'help.d5': "<b>Bufferbloat</b> : hausse de latence quand la ligne est chargée, due à de trop longues files d'attente (modem, routeur).", 'help.d6': "<b>QoS de priorisation ≠ SQM</b> : la priorisation ordonne les paquets ; la gestion de file (SQM : fq_codel, CAKE…) empêche les files de grossir. Votre modèle n'en a pas forcément.",
+ 'help.limits_h': "Ce que l'outil ne peut pas savoir",
+ 'help.l1': "Une perte de ping n'est pas toujours une vraie perte (routeurs qui répondent peu aux pings) ; une perte sur un saut intermédiaire d'un traceroute sans perte à destination n'est pas une perte réelle.",
+ 'help.l2': "Le trafic mesuré est celui de <b>cet</b> ordinateur, pas de toute la maison ; aucun programme coupable n'est désigné.", 'help.l3': "Les interférences radio ne sont pas mesurées ; seuls le signal, le canal, les débits de liaison et les voisins Wi‑Fi visibles sont lus.",
+ 'help.l4': "Le jeu peut lagger sans problème réseau (ordinateur surchargé, serveur) : l'outil le dit quand le réseau est sain pendant votre signalement.",
+ 'help.priv_h': 'Confidentialité et droits',
+ 'help.v1': 'Tout reste sur cet ordinateur (<code id="datadir">dossier de données</code>). Le seul trafic externe : les pings/DNS vers les cibles et, uniquement à votre demande, le test de saturation.',
+ 'help.v2': "Aucun contenu de communication n'est capturé. Aucun mot de passe de routeur n'est demandé ni enregistré. Le serveur n'écoute que sur 127.0.0.1.",
+ 'help.v3': "Aucun droit administrateur n'est nécessaire : les pings utilisent l'API ICMP de Windows (sans socket brut), le DNS est interrogé par une simple requête UDP, le trafic vient des compteurs de l'interface. Il en faudrait pour attribuer le trafic par programme (capture ETW/pilote) — volontairement non utilisé."
+}};
+
+let LANG = 'en';
+try { LANG = localStorage.getItem('lang') === 'fr' ? 'fr' : 'en'; } catch (e) { /* storage unavailable: stay in English */ }
+const t = (k, ...a) => (I18N[LANG][k] ?? I18N.en[k] ?? k).replace(/\{(\d+)\}/g, (_, i) => a[+i] ?? '');
+
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = (x, d = 0) => x == null ? '—' : Number(x).toFixed(d);
-const hm = t => new Date(t * 1000).toLocaleTimeString('fr-FR');
-const dt = t => new Date(t * 1000).toLocaleString('fr-FR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+const loc = () => LANG === 'fr' ? 'fr-FR' : 'en-GB';
+const hm = tt => new Date(tt * 1000).toLocaleTimeString(loc());
+const dt = tt => new Date(tt * 1000).toLocaleString(loc(), {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
 const COLORS = {gateway:'#1a7f37', cloudflare:'#0969da', google:'#bc4c00', quad9:'#8250df', custom:'#cf222e', cloudflare6:'#0a7ea4'};
-const ZONE = {local:'Réseau local', amont:'En amont (FAI/Internet)', trajet:'Un seul trajet', trajet_custom:'Destination personnalisée', dns:'DNS', aucune:'Rien de mesuré', indetermine:'Indéterminé'};
-const TYPE = {lag:'« Je lag maintenant »', episode:'Épisode détecté', gap:'Pause du système', roam:"Changement de point d'accès"};
-let minutes = 15, live = {series: {}, last: 0, targets: [], status: {}, stats: {}, lt: null};
+let minutes = 15, live = {series: {}, last: 0, targets: [], status: {}, stats: {}, lt: null}, lastLive = null, currentTab = 'live', envData = null;
 
 async function api(path, body) {
-  const opt = body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)};
+  const headers = {'X-Lang': LANG};
+  const opt = body === undefined ? {headers} : {method: 'POST', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify(body)};
   const r = await fetch(path, opt);
-  const j = await r.json().catch(() => ({error: 'Réponse illisible'}));
+  const j = await r.json().catch(() => ({error: 'Unreadable response'}));
   if (!r.ok) { const e = new Error(j.error || r.statusText); e.data = j; throw e; }
   return j;
 }
-function toast(msg, ms = 4500) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
+function toast(msg, ms = 4500) { const el = $('#toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', ms); }
 const guard = fn => async (...a) => { try { return await fn(...a); } catch (e) { toast('⚠ ' + e.message, 8000); } };
 
-// ---------------------------------------------------------------- onglets
-function showTab(n) {
+// ---------------------------------------------------------------- language
+function applyI18n() {
+  document.documentElement.lang = LANG; document.title = t('app.title');
+  $$('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
+  $$('[data-i18n-html]').forEach(e => e.innerHTML = t(e.dataset.i18nHtml));
+  $$('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
+  $$('#langs button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
+  if (live.datadir) $('#datadir').textContent = live.datadir;
+}
+function setLang(l) {
+  LANG = l; try { localStorage.setItem('lang', l); } catch (e) { /* ignore */ }
+  applyI18n(); loadEnv(false);
+  if (lastLive) renderLive(lastLive);
+  showTab(currentTab, true);
+}
+$$('#langs button').forEach(b => b.onclick = () => setLang(b.dataset.lang));
+const withLang = u => u + (u.includes('?') ? '&' : '?') + 'lang=' + LANG;
+
+// ---------------------------------------------------------------- tabs
+function showTab(n, keepHash) {
+  currentTab = n;
   $$('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === n));
   $$('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + n));
   if (n === 'diag') loadDiagList(); if (n === 'hist') loadHist(); if (n === 'router') loadRouter(); if (n === 'sat') loadEstimate();
-  history.replaceState(null, '', '#' + n);
+  if (!keepHash) history.replaceState(null, '', '#' + n);
 }
 $$('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 
-// ---------------------------------------------------------------- graphiques canvas
+// ---------------------------------------------------------------- canvas charts
 function chart(canvas, o) {
   const dpr = devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
   canvas.width = w * dpr; canvas.height = h * dpr;
@@ -230,84 +402,84 @@ function chart(canvas, o) {
   const vals = o.series.flatMap(s => s.pts.map(p => p[1])).sort((a, b) => a - b);
   let ymax = o.ymax || (vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.995))] * 1.3 : 10);
   ymax = Math.max(ymax, o.ymin_top || 1);
-  const X = t => L + (t - t0) / (t1 - t0) * (w - L - R), Y = v => T + (1 - Math.min(v, ymax) / ymax) * (h - T - B);
+  const X = x => L + (x - t0) / (t1 - t0) * (w - L - R), Y = v => T + (1 - Math.min(v, ymax) / ymax) * (h - T - B);
   g.font = '11px system-ui'; g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
   (o.phases || []).forEach(p => { g.fillStyle = 'rgba(128,128,128,.15)'; g.fillRect(X(p.t0), T, Math.max(1, X(p.t1) - X(p.t0)), h - T - B); g.fillStyle = muted; if (X(p.t1) - X(p.t0) > 48) g.fillText(p.name, X(p.t0) + 2, T + 10); });
   for (let i = 0; i <= 4; i++) { const y = T + i * (h - T - B) / 4; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.fillStyle = muted; g.textAlign = 'right'; g.fillText((ymax * (1 - i / 4)).toFixed(ymax < 10 ? 1 : 0), L - 4, y + 4); }
-  g.textAlign = 'center'; for (let i = 0; i <= 5; i++) { const t = t0 + (t1 - t0) * i / 5; g.fillText(new Date(t * 1000).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit', second: (t1 - t0) < 600 ? '2-digit' : undefined}), X(t), h - 5); }
-  if (!vals.length) { g.textAlign = 'center'; g.fillStyle = muted; g.fillText('Aucune donnée', w / 2, h / 2); }
+  g.textAlign = 'center'; for (let i = 0; i <= 5; i++) { const x = t0 + (t1 - t0) * i / 5; g.fillText(new Date(x * 1000).toLocaleTimeString(loc(), {hour: '2-digit', minute: '2-digit', second: (t1 - t0) < 600 ? '2-digit' : undefined}), X(x), h - 5); }
+  if (!vals.length) { g.textAlign = 'center'; g.fillStyle = muted; g.fillText(t('chart.nodata'), w / 2, h / 2); }
   o.series.forEach(s => {
     g.strokeStyle = s.color; g.lineWidth = 1.4; g.beginPath(); let prev = null;
     s.pts.forEach(p => { const x = X(p[0]), y = Y(p[1]); if (prev === null || p[0] - prev > (o.gap || 6)) g.moveTo(x, y); else g.lineTo(x, y); prev = p[0]; });
     g.stroke();
-    g.strokeStyle = s.color; g.lineWidth = 2; (s.lost || []).forEach(t => { g.beginPath(); g.moveTo(X(t), h - B - 7); g.lineTo(X(t), h - B); g.stroke(); });
+    g.strokeStyle = s.color; g.lineWidth = 2; (s.lost || []).forEach(x => { g.beginPath(); g.moveTo(X(x), h - B - 7); g.lineTo(X(x), h - B); g.stroke(); });
   });
   (o.marks || []).forEach(m => { g.strokeStyle = danger; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(m.t), T); g.lineTo(X(m.t), h - B); g.stroke(); g.setLineDash([]); });
 }
 function legend(el, series) { $(el).innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join(''); }
 function pingSeries(map, targets) {
-  return targets.map(t => {
-    const raw = (map['ping:' + t.id] || []).filter(p => p[3] !== 'icmp_sans_reponse');
+  return targets.map(tg => {
+    const raw = (map['ping:' + tg.id] || []).filter(p => p[3] !== 'icmp_no_reply');
     const answered = raw.some(p => p[2]);
-    return {name: t.label, color: COLORS[t.id] || '#555', pts: raw.filter(p => p[2] && p[1] != null).map(p => [p[0], p[1]]), lost: answered ? raw.filter(p => !p[2]).map(p => p[0]) : []};
+    return {name: tg.label, color: COLORS[tg.id] || '#555', pts: raw.filter(p => p[2] && p[1] != null).map(p => [p[0], p[1]]), lost: answered ? raw.filter(p => !p[2]).map(p => p[0]) : []};
   });
 }
 const simple = (map, key, name, color, scale = 1) => ({name, color, pts: (map[key] || []).filter(p => p[2] && p[1] != null).map(p => [p[0], p[1] / scale]), lost: (map[key] || []).filter(p => !p[2]).map(p => p[0])});
-function drawAll(map, targets, t0, t1, marks, phases, ids = {lat: 'c_lat', net: 'c_net', dns: 'c_dns', wifi: 'c_wifi', ll: 'l_lat', ln: 'l_net', ld: 'l_dns', lw: 'l_wifi', wc: 'wifi_card', pre: ''}) {
-  const p = ids.pre;
-  const lat = pingSeries(map, targets); chart($('#' + p + ids.lat), {series: lat, t0, t1, marks, phases}); legend('#' + p + ids.ll, lat);
-  const net = [simple(map, 'net:down_bps', '↓ PC', '#0969da', 1e6), simple(map, 'net:up_bps', '↑ PC', '#bc4c00', 1e6)];
-  if (map['load:down_bps']) net.push(simple(map, 'load:down_bps', '↓ test', '#1a7f37', 1e6));
-  if (map['load:up_bps']) net.push(simple(map, 'load:up_bps', '↑ test', '#8250df', 1e6));
-  chart($('#' + p + ids.net), {series: net, t0, t1, marks, phases, ymin_top: 1}); legend('#' + p + ids.ln, net);
-  const dns = [simple(map, 'dns:sys_hit', 'DNS système (nom courant)', '#1a7f37'), simple(map, 'dns:sys_miss', 'DNS système (à froid)', '#bc4c00'), simple(map, 'dns:ref_miss', '1.1.1.1 (à froid, référence)', '#8250df')];
-  chart($('#' + p + ids.dns), {series: dns, t0, t1, marks, phases, gap: 20}); legend('#' + p + ids.ld, dns);
-  const wf = map['wifi:signal'] ? [simple(map, 'wifi:signal', 'Signal %', '#8250df'), simple(map, 'wifi:tx', 'Liaison émission Mbit/s', '#0969da'), simple(map, 'wifi:rx', 'Liaison réception Mbit/s', '#1a7f37')] : [];
-  $('#' + p + ids.wc).style.display = wf.length ? '' : 'none';
-  if (wf.length) { chart($('#' + p + ids.wifi), {series: wf, t0, t1, marks, phases, gap: 20}); legend('#' + p + ids.lw, wf); }
+function drawAll(map, targets, t0, t1, marks, phases, ids = {lat: 'c_lat', net: 'c_net', dns: 'c_dns', wifi: 'c_wifi', ll: 'l_lat', ln: 'l_net', ld: 'l_dns', lw: 'l_wifi', wc: 'wifi_card'}) {
+  const lat = pingSeries(map, targets); chart($('#' + ids.lat), {series: lat, t0, t1, marks, phases}); legend('#' + ids.ll, lat);
+  const net = [simple(map, 'net:down_bps', t('s.pc_down'), '#0969da', 1e6), simple(map, 'net:up_bps', t('s.pc_up'), '#bc4c00', 1e6)];
+  if (map['load:down_bps']) net.push(simple(map, 'load:down_bps', t('s.test_down'), '#1a7f37', 1e6));
+  if (map['load:up_bps']) net.push(simple(map, 'load:up_bps', t('s.test_up'), '#8250df', 1e6));
+  chart($('#' + ids.net), {series: net, t0, t1, marks, phases, ymin_top: 1}); legend('#' + ids.ln, net);
+  const dns = [simple(map, 'dns:sys_hit', t('s.dns_hit'), '#1a7f37'), simple(map, 'dns:sys_miss', t('s.dns_miss'), '#bc4c00'), simple(map, 'dns:ref_miss', t('s.dns_ref'), '#8250df')];
+  chart($('#' + ids.dns), {series: dns, t0, t1, marks, phases, gap: 20}); legend('#' + ids.ld, dns);
+  const wf = map['wifi:signal'] ? [simple(map, 'wifi:signal', t('s.sig'), '#8250df'), simple(map, 'wifi:tx', t('s.tx'), '#0969da'), simple(map, 'wifi:rx', t('s.rx'), '#1a7f37')] : [];
+  $('#' + ids.wc).style.display = wf.length ? '' : 'none';
+  if (wf.length) { chart($('#' + ids.wifi), {series: wf, t0, t1, marks, phases, gap: 20}); legend('#' + ids.lw, wf); }
 }
 
-// ---------------------------------------------------------------- surveillance en direct
+// ---------------------------------------------------------------- live monitoring
 $$('#dur button').forEach(b => b.onclick = () => { minutes = +b.dataset.min; $$('#dur button').forEach(x => x.classList.toggle('on', x === b)); });
 $('#start').onclick = guard(async () => {
   await api('/api/session/start', {minutes, label: $('#label').value, link: $('#link').value, custom_target: $('#custom').value});
-  live = {series: {}, last: 0, targets: [], status: {}, stats: {}, lt: null}; toast('Surveillance démarrée. Utilisez votre ordinateur normalement.'); poll();
+  live = {series: {}, last: 0, targets: [], status: {}, stats: {}, lt: null}; toast(t('live.started')); poll();
 });
-$('#stop').onclick = guard(async () => { await api('/api/session/stop', {}); toast('Surveillance arrêtée.'); poll(); $('#seediag').style.display = ''; });
+$('#stop').onclick = guard(async () => { await api('/api/session/stop', {}); toast(t('live.stopped')); poll(); $('#seediag').style.display = ''; });
 $('#lag').onclick = guard(async () => {
   const r = await api('/api/mark', {note: $('#lagnote').value}); $('#lagnote').value = '';
-  toast(`Incident marqué à ${new Date().toLocaleTimeString('fr-FR')}.` + (r.auto_started ? ' Surveillance démarrée automatiquement (15 min).' : '') + ' Traceroute en cours en arrière-plan.');
+  toast(t('lag.toast', new Date().toLocaleTimeString(loc())) + (r.auto_started ? t('lag.toast_auto') : '') + t('lag.toast_trace'));
   poll();
 });
-$('#seediag').onclick = () => { showTab('diag'); };
+$('#seediag').onclick = () => showTab('diag');
 $('#envr').onclick = guard(() => loadEnv(true));
 
 async function loadEnv(refresh) {
-  const e = await api('/api/env' + (refresh ? '?refresh=1' : '')), a = e.active;
-  $('#env').innerHTML = a ? `<table><tr><td>Interface</td><td><b>${esc(a.name)}</b> (${esc({wifi: 'Wi‑Fi', ethernet: 'Ethernet'}[a.kind] || a.kind)}) ${esc(a.link_speed || '')}</td></tr>
-    <tr><td>Adresse IPv4</td><td>${esc((a.ipv4 || []).join(', ') || '—')}</td></tr><tr><td>Passerelle</td><td>${esc(a.gw4 || a.gw6 || '—')}</td></tr>
-    <tr><td>DNS</td><td>${esc((a.dns || []).join(', ') || '—')}</td></tr><tr><td>IPv6 global</td><td>${e.ipv6_global ? 'oui' : 'non'}</td></tr>
-    <tr><td>VPN</td><td>${e.vpn.active ? '<b class="bad">détecté : ' + esc(e.vpn.adapters.join(', ')) + '</b>' : 'non détecté'}</td></tr></table>` + (e.notes || []).map(n => `<p class="warn">${esc(n)}</p>`).join('')
-    : '<p class="warn">' + esc((e.notes || ['Aucune connexion détectée.']).join(' ')) + '</p>';
+  const e = envData = await api('/api/env' + (refresh ? '?refresh=1' : '')), a = e.active;
+  $('#env').innerHTML = a ? `<table><tr><td>${t('env.iface')}</td><td><b>${esc(a.name)}</b> (${esc(t('kind.' + a.kind) === 'kind.' + a.kind ? a.kind : t('kind.' + a.kind))}) ${esc(a.link_speed || '')}</td></tr>
+    <tr><td>${t('env.ipv4')}</td><td>${esc((a.ipv4 || []).join(', ') || '—')}</td></tr><tr><td>${t('env.gateway')}</td><td>${esc(a.gw4 || a.gw6 || '—')}</td></tr>
+    <tr><td>${t('env.dns')}</td><td>${esc((a.dns || []).join(', ') || '—')}</td></tr><tr><td>${t('env.ipv6')}</td><td>${e.ipv6_global ? t('opt.yes') : t('opt.no')}</td></tr>
+    <tr><td>${t('env.vpn')}</td><td>${e.vpn.active ? '<b class="bad">' + esc(t('env.vpn_yes', e.vpn.adapters.join(', '))) + '</b>' : t('env.vpn_no')}</td></tr></table>` + (e.notes || []).map(n => `<p class="warn">${esc(n)}</p>`).join('')
+    : '<p class="warn">' + esc((e.notes && e.notes.length ? e.notes : [t('env.noconn')]).join(' ')) + '</p>';
 }
 
 function renderLive(d) {
+  lastLive = d;
   const s = d.status, run = s.running;
-  $('#pill').textContent = run ? 'Surveillance en cours' : 'Arrêtée'; $('#pill').className = run ? 'on' : '';
+  $('#pill').textContent = run ? t('pill.running') : t('pill.stopped'); $('#pill').className = run ? 'on' : '';
   $('#start').disabled = run; $('#stop').disabled = !run;
-  $('#remain').textContent = run ? `reste ${Math.floor(s.remaining_s / 60)} min ${String(Math.floor(s.remaining_s % 60)).padStart(2, '0')} s` + (s.phase ? ` — phase : ${s.phase}` : '') : '';
+  $('#remain').textContent = run ? t('live.remaining', Math.floor(s.remaining_s / 60), String(Math.floor(s.remaining_s % 60)).padStart(2, '0')) + (s.phase ? t('live.phase', s.phase) : '') : '';
   $('#notes').innerHTML = (s.notes || []).map(n => `<li>${esc(n)}</li>`).join('');
-  $('#marks').innerHTML = (s.marks || []).filter(m => m.kind === 'lag').map(m => `<li>🔴 ${hm(m.t)} ${esc(m.note)}</li>`).join('') || '<li class="muted">Aucun incident marqué.</li>';
+  $('#marks').innerHTML = (s.marks || []).filter(m => m.kind === 'lag').map(m => `<li>🔴 ${hm(m.t)} ${esc(m.note)}</li>`).join('') || `<li class="muted">${t('lag.none')}</li>`;
   if (!run && s.sid) $('#seediag').style.display = '';
   const cards = Object.entries(d.stats || {});
-  if (cards.length) $('#tcards').innerHTML = cards.map(([id, c]) => {
+  $('#tcards').innerHTML = cards.length ? cards.map(([id, c]) => {
     const st = c.stats, bad = st && st.loss_pct >= 2;
-    const badge = c.no_response ? '<span class="badge" style="background:var(--danger)">ne répond pas à l\'ICMP</span>' : c.mode === 'tcp' ? `<span class="badge">TCP :${c.port}</span>` : '';
+    const badge = c.no_response ? `<span class="badge" style="background:var(--danger)">${t('cards.noicmp')}</span>` : c.mode === 'tcp' ? `<span class="badge">TCP :${c.port}</span>` : '';
     return `<div class="tcard"><b style="color:${COLORS[id] || 'inherit'}">${esc(c.label)}</b> ${badge}<div class="small muted">${esc(c.host)}</div>
-      ${st ? `<div class="m"><div><div>${fmt(st.median, 1)}</div><span>médiane ms</span></div><div><div>${fmt(st.p95, 1)}</div><span>p95 ms</span></div><div><div>${fmt(st.max, 0)}</div><span>max ms</span></div>
-      <div><div class="${bad ? 'bad' : ''}">${fmt(st.loss_pct, 1)}</div><span>perte %</span></div><div><div>${fmt(st.jitter, 1)}</div><span>gigue ms</span></div></div>` : '<div class="muted small">En attente de mesures…</div>'}</div>`;
-  }).join('');
-  const t0 = s.started || (live.targets.length ? d.now - 60 : d.now - 60), t1 = run ? d.now : Math.max(...Object.values(live.series).map(a => a.length ? a[a.length - 1][0] : 0), t0 + 1);
+      ${st ? `<div class="m"><div><div>${fmt(st.median, 1)}</div><span>${t('m.median')}</span></div><div><div>${fmt(st.p95, 1)}</div><span>${t('m.p95')}</span></div><div><div>${fmt(st.max, 0)}</div><span>${t('m.max')}</span></div>
+      <div><div class="${bad ? 'bad' : ''}">${fmt(st.loss_pct, 1)}</div><span>${t('m.loss')}</span></div><div><div>${fmt(st.jitter, 1)}</div><span>${t('m.jitter')}</span></div></div>` : `<div class="muted small">${t('cards.waiting')}</div>`}</div>`;
+  }).join('') : `<span class="muted">${t('cards.none')}</span>`;
+  const t0 = s.started || d.now - 60, t1 = run ? d.now : Math.max(...Object.values(live.series).map(a => a.length ? a[a.length - 1][0] : 0), t0 + 1);
   drawAll(live.series, live.targets, t0, t1, (s.marks || []).filter(m => m.kind === 'lag'), s.phases || []);
   renderLoad(d.loadtest);
 }
@@ -315,100 +487,98 @@ async function poll() {
   try {
     if (poll.busy) return; poll.busy = true;
     const d = await api('/api/live?since=' + live.last);
-    if (d.status.sid !== live.sid) { live.sid = d.status.sid; live.series = {}; live.last = 0; poll.busy = false; return poll(); }  // nouvelle session : on repart de zéro
+    if (d.status.sid !== live.sid) { live.sid = d.status.sid; live.series = {}; live.last = 0; poll.busy = false; return poll(); }  // new session: start from scratch
     for (const [k, pts] of Object.entries(d.series)) { const a = live.series[k] || (live.series[k] = []); a.push(...pts); if (pts.length) live.last = Math.max(live.last, pts[pts.length - 1][0]); }
-    $('#ver').textContent = 'v' + d.version; $('#datadir').textContent = d.data_dir;
+    $('#ver').textContent = 'v' + d.version; live.datadir = d.data_dir; $('#datadir').textContent = d.data_dir;
     live.targets = d.targets.length ? d.targets : live.targets; live.status = d.status; live.stats = d.stats; live.lt = d.loadtest;
     renderLive(d);
-  } catch (e) { $('#pill').textContent = 'Serveur injoignable'; }
+  } catch (e) { $('#pill').textContent = t('pill.down'); }
   poll.busy = false;
 }
 setInterval(poll, 1000);
 
-// ---------------------------------------------------------------- test de saturation
+// ---------------------------------------------------------------- saturation test
 const lp = () => ({phase_s: +$('#phase_s').value, streams: +$('#streams').value, cap_down_mb: +$('#cap').value, cap_up_mb: Math.round(+$('#cap').value / 3)});
 async function loadEstimate() {
   const q = new URLSearchParams(lp()); const e = await api('/api/loadtest/estimate?' + q);
-  $('#dur_s').textContent = Math.round(e.duration_s / 60 * 10) / 10 + ' min';
-  $('#est').innerHTML = `<b>Consommation maximale : ${e.max_total_mb} Mo</b> (plafond : ${e.max_down_mb} Mo en téléchargement + ${e.max_up_mb} Mo en envoi), durée ≈ ${e.duration_s} s, ${e.streams} flux vers ${esc(e.server)}.` +
-    (e.typical_total_mb != null ? `<br>Estimation d'après vos débits annoncés : ≈ ${Math.round(e.typical_total_mb)} Mo.` : '<br>Renseignez votre débit annoncé (onglet Routeur &amp; QoS) pour une estimation plus fine. Le volume réel dépend de votre débit (≈ débit × durée).') +
-    '<br>Pendant le test, votre connexion sera saturée : tout autre usage d\'Internet sera ralenti.';
+  $('#before').textContent = t('sat.before', t('sat.minutes', Math.round(e.duration_s / 60 * 10) / 10));
+  $('#est').innerHTML = t('sat.est.max', e.max_total_mb, e.max_down_mb, e.max_up_mb, e.duration_s, e.streams, esc(e.server)) +
+    (e.typical_total_mb != null ? t('sat.est.typ', Math.round(e.typical_total_mb)) : t('sat.est.notyp')) + t('sat.est.warn');
 }
 ['phase_s', 'streams', 'cap'].forEach(i => $('#' + i).onchange = guard(loadEstimate));
 $('#confirm').onchange = () => $('#lt_start').disabled = !$('#confirm').checked;
 $('#lt_start').onclick = guard(async () => {
-  await api('/api/loadtest/start', {...lp(), confirm: $('#confirm').checked, link: $('#slink').value, label: $('#slabel').value || 'Test de saturation'});
-  $('#confirm').checked = false; $('#lt_start').disabled = true; live = {series: {}, last: 0, targets: [], status: {}, stats: {}, lt: null}; toast('Test lancé : ne touchez à rien pendant la durée indiquée.'); poll();
+  await api('/api/loadtest/start', {...lp(), confirm: $('#confirm').checked, link: $('#slink').value, label: $('#slabel').value || undefined});
+  $('#confirm').checked = false; $('#lt_start').disabled = true; live = {series: {}, last: 0, targets: [], status: {}, stats: {}, lt: null}; toast(t('lt.toast_started')); poll();
 });
-$('#lt_cancel').onclick = guard(async () => { await api('/api/loadtest/cancel', {}); toast('Annulation demandée.'); });
+$('#lt_cancel').onclick = guard(async () => { await api('/api/loadtest/cancel', {}); toast(t('lt.toast_cancel')); });
 $('#lt_diag').onclick = () => showTab('diag');
 function renderLoad(l) {
   if (!l) return;
   const run = l.state === 'running';
   $('#lt_cancel').disabled = !run; $('#lt_start').disabled = run || !$('#confirm').checked;
-  const names = {idle: '', running: 'En cours', termine: 'Terminé', annule: 'Annulé', erreur: 'Erreur'};
-  $('#lt_state').textContent = (names[l.state] || l.state) + (run ? ` — ${l.phase_label || ''} (${fmt(l.elapsed_s)} s / ${l.total_s} s), débit actuel ${fmt(l.current_mbps, 1)} Mbps` : '');
-  $('#lt_res').innerHTML = (l.results || []).map(r => `<li><b>${esc(r.label)}</b> : ${r.moyen_mbps != null ? `débit soutenu ${fmt(r.soutenu_mbps, 1)} Mbps (moyen ${fmt(r.moyen_mbps, 1)}, pic ${fmt(r.pic_mbps, 1)}), ${fmt(r.octets / 1e6, 1)} Mo` : fmt(r.duree_s) + ' s'}${r.plafond_volume_atteint ? ' — plafond de volume atteint' : ''}${r.annule ? ' — annulé' : ''}${r.erreurs ? ' — ⚠ ' + esc(r.erreurs.join(' | ')) : ''}</li>`).join('') + (l.errors || []).map(e => `<li class="err">⚠ ${esc(e)}</li>`).join('');
-  $('#lt_diag').style.display = (l.state === 'termine' || l.state === 'annule') ? '' : 'none';
+  $('#lt_state').textContent = t('lt.' + l.state) + (run ? t('lt.line', l.phase_label || '', fmt(l.elapsed_s), l.total_s, fmt(l.current_mbps, 1)) : '');
+  $('#lt_res').innerHTML = (l.results || []).map(r => `<li>${r.avg_mbps != null ? t('lt.res', esc(r.label), fmt(r.sustained_mbps, 1), fmt(r.avg_mbps, 1), fmt(r.peak_mbps, 1), fmt(r.bytes / 1e6, 1)) : `<b>${esc(r.label)}</b> : ` + t('lt.res_idle', fmt(r.duration_s))}${r.volume_cap_reached ? t('lt.cap_reached') : ''}${r.cancelled ? t('lt.was_cancelled') : ''}${r.errors ? ' — ⚠ ' + esc(r.errors.join(' | ')) : ''}</li>`).join('') + (l.errors || []).map(e => `<li class="err">⚠ ${esc(e)}</li>`).join('');
+  $('#lt_diag').style.display = (l.state === 'done' || l.state === 'cancelled') ? '' : 'none';
 }
 
-// ---------------------------------------------------------------- diagnostic
+// ---------------------------------------------------------------- diagnosis
 async function loadDiagList() {
   const list = await api('/api/sessions'), sel = $('#dsess'), cur = sel.value;
-  sel.innerHTML = list.map(s => `<option value="${s.id}">#${s.id} — ${dt(s.started)} — ${esc(s.label || 'sans libellé')} (${esc(s.link || '?')})${s.running ? ' — en cours' : ''}</option>`).join('');
+  sel.innerHTML = list.map(s => `<option value="${s.id}">#${s.id} — ${dt(s.started)} — ${esc(s.label || t('diag.nolabel'))} (${esc(s.link || '?')})${s.running ? ' — ' + t('hist.running') : ''}</option>`).join('');
   if (cur && list.some(s => String(s.id) === cur)) sel.value = cur;
-  if (list.length) await showDiag(sel.value); else $('#dbody').innerHTML = '<p class="muted">Aucune session : lancez une surveillance.</p>';
+  if (list.length) await showDiag(sel.value); else $('#dbody').innerHTML = `<p class="muted">${t('diag.none')}</p>`;
 }
 $('#dsess').onchange = guard(() => showDiag($('#dsess').value));
 const ul = a => a && a.length ? '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
+const lvl = x => t('lvl.' + x);
 async function showDiag(id) {
   const [r, sd] = await Promise.all([api('/api/session/' + id), api(`/api/session/${id}/series`)]), a = r.analysis, s = r.session;
-  $('#x_html').href = `/api/session/${id}/report.html`; $('#x_csv').href = `/api/session/${id}/export.csv`; $('#x_json').href = `/api/session/${id}/export.json`;
-  let h = `<div class="card"><h2>Résumé — session #${s.id} « ${esc(s.label || 'sans libellé')} », ${dt(s.started)} → ${hm(s.ended)}, liaison : ${esc(s.link)}</h2>${a.resume.map(x => `<p>${esc(x)}</p>`).join('')}</div>`;
-  h += '<div class="card"><h2>Hypothèses (classées)</h2><p class="small muted">Ce sont des hypothèses déduites de mesures, jamais des causes confirmées.</p>';
-  h += a.hypotheses.length ? a.hypotheses.map(x => `<div class="card" style="margin:8px 0"><h3 style="margin-top:0">${esc(x.titre)} <span class="badge b-${x.niveau}">confiance ${x.niveau}</span></h3><b>Preuves</b>${ul(x.preuves)}${x.contre.length ? '<b>Éléments contre / nuances</b>' + ul(x.contre) : ''}<b>Limites</b>${ul(x.limites)}<p><b>Prochain test utile :</b> ${esc(x.prochain_test)}</p></div>`).join('') : '<p>Aucune hypothèse ne dépasse le seuil d\'indices.</p>';
-  if (a.peu_probables.length) h += '<h3>Pistes peu probables d\'après les mesures</h3><ul>' + a.peu_probables.map(u => `<li><b>${esc(u.titre)}</b> — ${esc(u.raisons.join(' '))}</li>`).join('') + '</ul>';
-  if (a.non_evalue.length) h += '<h3>Non évalué</h3><ul>' + a.non_evalue.map(u => `<li><b>${esc(u.titre)}</b> — ${esc(u.raison)}</li>`).join('') + '</ul>';
+  $('#x_html').href = withLang(`/api/session/${id}/report.html`); $('#x_csv').href = withLang(`/api/session/${id}/export.csv`); $('#x_json').href = withLang(`/api/session/${id}/export.json`);
+  let h = `<div class="card"><h2>${esc(t('diag.sum_h', s.id, s.label || t('diag.nolabel'), dt(s.started), hm(s.ended), s.link))}</h2>${a.summary.map(x => `<p>${esc(x)}</p>`).join('')}</div>`;
+  h += `<div class="card"><h2>${t('diag.hyp_h')}</h2><p class="small muted">${t('diag.hyp_note')}</p>`;
+  h += a.hypotheses.length ? a.hypotheses.map(x => `<div class="card" style="margin:8px 0"><h3 style="margin-top:0">${esc(x.title)} <span class="badge b-${x.level}">${esc(t('diag.confidence', lvl(x.level)))}</span></h3><b>${t('diag.evidence')}</b>${ul(x.evidence)}${x.counter.length ? `<b>${t('diag.counter')}</b>` + ul(x.counter) : ''}<b>${t('diag.limits')}</b>${ul(x.limits)}<p><b>${t('diag.next')}</b> ${esc(x.next_test)}</p></div>`).join('') : `<p>${t('diag.nohyp')}</p>`;
+  if (a.unlikely.length) h += `<h3>${t('diag.unlikely')}</h3><ul>` + a.unlikely.map(u => `<li><b>${esc(u.title)}</b> — ${esc(u.reasons.join(' '))}</li>`).join('') + '</ul>';
+  if (a.not_evaluated.length) h += `<h3>${t('diag.noteval')}</h3><ul>` + a.not_evaluated.map(u => `<li><b>${esc(u.title)}</b> — ${esc(u.reason)}</li>`).join('') + '</ul>';
   h += '</div>';
-  if (a.actions.length) h += `<div class="card"><h2>Actions recommandées (par ordre de pertinence)</h2><ol>${a.actions.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
-  h += '<div class="card"><h2>Chronologie des incidents</h2>' + (a.timeline.length ? a.timeline.map(i => `<div class="tl ${i.type}"><b>${hm(i.t)}</b> — ${esc(TYPE[i.type] || i.type)}${i.zone ? ' — <b>' + esc(ZONE[i.zone]) + '</b>' : ''}<div class="small">${esc(i.zone_texte || '')}</div>${(i.details || []).map(d => `<div class="small muted">${esc(d)}</div>`).join('')}${i.note ? `<div class="small muted">${esc(i.note)}</div>` : ''}</div>`).join('') : '<p class="muted">Aucun incident signalé ni épisode détecté.</p>') + '</div>';
-  h += `<div class="card"><h2>Courbes</h2><canvas id="d_lat"></canvas><div class="legend" id="dl_lat"></div><canvas id="d_net"></canvas><div class="legend" id="dl_net"></div><canvas id="d_dns" style="height:150px"></canvas><div class="legend" id="dl_dns"></div><div id="d_wc"><canvas id="d_wifi" style="height:150px"></canvas><div class="legend" id="dl_wifi"></div></div></div>`;
-  h += '<div class="card"><h2>Mesures</h2><div style="overflow-x:auto"><table><tr><th>Cible</th><th>État</th><th class="n">Req.</th><th class="n">Perte %</th><th class="n">Médiane</th><th class="n">p95</th><th class="n">Max</th><th class="n">Gigue</th></tr>' +
-    a.stats.targets.map(t => row(t.label + ' — ' + t.host, t.etat, t.stats)).join('') + [['sys_hit', 'DNS — noms courants'], ['sys_miss', 'DNS — à froid'], ['ref_miss', 'DNS 1.1.1.1 — à froid']].filter(k => a.stats.dns[k[0]]).map(k => row(k[1], 'mesuré', a.stats.dns[k[0]])).join('') +
-    '</table></div><p class="small muted">ms. Hors phases de charge (sauf repos). Médiane = valeur centrale ; p95 = 95 % des réponses sont plus rapides ; gigue = moyenne de |RTT(i) − RTT(i−1)| entre réponses consécutives ; une pause système n\'est pas une perte.</p>';
-  const t = a.stats.traffic; if (t.down) h += `<p class="small">Trafic du PC hors test : ↓ médiane ${fmt(t.down.median, 2)} Mbps (max ${fmt(t.down.max, 1)}), ↑ médiane ${fmt(t.up.median, 2)} Mbps (max ${fmt(t.up.max, 1)}). Totaux de l'ordinateur, sans attribution par programme.</p>`;
-  const w = a.stats.wifi; if (w) h += `<p class="small">Wi‑Fi : signal médian ${fmt(w.signal_med)} % (min ${fmt(w.signal_min)} %), canal ${esc(w.channel ?? '?')}, bande ${esc(w.band ?? '?')} ; débit de liaison (≠ débit Internet) ${fmt(w.tx_med)} / ${fmt(w.rx_med)} Mbit/s.</p>`;
+  if (a.actions.length) h += `<div class="card"><h2>${t('diag.actions')}</h2><ol>${a.actions.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
+  h += `<div class="card"><h2>${t('diag.timeline')}</h2>` + (a.timeline.length ? a.timeline.map(i => `<div class="tl ${i.type}"><b>${hm(i.t)}</b> — ${esc(t('type.' + i.type))}${i.zone ? ' — <b>' + esc(t('zone.' + i.zone)) + '</b>' : ''}<div class="small">${esc(i.zone_text || '')}</div>${(i.details || []).map(d => `<div class="small muted">${esc(d)}</div>`).join('')}${i.note ? `<div class="small muted">${esc(i.note)}</div>` : ''}</div>`).join('') : `<p class="muted">${t('diag.noinc')}</p>`) + '</div>';
+  h += `<div class="card"><h2>${t('diag.curves')}</h2><canvas id="d_lat"></canvas><div class="legend" id="dl_lat"></div><canvas id="d_net"></canvas><div class="legend" id="dl_net"></div><canvas id="d_dns" style="height:150px"></canvas><div class="legend" id="dl_dns"></div><div id="d_wc"><canvas id="d_wifi" style="height:150px"></canvas><div class="legend" id="dl_wifi"></div></div></div>`;
+  h += `<div class="card"><h2>${t('diag.measures')}</h2><div style="overflow-x:auto"><table><tr><th>${t('th.target')}</th><th>${t('th.state')}</th><th class="n">${t('th.req')}</th><th class="n">${t('th.loss')}</th><th class="n">${t('th.median')}</th><th class="n">p95</th><th class="n">${t('th.max')}</th><th class="n">${t('th.jitter')}</th></tr>` +
+    a.stats.targets.map(x => row(x.label + ' — ' + x.host, x.state_text, x.stats)).join('') + [['sys_hit', 'diag.dns_hit'], ['sys_miss', 'diag.dns_miss'], ['ref_miss', 'diag.dns_ref']].filter(k => a.stats.dns[k[0]]).map(k => row(t(k[1]), t('diag.measured'), a.stats.dns[k[0]])).join('') +
+    `</table></div><p class="small muted">${t('diag.meas_note')}</p>`;
+  const tr = a.stats.traffic; if (tr.down) h += `<p class="small">${esc(t('diag.traffic_line', fmt(tr.down.median, 2), fmt(tr.down.max, 1), fmt(tr.up.median, 2), fmt(tr.up.max, 1)))}</p>`;
+  const w = a.stats.wifi; if (w) h += `<p class="small">${esc(t('diag.wifi_line', fmt(w.signal_med), fmt(w.signal_min), w.channel ?? '?', w.band ?? '?', fmt(w.tx_med), fmt(w.rx_med)))}</p>`;
   h += '</div>';
-  if (a.bufferbloat) { h += '<div class="card"><h2>Test de saturation (indicatif)</h2><table><tr><th>Sens</th><th class="n">Débit soutenu</th><th class="n">Latence Internet repos → charge</th><th class="n">Hausse</th><th class="n">p95 en charge</th><th class="n">Perte max</th><th class="n">Hausse passerelle</th><th>Note</th></tr>';
-    for (const [k, lab] of [['down', 'Téléchargement'], ['up', 'Envoi']]) { const x = a.bufferbloat.directions[k]; if (x) h += `<tr><td>${lab}</td><td class="n">${fmt(x.mbps)} Mbps</td><td class="n">${fmt(x.idle_med)} → ${fmt(x.load_med)} ms</td><td class="n">+${fmt(x.delta)} ms</td><td class="n">${fmt(x.load_p95)} ms</td><td class="n">${fmt(x.loss_pct, 1)} %</td><td class="n">${x.gw_delta != null ? '+' + fmt(x.gw_delta) + ' ms' : '—'}</td><td>${esc(x.grade || '—')}${x.valid ? '' : ' (non concluant)'}</td></tr>`; }
-    h += '</table><p class="small muted">Notes indicatives selon la hausse de latence médiane : A+ &lt; 5 ms, A &lt; 30, B &lt; 60, C &lt; 200, D &lt; 400, F au-delà.</p></div>'; }
+  if (a.bufferbloat) { h += `<div class="card"><h2>${t('diag.sat_h')}</h2><table><tr><th>${t('th.dir')}</th><th class="n">${t('th.sustained')}</th><th class="n">${t('th.idle_load')}</th><th class="n">${t('th.increase')}</th><th class="n">${t('th.p95load')}</th><th class="n">${t('th.maxloss')}</th><th class="n">${t('th.gwinc')}</th><th>${t('th.grade')}</th></tr>`;
+    for (const k of ['down', 'up']) { const x = a.bufferbloat.directions[k]; if (x) h += `<tr><td>${t('dir.' + k)}</td><td class="n">${fmt(x.mbps)} Mbps</td><td class="n">${fmt(x.idle_med)} → ${fmt(x.load_med)} ms</td><td class="n">+${fmt(x.delta)} ms</td><td class="n">${fmt(x.load_p95)} ms</td><td class="n">${fmt(x.loss_pct, 1)} %</td><td class="n">${x.gw_delta != null ? '+' + fmt(x.gw_delta) + ' ms' : '—'}</td><td>${esc(x.grade || '—')}${x.valid ? '' : t('diag.inconclusive')}</td></tr>`; }
+    h += `</table><p class="small muted">${t('diag.grades')}</p></div>`; }
   $('#dbody').innerHTML = h;
   const mp = {}; for (const [k, v] of Object.entries(sd.series)) mp[k] = v.map(p => [p[0], p[1], p[2], '']);
-  const marks = sd.marks.filter(m => m.kind === 'lag');
-  drawAll(mp, sd.targets, sd.started, sd.ended, marks, sd.phases, {lat: 'd_lat', net: 'd_net', dns: 'd_dns', wifi: 'd_wifi', ll: 'dl_lat', ln: 'dl_net', ld: 'dl_dns', lw: 'dl_wifi', wc: 'd_wc', pre: ''});
+  drawAll(mp, sd.targets, sd.started, sd.ended, sd.marks.filter(m => m.kind === 'lag'), sd.phases, {lat: 'd_lat', net: 'd_net', dns: 'd_dns', wifi: 'd_wifi', ll: 'dl_lat', ln: 'dl_net', ld: 'dl_dns', lw: 'dl_wifi', wc: 'd_wc'});
 }
-function row(l, etat, s) {
-  if (!s) return `<tr><td>${esc(l)}</td><td>${esc(etat)}</td><td class="n" colspan="6">—</td></tr>`;
-  return `<tr><td>${esc(l)}</td><td>${esc(etat)}</td><td class="n">${s.n}</td><td class="n ${s.loss_pct >= 2 ? 'bad' : ''}">${fmt(s.loss_pct, 1)}</td><td class="n">${fmt(s.median, 1)}</td><td class="n">${fmt(s.p95, 1)}</td><td class="n">${fmt(s.max, 0)}</td><td class="n">${fmt(s.jitter, 1)}</td></tr>`;
+function row(l, state, s) {
+  if (!s) return `<tr><td>${esc(l)}</td><td>${esc(state)}</td><td class="n" colspan="6">—</td></tr>`;
+  return `<tr><td>${esc(l)}</td><td>${esc(state)}</td><td class="n">${s.n}</td><td class="n ${s.loss_pct >= 2 ? 'bad' : ''}">${fmt(s.loss_pct, 1)}</td><td class="n">${fmt(s.median, 1)}</td><td class="n">${fmt(s.p95, 1)}</td><td class="n">${fmt(s.max, 0)}</td><td class="n">${fmt(s.jitter, 1)}</td></tr>`;
 }
 
-// ---------------------------------------------------------------- routeur
-const lines = (t, n) => t.split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p[0]);
+// ---------------------------------------------------------------- router
+const lines = txt => txt.split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p[0]);
 async function loadRouter() {
   const [v, c] = await Promise.all([api('/api/router'), api('/api/config')]), r = v.config || {};
   $('#r_model').value = r.model || ''; $('#r_hw').value = r.hw_version || ''; $('#r_fw').value = r.firmware || '';
-  $('#r_qos').value = r.qos_enabled === true ? 'true' : r.qos_enabled === false ? 'false' : ''; $('#r_type').value = r.qos_type || 'inconnu'; $('#r_sqm').value = r.sqm_available || 'inconnu';
+  $('#r_qos').value = r.qos_enabled === true ? 'true' : r.qos_enabled === false ? 'false' : ''; $('#r_type').value = r.qos_type || 'unknown'; $('#r_sqm').value = r.sqm_available || 'unknown';
   $('#r_ld').value = r.limit_down ?? ''; $('#r_lu').value = r.limit_up ?? ''; $('#r_unit').value = r.unit || 'Mbps';
-  $('#p_down').value = c.plan_down_mbps ?? ''; $('#p_up').value = c.plan_up_mbps ?? ''; $('#g_over').value = c.gateway_override || ''; $('#custom').value = c.custom_target || $('#custom').value;
+  $('#p_down').value = c.plan_down_mbps ?? ''; $('#p_up').value = c.plan_up_mbps ?? ''; $('#g_over').value = c.gateway_override || ''; if (c.custom_target) $('#custom').value = c.custom_target;
   $('#r_prio').value = (r.priority_devices || []).map(d => [d.name, d.priority || '', d.duration || ''].join(' | ')).join('\n');
   $('#r_rules').value = (r.bandwidth_rules || []).map(d => [d.name, d.down ?? '', d.up ?? ''].join(' | ')).join('\n'); $('#r_notes').value = r.notes || '';
   $('#r_shots').innerHTML = (r.screenshots || []).map(n => `<span><a href="/api/router/shot/${n}" target="_blank"><img class="thumb" src="/api/router/shot/${n}"></a><button class="btn" data-del="${n}" style="padding:0 6px">✕</button></span>`).join('');
   $$('#r_shots [data-del]').forEach(b => b.onclick = guard(async () => { await api('/api/router/shot/delete', {name: b.dataset.del}); loadRouter(); }));
   const an = v.analysis;
-  $('#r_analysis').innerHTML = (v.measures_from_session ? `<p class="muted">Débits mesurés pris dans la session #${v.measures_from_session} : ↓ ${fmt(v.measured.down)} Mbps, ↑ ${fmt(v.measured.up)} Mbps.</p>` : '<p class="warn">Aucun test de saturation enregistré : les limites ne peuvent être comparées qu\'au débit annoncé. Lancez le test de saturation.</p>') +
-    (an.findings.length ? '<ul>' + an.findings.map(f => `<li class="sev-${f.severite}"><b>${esc(f.severite)}</b> — ${esc(f.texte)}</li>`).join('') + '</ul>' : '<p class="muted">Rien à signaler pour l\'instant (saisissez votre configuration ci-dessus).</p>') +
-    (an.propositions.length ? '<h3>Changements proposés (aucun n\'est appliqué automatiquement)</h3>' + an.propositions.map(p => `<div class="card"><b>${esc(p.changement)}</b><br>Pourquoi : ${esc(p.justification)}<br>Retour arrière : ${esc(p.retour_arriere)}</div>`).join('') : '') + `<p class="muted">${esc(an.rappel)}</p>`;
-  $('#r_proto').innerHTML = an.protocole.map(x => `<li>${esc(x)}</li>`).join('');
+  $('#r_analysis').innerHTML = (v.measures_from_session ? `<p class="muted">${esc(t('r.measures_from', v.measures_from_session, fmt(v.measured.down), fmt(v.measured.up)))}</p>` : `<p class="warn">${t('r.no_test')}</p>`) +
+    (an.findings.length ? '<ul>' + an.findings.map(f => `<li class="sev-${f.severity}"><b>${esc(t('sev.' + f.severity))}</b> — ${esc(f.text)}</li>`).join('') + '</ul>' : `<p class="muted">${t('r.nothing')}</p>`) +
+    (an.proposals.length ? `<h3>${t('r.proposals')}</h3>` + an.proposals.map(p => `<div class="card"><b>${esc(p.change)}</b><br>${t('r.why')} ${esc(p.justification)}<br>${t('r.rollback')} ${esc(p.rollback)}</div>`).join('') : '') + `<p class="muted">${esc(an.reminder)}</p>`;
+  $('#r_proto').innerHTML = an.protocol.map(x => `<li>${esc(x)}</li>`).join('');
 }
 $('#r_save').onclick = guard(async () => {
   const num = id => $(id).value === '' ? null : +$(id).value;
@@ -416,7 +586,7 @@ $('#r_save').onclick = guard(async () => {
     sqm_available: $('#r_sqm').value, limit_down: num('#r_ld'), limit_up: num('#r_lu'), unit: $('#r_unit').value, notes: $('#r_notes').value,
     priority_devices: lines($('#r_prio').value).map(p => ({name: p[0], priority: p[1] || '', duration: p[2] || ''})), bandwidth_rules: lines($('#r_rules').value).map(p => ({name: p[0], down: p[1] === '' ? null : +p[1], up: p[2] === '' ? null : +p[2]}))};
   await api('/api/config', {router, plan_down_mbps: num('#p_down'), plan_up_mbps: num('#p_up'), gateway_override: $('#g_over').value, custom_target: $('#custom').value});
-  $('#r_msg').textContent = 'Enregistré.'; loadRouter();
+  $('#r_msg').textContent = t('r.saved'); loadRouter();
 });
 $('#r_file').onchange = guard(async () => {
   for (const f of $('#r_file').files) {
@@ -426,32 +596,32 @@ $('#r_file').onchange = guard(async () => {
   $('#r_file').value = ''; loadRouter();
 });
 
-// ---------------------------------------------------------------- historique
+// ---------------------------------------------------------------- history
 let hsel = {a: new Set(), b: new Set()};
 async function loadHist() {
   const list = await api('/api/sessions');
-  $('#htab').innerHTML = '<tr><th>A</th><th>B</th><th>#</th><th>Date</th><th>Libellé</th><th>Liaison</th><th class="n">Durée</th><th class="n">Incidents</th><th class="n">Passerelle p95</th><th class="n">Internet p95</th><th class="n">Perte %</th><th class="n">Δ envoi</th><th class="n">Δ téléch.</th><th class="n">↓ / ↑ Mbps</th><th></th></tr>' +
+  $('#htab').innerHTML = `<tr><th>A</th><th>B</th><th>#</th><th>${t('hist.th.date')}</th><th>${t('hist.th.label')}</th><th>${t('hist.th.link')}</th><th class="n">${t('hist.th.duration')}</th><th class="n">${t('hist.th.incidents')}</th><th class="n">${t('hist.th.gw')}</th><th class="n">${t('hist.th.inet')}</th><th class="n">${t('hist.th.loss')}</th><th class="n">${t('hist.th.dup')}</th><th class="n">${t('hist.th.ddown')}</th><th class="n">${t('hist.th.speed')}</th><th></th></tr>` +
     list.map(s => { const m = s.metrics || {}; return `<tr><td><input type="checkbox" data-g="a" value="${s.id}" ${hsel.a.has(s.id) ? 'checked' : ''}></td><td><input type="checkbox" data-g="b" value="${s.id}" ${hsel.b.has(s.id) ? 'checked' : ''}></td>
-      <td>${s.id}</td><td>${dt(s.started)}</td><td><span data-ren="${s.id}" title="cliquer pour renommer" style="cursor:text">${esc(s.label || '—')}</span></td><td>${esc(s.link || '')}</td><td class="n">${s.ended ? fmt((s.ended - s.started) / 60) + ' min' : 'en cours'}</td><td class="n">${m.incidents ?? '—'}</td>
+      <td>${s.id}</td><td>${dt(s.started)}</td><td><span data-ren="${s.id}" title="${esc(t('hist.rename'))}" style="cursor:text">${esc(s.label || '—')}</span></td><td>${esc(s.link || '')}</td><td class="n">${s.ended ? fmt((s.ended - s.started) / 60) + ' min' : t('hist.running')}</td><td class="n">${m.incidents ?? '—'}</td>
       <td class="n">${fmt(m.gw_p95, 1)}</td><td class="n">${fmt(m.inet_p95, 1)}</td><td class="n">${fmt(m.inet_loss, 1)}</td><td class="n">${m.bloat_up != null ? '+' + fmt(m.bloat_up) : '—'}</td><td class="n">${m.bloat_down != null ? '+' + fmt(m.bloat_down) : '—'}</td><td class="n">${fmt(m.down_mbps)} / ${fmt(m.up_mbps)}</td>
-      <td><button class="btn" data-open="${s.id}" style="padding:0 8px">Ouvrir</button> <button class="btn" data-rm="${s.id}" style="padding:0 8px">Supprimer</button></td></tr>`; }).join('');
+      <td><button class="btn" data-open="${s.id}" style="padding:0 8px">${t('hist.open')}</button> <button class="btn" data-rm="${s.id}" style="padding:0 8px">${t('hist.delete')}</button></td></tr>`; }).join('');
   $$('#htab [data-g]').forEach(c => c.onchange = () => { const set = hsel[c.dataset.g], id = +c.value; c.checked ? set.add(id) : set.delete(id); });
   $$('#htab [data-open]').forEach(b => b.onclick = () => { showTab('diag'); setTimeout(async () => { $('#dsess').value = b.dataset.open; await showDiag(b.dataset.open); }, 300); });
-  $$('#htab [data-rm]').forEach(b => b.onclick = guard(async () => { if (confirm('Supprimer définitivement la session #' + b.dataset.rm + ' ?')) { await api(`/api/session/${b.dataset.rm}/delete`, {}); loadHist(); } }));
-  $$('#htab [data-ren]').forEach(b => b.onclick = guard(async () => { const l = prompt('Nouveau libellé :', b.textContent === '—' ? '' : b.textContent); if (l !== null) { await api(`/api/session/${b.dataset.ren}/label`, {label: l}); loadHist(); } }));
+  $$('#htab [data-rm]').forEach(b => b.onclick = guard(async () => { if (confirm(t('hist.confirm_delete', b.dataset.rm))) { await api(`/api/session/${b.dataset.rm}/delete`, {}); loadHist(); } }));
+  $$('#htab [data-ren]').forEach(b => b.onclick = guard(async () => { const l = prompt(t('hist.rename_prompt'), b.textContent === '—' ? '' : b.textContent); if (l !== null) { await api(`/api/session/${b.dataset.ren}/label`, {label: l}); loadHist(); } }));
 }
 $('#cmp').onclick = guard(async () => {
   const r = await api('/api/compare', {a: [...hsel.a], b: [...hsel.b]});
-  $('#cmpres').innerHTML = r.rows.length ? `<h3>B par rapport à A (${r.n_a} session(s) contre ${r.n_b})</h3><table><tr><th>Mesure</th><th class="n">A</th><th class="n">B</th><th class="n">Écart</th><th class="n">Variabilité</th><th>Verdict</th></tr>` +
-    r.rows.map(x => `<tr><td>${esc(x.metrique)}</td><td class="n">${fmt(x.a, 1)}</td><td class="n">${fmt(x.b, 1)}</td><td class="n">${x.delta > 0 ? '+' : ''}${fmt(x.delta, 1)}</td><td class="n">${fmt(x.variabilite, 1)}</td><td class="${x.verdict === 'amélioration' ? 'sev-ok' : x.verdict === 'dégradation' ? 'sev-probleme' : ''}">${esc(x.verdict)}</td></tr>`).join('') + '</table><p class="small muted">Une différence n\'est retenue que si elle dépasse la variabilité observée entre les répétitions de chaque groupe.</p>' : '<p class="warn">Sélectionnez au moins une session dans A et une dans B (avec des mesures comparables).</p>';
+  $('#cmpres').innerHTML = r.rows.length ? `<h3>${esc(t('cmp.res_h', r.n_a, r.n_b))}</h3><table><tr><th>${t('cmp.th.metric')}</th><th class="n">A</th><th class="n">B</th><th class="n">${t('cmp.th.gap')}</th><th class="n">${t('cmp.th.var')}</th><th>${t('cmp.th.verdict')}</th></tr>` +
+    r.rows.map(x => `<tr><td>${esc(x.metric)}</td><td class="n">${fmt(x.a, 1)}</td><td class="n">${fmt(x.b, 1)}</td><td class="n">${x.delta > 0 ? '+' : ''}${fmt(x.delta, 1)}</td><td class="n">${fmt(x.variability, 1)}</td><td class="${x.verdict === 'improvement' ? 'sev-ok' : x.verdict === 'degradation' ? 'sev-problem' : ''}">${esc(x.verdict_text)}</td></tr>`).join('') + `</table><p class="small muted">${t('cmp.note')}</p>` : `<p class="warn">${t('cmp.empty')}</p>`;
 });
 
-// ---------------------------------------------------------------- démarrage
-loadEnv(false); api('/api/config').then(c => { $('#custom').value = c.custom_target || ''; }).catch(() => {});
-fetch('/api/env').then(() => {}); poll();
+// ---------------------------------------------------------------- start
+applyI18n(); loadEnv(false); api('/api/config').then(c => { $('#custom').value = c.custom_target || ''; }).catch(() => {});
+poll();
 const TABS = ['live', 'sat', 'diag', 'router', 'hist', 'help'];
 const startTab = location.hash.slice(1); if (TABS.includes(startTab)) showTab(startTab);
-onhashchange = () => { const t = location.hash.slice(1); if (TABS.includes(t)) showTab(t); };
+onhashchange = () => { const h = location.hash.slice(1); if (TABS.includes(h)) showTab(h); };
 </script>
 </body>
 </html>

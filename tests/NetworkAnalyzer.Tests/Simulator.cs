@@ -31,33 +31,33 @@ public static class Simulator
 
     public static readonly List<Target> Targets = new()
     {
-        new() { Id = "gateway", Label = "Passerelle (routeur)", Host = "192.168.0.1", Role = "gateway" },
-        new() { Id = "cloudflare", Label = "Cloudflare (1.1.1.1)", Host = "1.1.1.1", Role = "internet" },
-        new() { Id = "google", Label = "Google (8.8.8.8)", Host = "8.8.8.8", Role = "internet" },
-        new() { Id = "quad9", Label = "Quad9 (9.9.9.9)", Host = "9.9.9.9", Role = "internet" },
-        new() { Id = "custom", Label = "Personnalisée (jeu.example.net)", Host = "jeu.example.net", Role = "custom" },
+        new() { Id = "gateway", Host = "192.168.0.1", Role = "gateway" },
+        new() { Id = "cloudflare", Host = "1.1.1.1", Role = "internet" },
+        new() { Id = "google", Host = "8.8.8.8", Role = "internet" },
+        new() { Id = "quad9", Host = "9.9.9.9", Role = "internet" },
+        new() { Id = "custom", Host = "game.example.net", Role = "custom" },
     };
 
     public static readonly string[] Scenarios =
-        { "sain", "wifi_instable", "bufferbloat", "fai", "fai_un_seul", "custom_seul", "dns", "fond", "saturation", "filaire_routeur", "icmp_bloque" };
+        { "healthy", "wifi_unstable", "bufferbloat", "isp", "isp_single_path", "custom_only", "dns", "background", "saturation", "wired_router", "icmp_blocked" };
 
     static SimParams Scenario(string scn) => scn switch
     {
-        "sain" => new() { Marks = { 400 } },
-        "wifi_instable" => new() { Signal = 38, Events = { new("gw_loss", 200, 235), new("gw_loss", 520, 560) }, Marks = { 215 }, Roam = { 205 }, Neighbors = new WifiNeighbors { Total = 12, SameChannelStrong = 4 } },
+        "healthy" => new() { Marks = { 400 } },
+        "wifi_unstable" => new() { Signal = 38, Events = { new("gw_loss", 200, 235), new("gw_loss", 520, 560) }, Marks = { 215 }, Roam = { 205 }, Neighbors = new WifiNeighbors { Total = 12, SameChannelStrong = 4 } },
         "bufferbloat" => new() { Load = new LoadSim(), Link = "ethernet" },
-        "fai" => new() { Events = { new("inet_all", 300, 360), new("inet_all", 620, 660) }, Marks = { 320 }, Link = "ethernet" },
-        "fai_un_seul" => new() { Events = { new("inet_one", 300, 360, "google"), new("inet_one", 620, 660, "google") }, Marks = { 320 }, Link = "ethernet" },
-        "custom_seul" => new() { Events = { new("custom_only", 300, 350), new("custom_only", 600, 640) }, Marks = { 320 }, Link = "ethernet" },
+        "isp" => new() { Events = { new("inet_all", 300, 360), new("inet_all", 620, 660) }, Marks = { 320 }, Link = "ethernet" },
+        "isp_single_path" => new() { Events = { new("inet_one", 300, 360, "google"), new("inet_one", 620, 660, "google") }, Marks = { 320 }, Link = "ethernet" },
+        "custom_only" => new() { Events = { new("custom_only", 300, 350), new("custom_only", 600, 640) }, Marks = { 320 }, Link = "ethernet" },
         "dns" => new() { DnsHit = 190.0, DnsMiss = 800.0, RefMiss = 60.0, Link = "ethernet", Marks = { 300 } },
-        "fond" => new() { Events = { new("bg_traffic", 250, 290, Mbps: 45.0), new("bg_traffic", 520, 560, Mbps: 45.0) }, Marks = { 270 }, Link = "ethernet" },
+        "background" => new() { Events = { new("bg_traffic", 250, 290, Mbps: 45.0), new("bg_traffic", 520, 560, Mbps: 45.0) }, Marks = { 270 }, Link = "ethernet" },
         "saturation" => new() { Events = { new("bg_traffic", 250, 300, Mbps: 92.0), new("bg_traffic", 560, 610, Mbps: 92.0) }, Marks = { 270 }, Link = "ethernet" },
-        "filaire_routeur" => new() { Events = { new("gw_loss", 200, 240), new("gw_loss", 500, 540) }, Marks = { 220 }, Link = "ethernet" },
-        "icmp_bloque" => new() { Link = "ethernet", IcmpBlocked = { "custom" } },
+        "wired_router" => new() { Events = { new("gw_loss", 200, 240), new("gw_loss", 500, 540) }, Marks = { 220 }, Link = "ethernet" },
+        "icmp_blocked" => new() { Link = "ethernet", IcmpBlocked = { "custom" } },
         _ => throw new ArgumentException(scn),
     };
 
-    static readonly (string Name, int A, int B)[] PhaseSchedule = { ("repos", 30, 40), ("download", 60, 75), ("recup1", 80, 90), ("upload", 100, 115), ("recup2", 120, 130) };
+    static readonly (string Name, int A, int B)[] PhaseSchedule = { ("idle", 30, 40), ("download", 60, 75), ("recovery1", 80, 90), ("upload", 100, 115), ("recovery2", 120, 130) };
 
     public static SessionData Make(string scn, int seed = 7, Action<SimParams>? tweak = null)
     {
@@ -135,12 +135,12 @@ public static class Simulator
                 Add("wifi:signal", t, sig + r.Next(-3, 4));
             }
         }
-        var marks = p.Marks.Select(m => new Mark { T = T0 + m, Kind = "lag" }).Concat(p.Roam.Select(m => new Mark { T = T0 + m, Kind = "roam", Note = "roam" })).OrderBy(m => m.T).ToList();
+        var marks = p.Marks.Select(m => new Mark { T = T0 + m, Kind = "lag" }).Concat(p.Roam.Select(m => new Mark { T = T0 + m, Kind = "roam" })).OrderBy(m => m.T).ToList();
         var phases = p.Load != null ? PhaseSchedule.Select(x => new Phase { Name = x.Name, T0 = T0 + x.A, T1 = T0 + x.B }).ToList() : new List<Phase>();
         return new SessionData
         {
             Id = 1, Started = T0, Ended = T0 + n, Label = scn, Link = p.Link, PlannedS = n,
-            Meta = new SessionMeta { Targets = Targets.Select(t => new Target { Id = t.Id, Label = t.Label, Host = t.Host, Role = t.Role }).ToList(), WifiNeighbors = p.Neighbors },
+            Meta = new SessionMeta { Targets = Targets.Select(t => new Target { Id = t.Id, Host = t.Host, Role = t.Role }).ToList(), WifiNeighbors = p.Neighbors },
             Series = series, Marks = marks, Phases = phases,
         };
     }

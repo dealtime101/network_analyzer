@@ -6,17 +6,19 @@ namespace NetworkAnalyzer;
 // ---------------------------------------------------------------------- output model (JSON names = snake_case of the properties)
 public sealed class Hypothesis
 {
+    /// <summary>lan | bufferbloat | saturation | router_qos | isp | dns | background</summary>
     public string Id { get; set; } = "";
-    public string Titre { get; set; } = "";
+    public string Title { get; set; } = "";
     public double Score { get; set; }
-    public List<string> Preuves { get; set; } = new();
-    public List<string> Contre { get; set; } = new();
-    public List<string> Limites { get; set; } = new();
-    public string ProchainTest { get; set; } = "";
+    public List<string> Evidence { get; set; } = new();
+    public List<string> Counter { get; set; } = new();
+    public List<string> Limits { get; set; } = new();
+    public string NextTest { get; set; } = "";
     public List<string> Actions { get; set; } = new();
-    public string Niveau { get; set; } = "faible";
+    /// <summary>low | medium | high</summary>
+    public string Level { get; set; } = "low";
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<RouterFinding>? Findings { get; set; }
-    [JsonIgnore] public string? NonEvalue { get; set; }
+    [JsonIgnore] public string? NotEvaluatedReason { get; set; }
 }
 
 public sealed class TargetFacts
@@ -43,12 +45,14 @@ public sealed class WindowFacts
 
 public sealed class TimelineItem
 {
+    /// <summary>lag | episode | gap | roam</summary>
     public string Type { get; set; } = "";
     public double T { get; set; }
     public double? T0 { get; set; }
     public double? T1 { get; set; }
+    /// <summary>local | upstream | path | custom_path | dns | none | undetermined (null for gap and roam)</summary>
     public string? Zone { get; set; }
-    public string ZoneTexte { get; set; } = "";
+    public string ZoneText { get; set; } = "";
     public string Note { get; set; } = "";
     public List<string> Details { get; set; } = new();
     [JsonIgnore] public WindowFacts? Facts { get; set; }
@@ -90,8 +94,9 @@ public sealed class TargetRow
     public string Label { get; set; } = "";
     public string Role { get; set; } = "";
     public string Host { get; set; } = "";
+    /// <summary>ok | tcp | no_response</summary>
     public string State { get; set; } = "ok";
-    public string Etat { get; set; } = "";
+    public string StateText { get; set; } = "";
     public RttStats? Stats { get; set; }
 }
 
@@ -163,53 +168,55 @@ public sealed class Metrics
     public int Incidents { get; set; }
 }
 
-public sealed class Unlikely
+public sealed class UnlikelyItem
 {
     public string Id { get; set; } = "";
-    public string Titre { get; set; } = "";
-    public List<string> Raisons { get; set; } = new();
+    public string Title { get; set; } = "";
+    public List<string> Reasons { get; set; } = new();
 }
 
-public sealed class NotEvaluated
+public sealed class NotEvaluatedItem
 {
     public string Id { get; set; } = "";
-    public string Titre { get; set; } = "";
-    public string Raison { get; set; } = "";
-    public string ProchainTest { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Reason { get; set; } = "";
+    public string NextTest { get; set; } = "";
 }
 
 public sealed class Analysis
 {
     public int Session { get; set; }
-    public List<string> Resume { get; set; } = new();
+    public List<string> Summary { get; set; } = new();
     public List<Hypothesis> Hypotheses { get; set; } = new();
-    public List<Unlikely> PeuProbables { get; set; } = new();
-    public List<NotEvaluated> NonEvalue { get; set; } = new();
+    public List<UnlikelyItem> Unlikely { get; set; } = new();
+    public List<NotEvaluatedItem> NotEvaluated { get; set; } = new();
     public List<string> Actions { get; set; } = new();
     public List<TimelineItem> Timeline { get; set; } = new();
     public StatsTables Stats { get; set; } = new();
     public BloatResult? Bufferbloat { get; set; }
-    public List<string> LimitesGenerales { get; set; } = new();
-    public Dictionary<string, object> Seuils { get; set; } = new();
+    public List<string> GeneralLimits { get; set; } = new();
+    public Dictionary<string, object> Thresholds { get; set; } = new();
     public Metrics Metrics { get; set; } = new();
 }
 
 public sealed class CompareRow
 {
-    public string Metrique { get; set; } = "";
+    public string Metric { get; set; } = "";
     public double A { get; set; }
     public double B { get; set; }
     public double Delta { get; set; }
-    public double Variabilite { get; set; }
+    public double Variability { get; set; }
     public int CountA { get; set; }
     public int CountB { get; set; }
+    /// <summary>improvement | degradation | indistinct | indicative</summary>
     public string Verdict { get; set; } = "";
+    public string VerdictText { get; set; } = "";
 }
 
 /// <summary>
 /// Diagnosis engine: measurements → ranked hypotheses, each with evidence, counter-evidence, limits and a next useful test.
-/// A conclusion is always a HYPOTHESIS ("compatible with…"), never a confirmed cause. The confidence level (faible / moyenne /
-/// élevée) comes from a score accumulating weighted clues; the thresholds are gathered in <see cref="Th"/> for review.
+/// A conclusion is always a HYPOTHESIS ("compatible with…"), never a confirmed cause. The confidence level (low / medium /
+/// high) comes from a score accumulating weighted clues; the thresholds are gathered in <see cref="Th"/> for review.
 /// </summary>
 public static class Th
 {
@@ -257,7 +264,7 @@ public sealed class Ctx
     public Ctx(SessionData data)
     {
         D = data;
-        Excl = data.Phases.Where(p => p.Name != "repos").Select(p => (p.T0, p.T1)).ToList();
+        Excl = data.Phases.Where(p => p.Name != "idle").Select(p => (p.T0, p.T1)).ToList();
         foreach (var tg in data.Targets)
         {
             var raw = Diagnose.Usable(data.S($"ping:{tg.Id}"));
@@ -268,34 +275,18 @@ public sealed class Ctx
         var gw = T.GetValueOrDefault("gateway");
         Gw = gw != null && gw.State != "no_response" ? gw : null;
         Inet = T.Values.Where(x => x.Tg.Role == "internet" && x.State != "no_response").ToList();
-        Link = string.IsNullOrEmpty(data.Link) ? "inconnu" : data.Link;
+        Link = string.IsNullOrEmpty(data.Link) ? "unknown" : data.Link;
     }
 
     public List<Sample> Series(string name) => Stats.Outside(D.S(name), Excl);
 }
 
-public static class Diagnose
+public static partial class Diagnose
 {
     static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     static readonly (double Lim, string G)[] Grades = { (5, "A+"), (30, "A"), (60, "B"), (200, "C"), (400, "D") };
 
-    static readonly Dictionary<string, string> ZoneText = new()
-    {
-        ["local"] = "réseau local / Wi-Fi / routeur : la passerelle est affectée",
-        ["amont"] = "en amont du routeur (accès Internet, fournisseur ou trajet) : la passerelle est saine mais plusieurs destinations Internet sont affectées",
-        ["trajet"] = "trajet vers une seule destination Internet : les autres destinations et la passerelle sont sains",
-        ["trajet_custom"] = "trajet vers votre destination personnalisée : le reste d'Internet et la passerelle sont sains",
-        ["dns"] = "résolution DNS : les pings sont sains mais le DNS est lent ou en échec",
-        ["aucune"] = "aucune anomalie réseau mesurée sur ce créneau (le lag viendrait d'ailleurs : PC, jeu, serveur — non mesuré ici)",
-        ["indetermine"] = "créneau sans mesure suffisante",
-    };
-
-    public static readonly string[] LimitesGenerales =
-    {
-        "Les pings ICMP peuvent être traités en basse priorité par un routeur ou filtrés : une perte ICMP n'est pas toujours une perte réelle de trafic.",
-        "Les mesures viennent de CET ordinateur : elles ne représentent pas le trafic des autres appareils de la maison.",
-        "Aucune capture du contenu des communications n'est faite : seules des métadonnées (temps, compteurs) sont utilisées.",
-    };
+    static string T(string key, params object?[] args) => Loc.T(key, args);
 
     // ------------------------------------------------------------------ helpers
     static string F0(double x) => x.ToString("0", Inv);
@@ -305,8 +296,9 @@ public static class Diagnose
     static string FmtMs(double? x) => x is null ? "—" : F0(x.Value) + " ms";
     static double? Mbps(double? bps) => bps is null ? null : bps / 1e6;
     static int Z(Dictionary<string, int> z, string k) => z.GetValueOrDefault(k);
+    static string Cap(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
-    public static string Level(double score) => score >= 7 ? "élevée" : score >= 4 ? "moyenne" : "faible";
+    public static string Level(double score) => score >= 7 ? "high" : score >= 4 ? "medium" : "low";
 
     public static string Grade(double delta)
     {
@@ -320,8 +312,9 @@ public static class Diagnose
         return kind == "gateway" ? Math.Max(Math.Max(20.0, b * 3), b + 15) : Math.Max(b * 2.0, b + 40);
     }
 
+    /// <summary>Drops the first seconds "without any answer" when the target was finally measured over TCP.</summary>
     public static List<Sample> Usable(IReadOnlyList<Sample> s)
-        => s.Any(x => x.Info == "tcp") ? s.Where(x => x.Info != "icmp_sans_reponse").ToList() : s.ToList();
+        => s.Any(x => x.Info == "tcp") ? s.Where(x => x.Info != "icmp_no_reply").ToList() : s.ToList();
 
     public static string TargetState(IReadOnlyList<Sample> s)
     {
@@ -378,19 +371,18 @@ public static class Diagnose
         var cust = f.Targets.Values.Where(v => v.Role == "custom").ToList();
         var badInet = inet.Where(v => v.Bad).ToList();
         if (gw.Count > 0 && gw[0].Bad) return "local";
-        if (badInet.Count >= 2 || (inet.Count == 1 && badInet.Count > 0)) return "amont";
-        if (badInet.Count > 0) return "trajet";
-        if (cust.Count > 0 && cust[0].Bad) return "trajet_custom";
+        if (badInet.Count >= 2 || (inet.Count == 1 && badInet.Count > 0)) return "upstream";
+        if (badInet.Count > 0) return "path";
+        if (cust.Count > 0 && cust[0].Bad) return "custom_path";
         if (DnsBad(f)) return "dns";
-        if (!f.Targets.Values.Any(v => v.Stats != null && v.Stats.N >= 3)) return "indetermine";
-        return "aucune";
+        if (!f.Targets.Values.Any(v => v.Stats != null && v.Stats.N >= 3)) return "undetermined";
+        return "none";
     }
 
     static string ZoneTextOf(string z, WindowFacts f)
     {
-        var t = ZoneText[z];
-        if (z is "amont" or "trajet" && PcBusy(f))
-            t += $" — ATTENTION : ce PC échange ≥ {G(Th.BusyMbps)} Mbps au même moment, la hausse de latence peut venir de ce trafic lui‑même";
+        var t = T("d.zone." + z);
+        if (z is "upstream" or "path" && PcBusy(f)) t += T("d.zone.busy", G(Th.BusyMbps));
         return t;
     }
 
@@ -401,12 +393,12 @@ public static class Diagnose
         {
             var s = v.Stats;
             if (s != null && s.N > 0)
-                parts.Add($"{v.Label} : médiane {FmtMs(s.Median)}, max {FmtMs(s.Max)}, perte {F0(s.LossPct)} %" + (v.Bad ? " ⚠" : ""));
+                parts.Add(T("d.win.target", v.Label, FmtMs(s.Median), FmtMs(s.Max), F0(s.LossPct)) + (v.Bad ? " ⚠" : ""));
         }
-        if (f.DnsHit != null) parts.Add($"DNS : médiane {FmtMs(f.DnsHit.Median)}, échecs {F0(f.DnsHit.LossPct)} %");
+        if (f.DnsHit != null) parts.Add(T("d.win.dns", FmtMs(f.DnsHit.Median), F0(f.DnsHit.LossPct)));
         if (f.NetDownMed != null)
-            parts.Add($"Trafic du PC : ↓ {F1(f.NetDownMed.Value)} Mbps (max {F1(f.NetDownMax!.Value)}), ↑ {F1(f.NetUpMed!.Value)} Mbps (max {F1(f.NetUpMax!.Value)})");
-        if (f.WifiSignalMin != null) parts.Add($"Signal Wi‑Fi min {G(f.WifiSignalMin.Value)} %");
+            parts.Add(T("d.win.traffic", F1(f.NetDownMed.Value), F1(f.NetDownMax!.Value), F1(f.NetUpMed!.Value), F1(f.NetUpMax!.Value)));
+        if (f.WifiSignalMin != null) parts.Add(T("d.win.wifi", G(f.WifiSignalMin.Value)));
         return parts;
     }
 
@@ -451,21 +443,21 @@ public static class Diagnose
             {
                 var f = WindowFactsOf(cx, m.T - Th.IncidentBeforeS, m.T + Th.IncidentAfterS);
                 var z = Localize(f);
-                items.Add(new TimelineItem { Type = "lag", T = m.T, T0 = f.T0, T1 = f.T1, Zone = z, ZoneTexte = ZoneTextOf(z, f), Note = m.Note, Details = Describe(f), Facts = f });
+                items.Add(new TimelineItem { Type = "lag", T = m.T, T0 = f.T0, T1 = f.T1, Zone = z, ZoneText = ZoneTextOf(z, f), Note = m.Note, Details = Describe(f), Facts = f });
             }
             else if (m.Kind is "gap" or "roam")
-                items.Add(new TimelineItem { Type = m.Kind, T = m.T, Zone = null, ZoneTexte = m.Note });
+                items.Add(new TimelineItem { Type = m.Kind, T = m.T, Zone = null, ZoneText = T("mark." + m.Kind) });
         }
         foreach (var e in DetectEpisodes(cx))
         {
             var f = WindowFactsOf(cx, e.T0 - 2, e.T1 + 2);
             var z = Localize(f);
-            if (z is "aucune" or "indetermine") continue;  // isolated, scattered losses: noise, not an episode
+            if (z is "none" or "undetermined") continue;  // isolated, scattered losses: noise, not an episode
             var names = string.Join(", ", e.Targets.Select(kv => $"{cx.T[kv.Key].Tg.Label} ({kv.Value})"));
             items.Add(new TimelineItem
             {
-                Type = "episode", T = e.T0, T0 = e.T0, T1 = e.T1, Zone = z, ZoneTexte = ZoneTextOf(z, f),
-                Note = $"Épisode détecté automatiquement : {e.Events} mesures dégradées ({names}).", Details = Describe(f), Facts = f,
+                Type = "episode", T = e.T0, T0 = e.T0, T1 = e.T1, Zone = z, ZoneText = ZoneTextOf(z, f),
+                Note = T("d.episode.note", e.Events, names), Details = Describe(f), Facts = f,
             });
         }
         return items.OrderBy(i => i.T).ToList();
@@ -479,7 +471,7 @@ public static class Diagnose
         var d = cx.D;
         var down = PhaseWindow(d, "download");
         var up = PhaseWindow(d, "upload");
-        var idle = PhaseWindow(d, "repos");
+        var idle = PhaseWindow(d, "idle");
         if (down.Count == 0 && up.Count == 0) return null;
         var res = new BloatResult();
         foreach (var (name, wins) in new[] { ("download", down), ("upload", up) })
@@ -524,53 +516,56 @@ public static class Diagnose
     }
 
     // ------------------------------------------------------------------ hypotheses
-    static Hypothesis H(string id, string titre) => new() { Id = id, Titre = titre };
+    static Hypothesis H(string id, string titleKey) => new() { Id = id, Title = T(titleKey) };
+
+    static Dictionary<string, int> ZoneCounts(IEnumerable<TimelineItem> items)
+    {
+        var d = new Dictionary<string, int>();
+        foreach (var i in items) if (i.Zone != null) d[i.Zone] = d.GetValueOrDefault(i.Zone) + 1;
+        return d;
+    }
 
     static Hypothesis RuleLan(Ctx cx, List<TimelineItem> timeline, BloatResult? bloat)
     {
-        var h = H("lan", "Instabilité du Wi‑Fi ou du réseau local");
-        h.Limites.Add("Le routeur peut répondre lentement aux pings tout en acheminant bien le trafic (ICMP en basse priorité) : " +
-                      "une gigue vers la passerelle seule ne prouve pas un problème de réseau.");
-        h.Limites.Add("Le « signal % » de Windows est une échelle grossière ; l'application ne mesure ni l'occupation du canal ni les interférences.");
-        h.ProchainTest = cx.Link == "wifi"
-            ? "Refaire exactement la même surveillance en Ethernet (câble). Si les épisodes disparaissent, le Wi‑Fi est en cause ; s'ils persistent, regarder le câble, le port ou le routeur."
-            : "Brancher un autre appareil en Ethernet sur un autre port du routeur et comparer, puis tester un autre câble.";
+        var h = H("lan", "lan.title");
+        h.Limits.Add(T("lan.limit1"));
+        h.Limits.Add(T("lan.limit2"));
+        h.NextTest = T(cx.Link == "wifi" ? "lan.next_wifi" : "lan.next_wired");
         var gw = cx.Gw?.Stats;
-        if (cx.T.ContainsKey("gateway") && cx.Gw is null)
-            h.Limites.Add("La passerelle ne répond pas aux pings ICMP : le réseau local n'a pas pu être évalué par cette méthode.");
+        if (cx.T.ContainsKey("gateway") && cx.Gw is null) h.Limits.Add(T("lan.limit_gw_noicmp"));
         if (gw != null)
         {
             if (gw.LossPct >= Th.GwLossPct)
             {
                 h.Score += gw.LossPct >= 5 ? 4 : 3;
-                h.Preuves.Add($"Perte vers la passerelle : {F1(gw.LossPct)} % ({gw.Lost} sur {gw.N} requêtes).");
+                h.Evidence.Add(T("lan.ev.gw_loss", F1(gw.LossPct), gw.Lost, gw.N));
             }
             if (gw.P95 != null && gw.P95 >= Th.GwP95Ms)
             {
                 h.Score += 2;
-                h.Preuves.Add($"Latence vers la passerelle p95 = {FmtMs(gw.P95)} (max {FmtMs(gw.Max)}) ; un réseau local sain reste généralement sous quelques ms (Ethernet) à ~20 ms (Wi‑Fi).");
+                h.Evidence.Add(T("lan.ev.gw_p95", FmtMs(gw.P95), FmtMs(gw.Max)));
             }
             else if (gw.Max != null && gw.Max >= Th.GwMaxMs)
             {
                 h.Score += 1;
-                h.Preuves.Add($"Pics ponctuels vers la passerelle jusqu'à {FmtMs(gw.Max)}.");
+                h.Evidence.Add(T("lan.ev.gw_peaks", FmtMs(gw.Max)));
             }
             if (gw.Jitter != null && gw.Jitter >= Th.GwJitterMs)
             {
                 h.Score += 1;
-                h.Preuves.Add($"Gigue vers la passerelle élevée : {F1(gw.Jitter.Value)} ms.");
+                h.Evidence.Add(T("lan.ev.gw_jitter", F1(gw.Jitter.Value)));
             }
             if (h.Score == 0 && gw.LossPct < 0.5 && (gw.P95 ?? 0) < Th.GwCleanP95Ms)
-                h.Contre.Add($"Passerelle stable : perte {F1(gw.LossPct)} %, p95 {FmtMs(gw.P95)}, max {FmtMs(gw.Max)}.");
+                h.Counter.Add(T("lan.counter.gw_stable", F1(gw.LossPct), FmtMs(gw.P95), FmtMs(gw.Max)));
         }
         var zones = ZoneCounts(timeline.Where(i => i.Type is "lag" or "episode"));
         int total = zones.Values.Sum();
         if (total > 0 && Z(zones, "local") > 0)
         {
             h.Score += 1 + ((double)Z(zones, "local") / total >= 0.5 ? 2 : 0);
-            h.Preuves.Add($"{Z(zones, "local")} épisode(s)/incident(s) sur {total} touchent d'abord la passerelle (donc en deçà d'Internet).");
+            h.Evidence.Add(T("lan.ev.zones_local", Z(zones, "local"), total));
         }
-        else if (total > 0) h.Contre.Add($"Aucun des {total} épisode(s)/incident(s) ne dégrade la passerelle.");
+        else if (total > 0) h.Counter.Add(T("lan.counter.zones_none", total));
         if (cx.Link == "wifi")
         {
             var sig = Stats.Values(cx.Series("wifi:signal"));
@@ -580,79 +575,70 @@ public static class Diagnose
                 if (med < Th.WifiWeakPct)
                 {
                     h.Score += 2;
-                    h.Preuves.Add($"Signal Wi‑Fi faible : médiane {F0(med)} % (min {G(mn)} %).");
+                    h.Evidence.Add(T("lan.ev.wifi_weak", F0(med), G(mn)));
                 }
                 else if (mn < Th.WifiVeryWeakPct)
                 {
                     h.Score += 1;
-                    h.Preuves.Add($"Chutes du signal Wi‑Fi jusqu'à {G(mn)} % (médiane {F0(med)} %).");
+                    h.Evidence.Add(T("lan.ev.wifi_drops", G(mn), F0(med)));
                 }
-                else h.Contre.Add($"Signal Wi‑Fi correct : médiane {F0(med)} %, min {G(mn)} %.");
+                else h.Counter.Add(T("lan.counter.wifi_ok", F0(med), G(mn)));
             }
             var tx = Stats.Values(cx.Series("wifi:tx"));
             if (tx.Count > 0 && Stats.Median(tx) is { } txm and > 0 && tx.Min() < 0.5 * txm)
             {
                 h.Score += 1;
-                h.Preuves.Add($"Le débit de LIAISON Wi‑Fi (≠ débit Internet) chute de {F0(txm)} à {F0(tx.Min())} Mbit/s.");
+                h.Evidence.Add(T("lan.ev.wifi_link", F0(txm), F0(tx.Min())));
             }
             var roams = cx.D.Marks.Count(m => m.Kind == "roam");
             if (roams > 0)
             {
                 h.Score += 1;
-                h.Preuves.Add($"{roams} changement(s) de point d'accès Wi‑Fi pendant la session.");
+                h.Evidence.Add(T("lan.ev.roams", roams));
             }
             var nb = cx.D.Meta.WifiNeighbors;
             if (nb != null && nb.SameChannelStrong >= 3)
             {
                 h.Score += 1;
-                h.Preuves.Add($"{nb.SameChannelStrong} réseaux voisins avec un signal notable sur le même canal (indicatif ; les interférences non Wi‑Fi — micro‑ondes, Bluetooth — ne sont pas mesurables ici).");
+                h.Evidence.Add(T("lan.ev.neighbors", nb.SameChannelStrong));
             }
-            if (sig.Count == 0) h.Limites.Add("Aucune mesure Wi‑Fi disponible (Windows ne les a pas exposées).");
+            if (sig.Count == 0) h.Limits.Add(T("lan.limit_no_wifi"));
         }
-        else if (cx.Link == "ethernet") h.Contre.Add("Connexion filaire : le Wi‑Fi est hors de cause pour cette session.");
+        else if (cx.Link == "ethernet") h.Counter.Add(T("lan.counter.wired"));
         if (bloat != null)
         {
             var g = bloat.Directions.Values.Where(r => r.GwDelta.HasValue).Select(r => r.GwDelta!.Value).ToList();
             if (g.Count > 0 && g.Max() >= 30)
             {
                 h.Score += 2;
-                h.Preuves.Add($"Sous charge, la latence vers la passerelle monte aussi (+{F0(g.Max())} ms) : le lien local lui‑même sature (Wi‑Fi ou file du routeur côté LAN).");
+                h.Evidence.Add(T("lan.ev.load_gw", F0(g.Max())));
             }
         }
-        h.Actions = cx.Link == "wifi"
-            ? new() { "Rapprocher l'ordinateur du routeur ou utiliser un câble Ethernet pour comparer.", "Si Wi‑Fi : changer de canal/bande (5 GHz) et éloigner le routeur des sources d'interférences." }
-            : new() { "Vérifier câble et port du routeur ; redémarrer le routeur puis refaire une session pour comparer." };
+        h.Actions = cx.Link == "wifi" ? new() { T("lan.action.wifi1"), T("lan.action.wifi2") } : new() { T("lan.action.wired") };
         return h;
-    }
-
-    static Dictionary<string, int> ZoneCounts(IEnumerable<TimelineItem> items)
-    {
-        var d = new Dictionary<string, int>();
-        foreach (var i in items) if (i.Zone != null) d[i.Zone] = d.GetValueOrDefault(i.Zone) + 1;
-        return d;
     }
 
     static Hypothesis RuleBufferbloat(Ctx cx, BloatResult? bloat)
     {
-        var h = H("bufferbloat", "Bufferbloat (latence qui explose quand la connexion est chargée)");
-        h.Limites.Add("Le débit obtenu peut être borné par le serveur de test, le Wi‑Fi ou le PC : résultat INDICATIF.");
-        h.Limites.Add("Le ping ICMP n'est pas forcément traité comme votre trafic de jeu (une file QoS peut les séparer).");
-        h.ProchainTest = "Refaire le test de saturation en Ethernet, puis après un seul changement de réglage (limite QoS/SQM), avec le protocole avant/après.";
+        var h = H("bufferbloat", "bloat.title");
+        h.Limits.Add(T("bloat.limit1"));
+        h.Limits.Add(T("bloat.limit2"));
+        h.NextTest = T("bloat.next");
         if (bloat is null)
         {
-            h.NonEvalue = "Aucun test de saturation dans cette session : lancez l'onglet « Test de saturation ».";
+            h.NotEvaluatedReason = T("bloat.not_eval.none");
             return h;
         }
-        foreach (var (dkey, dname) in new[] { ("down", "téléchargement"), ("up", "envoi") })
+        foreach (var dkey in new[] { "down", "up" })
         {
             if (!bloat.Directions.TryGetValue(dkey, out var r)) continue;
-            var cap = char.ToUpperInvariant(dname[0]) + dname[1..];
+            var dname = T("d.dir." + dkey);
+            var cap = Cap(dname);
             if (!r.Valid)
             {
                 var ph = cx.D.Phases.FirstOrDefault(p => p.Name == (dkey == "down" ? "download" : "upload"));
-                bool early = ph?.Meta.PlafondVolumeAtteint == true;
-                h.Limites.Add($"Phase {dname} non concluante (débit {(r.Mbps != null ? F1(r.Mbps.Value) + " Mbps" : "nul")} ou cibles muettes) : la ligne n'a pas été réellement chargée."
-                              + (early ? $" Le plafond de volume a été atteint en {G(ph!.Meta.DureeS ?? 0)} s : relancez avec un plafond plus élevé." : ""));
+                bool early = ph?.Meta.VolumeCapReached == true;
+                h.Limits.Add(T("bloat.limit_invalid", dname, r.Mbps != null ? F1(r.Mbps.Value) + " Mbps" : T("bloat.none")) + (early ? T("bloat.cap_early", G(ph!.Meta.DurationS ?? 0)) : ""));
                 continue;
             }
             double delta = r.Delta!.Value;
@@ -661,38 +647,35 @@ public static class Diagnose
             if (localPart >= 0.5 && r.GwDelta >= 10) s = 1.0;   // most of the delay already shows before the router: it is not the line's queue
             else if (localPart >= 0.2 && r.GwDelta >= 10) s -= 1.5;
             h.Score = Math.Max(h.Score, s);
-            h.Preuves.Add($"{cap} : latence Internet médiane {F0(r.IdleMed!.Value)} → {F0(r.LoadMed!.Value)} ms (+{F0(delta)} ms, note indicative {r.Grade}), " +
-                          $"p95 sous charge {FmtMs(r.LoadP95)}, perte max {F1(r.LossPct!.Value)} %, débit soutenu {F0(r.Mbps!.Value)} Mbps.");
+            h.Evidence.Add(T("bloat.ev", cap, F0(r.IdleMed!.Value), F0(r.LoadMed!.Value), F0(delta), r.Grade, FmtMs(r.LoadP95), F1(r.LossPct!.Value), F0(r.Mbps!.Value)));
             if (r.GwDelta.HasValue && delta >= 30)
             {
-                if (r.GwDelta < 10)
-                    h.Preuves.Add($"{cap} : la passerelle reste stable (+{F0(r.GwDelta.Value)} ms) alors qu'Internet monte : la file d'attente se forme au‑delà du réseau local (sortie du routeur, modem ou ligne) — compatible avec du bufferbloat.");
-                else
-                    h.Contre.Add($"{cap} : la latence vers la passerelle monte aussi (+{F0(r.GwDelta.Value)} ms) : le lien local sature, on ne peut pas attribuer (tout) le retard à la ligne Internet.");
+                if (r.GwDelta < 10) h.Evidence.Add(T("bloat.ev_gw_stable", cap, F0(r.GwDelta.Value)));
+                else h.Counter.Add(T("bloat.counter_gw", cap, F0(r.GwDelta.Value)));
             }
-            if (delta < Th.BloatDeltaMs[^1].Lim) h.Contre.Add($"{cap} : latence stable sous charge (+{F0(delta)} ms).");
+            if (delta < Th.BloatDeltaMs[^1].Lim) h.Counter.Add(T("bloat.counter_stable", cap, F0(delta)));
         }
         if (!bloat.Directions.Values.Any(r => r.Valid))
         {
-            h.NonEvalue = "Le test de saturation n'a pas chargé la ligne de façon exploitable (voir les limites) : bufferbloat non évalué.";
+            h.NotEvaluatedReason = T("bloat.not_eval.unusable");
             return h;
         }
         if (cx.Link == "wifi" && h.Score > 0)
         {
             h.Score = Math.Max(0.0, h.Score - 1);
-            h.Limites.Add("Test réalisé en Wi‑Fi : le Wi‑Fi peut ajouter de la latence sous charge ; refaire en Ethernet pour isoler la ligne.");
+            h.Limits.Add(T("bloat.limit_wifi"));
         }
         h.Score = Math.Max(h.Score, 0.0);
-        h.Actions = new() { "Activer une gestion de file (SQM/Smart Queue) si votre routeur la propose, sinon limiter manuellement débit montant/descendant à ~90–95 % du débit mesuré." };
+        h.Actions = new() { T("bloat.action") };
         return h;
     }
 
     static Hypothesis RuleSaturation(Ctx cx, List<TimelineItem> timeline, BloatResult? bloat, AppConfig cfg)
     {
-        var h = H("saturation", "Saturation du téléchargement ou de l'envoi");
-        h.Limites.Add("Seul le trafic de CET ordinateur est visible ; les autres appareils de la maison peuvent saturer la ligne sans apparaître ici.");
-        h.Limites.Add("Sans débit annoncé ni test de saturation, la capacité de la ligne est inconnue.");
-        h.ProchainTest = "Pendant un lag, noter ce que font les autres appareils (streaming, mises à jour) ; renseigner le débit annoncé ou lancer le test pour connaître la capacité.";
+        var h = H("saturation", "sat.title");
+        h.Limits.Add(T("sat.limit1"));
+        h.Limits.Add(T("sat.limit2"));
+        h.NextTest = T("sat.next");
         double? Capacity(string d, double? plan)
         {
             double? measured = bloat?.Directions.GetValueOrDefault(d)?.Mbps;
@@ -709,50 +692,47 @@ public static class Diagnose
             if (Sat("down", f.NetDownMed) || Sat("up", f.NetUpMed)) nSat++;
         }
         string CapTxt(string d) => cap[d] is { } v ? G(v) : "?";
+        int pct = (int)(Th.SatRatio * 100);
         if (nSat > 0)
         {
             h.Score += 3 + ((double)nSat / total >= 0.5 ? 2 : 0);
-            h.Preuves.Add($"Pendant {nSat} des {total} épisode(s)/incident(s), le trafic de ce PC dépasse {(int)(Th.SatRatio * 100)} % de la capacité connue (↓ {CapTxt("down")} / ↑ {CapTxt("up")} Mbps).");
+            h.Evidence.Add(T("sat.ev.pc_over", nSat, total, pct, CapTxt("down"), CapTxt("up")));
         }
-        foreach (var (d, name) in new[] { ("down", "descendant"), ("up", "montant") })
+        foreach (var d in new[] { "down", "up" })
         {
             var v = Stats.Values(cx.Series($"net:{d}_bps"));
             if (v.Count > 0 && cap[d] is > 0)
             {
-                double p95 = Stats.Percentile(v.OrderBy(x => x).ToList(), 95)! .Value / 1e6;
+                double p95 = Stats.Percentile(v.OrderBy(x => x).ToList(), 95)!.Value / 1e6;
                 if (p95 >= Th.SatRatio * cap[d]!.Value)
                 {
                     h.Score += 1;
-                    h.Preuves.Add($"Le trafic {name} du PC atteint ≥ {(int)(Th.SatRatio * 100)} % de la capacité (p95 {F0(p95)} Mbps).");
+                    h.Evidence.Add(T("sat.ev.p95", T("d.adj." + d), pct, F0(p95)));
                 }
             }
         }
-        var foyer = timeline.Where(i => i.Type is "lag" or "episode" && i.Zone is "amont" or "trajet" && (i.Facts!.NetDownMed ?? 0) < 2 && (i.Facts.NetUpMed ?? 0) < 2).ToList();
-        if (foyer.Count > 0 && nSat == 0)
+        var household = timeline.Where(i => i.Type is "lag" or "episode" && i.Zone is "upstream" or "path" && (i.Facts!.NetDownMed ?? 0) < 2 && (i.Facts.NetUpMed ?? 0) < 2).ToList();
+        if (household.Count > 0 && nSat == 0)
         {
             h.Score += 1;
-            h.Preuves.Add($"{foyer.Count} épisode(s) avec latence Internet élevée alors que ce PC échange peu de données : un autre appareil du foyer pourrait saturer la ligne (indice faible, non vérifiable depuis ce PC).");
+            h.Evidence.Add(T("sat.ev.household", household.Count));
         }
-        if (total > 0 && nSat == 0 && cap["down"] is > 0 && foyer.Count == 0) h.Contre.Add("Le trafic de ce PC reste loin de la capacité pendant les épisodes.");
-        h.Actions = new()
-        {
-            "Mettre en pause les téléchargements/mises à jour/streaming pendant le jeu, puis refaire une session pour comparer.",
-            "Consulter la page d'état du routeur (appareils connectés / trafic) pendant un lag, si elle existe sur votre modèle.",
-        };
+        if (total > 0 && nSat == 0 && cap["down"] is > 0 && household.Count == 0) h.Counter.Add(T("sat.counter.far"));
+        h.Actions = new() { T("sat.action1"), T("sat.action2") };
         return h;
     }
 
     static Hypothesis RuleRouter(Ctx cx, BloatResult? bloat, AppConfig cfg)
     {
-        var h = H("routeur_qos", "Problème de routeur ou de configuration QoS");
-        h.Limites.Add("L'application ne lit pas le routeur automatiquement : elle ne connaît que ce que vous avez saisi dans l'onglet Routeur & QoS.");
-        h.Limites.Add("Priorisation QoS ≠ gestion de file (SQM) : ne pas supposer que votre modèle propose SQM (à vérifier dans la documentation officielle de votre modèle et firmware).");
-        h.ProchainTest = "Renseigner la configuration QoS, appliquer UN seul changement proposé, puis refaire le test de saturation selon le protocole avant/après.";
+        var h = H("router_qos", "router.title");
+        h.Limits.Add(T("rq.limit1"));
+        h.Limits.Add(T("rq.limit2"));
+        h.NextTest = T("rq.next");
         var gw = cx.Gw?.Stats;
         if (cx.Link == "ethernet" && gw != null && (gw.LossPct >= Th.GwLossPct || (gw.P95 ?? 0) >= Th.GwP95Ms))
         {
             h.Score += 3;
-            h.Preuves.Add($"Connexion filaire mais la passerelle est instable (perte {F1(gw.LossPct)} %, p95 {FmtMs(gw.P95)}) : le routeur (charge, firmware), le câble ou le port sont à examiner.");
+            h.Evidence.Add(T("rq.ev.wired", F1(gw.LossPct), FmtMs(gw.P95)));
         }
         var rcfg = cfg.Router;
         (double? Down, double? Up) meas = (bloat?.Directions.GetValueOrDefault("down")?.Mbps, bloat?.Directions.GetValueOrDefault("up")?.Mbps);
@@ -761,51 +741,48 @@ public static class Diagnose
         h.Findings = findings;
         foreach (var f in findings)
         {
-            if (f.Severite == "probleme") { h.Score += 2; h.Preuves.Add(f.Texte); }
-            else if (f.Severite == "attention") { h.Score += 1; h.Preuves.Add(f.Texte); }
-            else if (f.Severite == "ok") h.Contre.Add(f.Texte);
+            if (f.Severity == "problem") { h.Score += 2; h.Evidence.Add(f.Text); }
+            else if (f.Severity == "warning") { h.Score += 1; h.Evidence.Add(f.Text); }
+            else if (f.Severity == "ok") h.Counter.Add(f.Text);
         }
         h.Score = Math.Min(h.Score, 8.0);
-        if (rcfg is null) h.Limites.Add("Aucune configuration de routeur saisie : l'analyse QoS n'a pas pu comparer les limites aux débits mesurés.");
-        h.Actions = RouterQos.Propose(rcfg, meas, worst).Select(p => p.Changement).ToList();
-        if (h.Actions.Count == 0)
-            h.Actions.Add("Redémarrer le routeur, vérifier sur le site du constructeur si un firmware plus récent existe pour votre modèle/version matérielle, essayer un autre câble ou port.");
+        if (rcfg is null) h.Limits.Add(T("rq.limit_noconfig"));
+        h.Actions = RouterQos.Propose(rcfg, meas, worst).Select(p => p.Change).ToList();
+        if (h.Actions.Count == 0) h.Actions.Add(T("rq.action.default"));
         return h;
     }
 
     static Hypothesis RuleIsp(Ctx cx, List<TimelineItem> timeline)
     {
-        var h = H("fai", "Problème chez le fournisseur Internet ou sur un trajet Internet");
-        h.Limites.Add("Les cibles par défaut sont des résolveurs DNS publics (anycast) : elles ne passent pas forcément par le même chemin que votre jeu ou votre site.");
-        h.Limites.Add("Un traceroute ponctuel ne montre qu'un instant et trois sondes par saut.");
-        h.ProchainTest = "Refaire une session avec votre serveur de jeu comme destination personnalisée et cliquer « Je lag maintenant » pendant le lag (traceroute automatique) ; comparer à une autre heure.";
+        var h = H("isp", "isp.title");
+        h.Limits.Add(T("isp.limit1"));
+        h.Limits.Add(T("isp.limit2"));
+        h.NextTest = T("isp.next");
         var items = timeline.Where(i => i.Type is "lag" or "episode").ToList();
-        var busy = items.Where(i => i.Zone is "amont" or "trajet" && PcBusy(i.Facts!)).ToList();
+        var busy = items.Where(i => i.Zone is "upstream" or "path" && PcBusy(i.Facts!)).ToList();
         var zones = ZoneCounts(items.Where(i => !busy.Contains(i)));  // an episode where the PC itself loads the line proves nothing about the ISP
         int total = items.Count;
-        if (busy.Count > 0)
-            h.Limites.Add($"{busy.Count} épisode(s) coïncident avec un trafic soutenu (≥ {G(Th.BusyMbps)} Mbps) de ce PC : la hausse de latence peut venir de ce trafic lui‑même, ils ne sont pas retenus contre le fournisseur.");
-        if (Z(zones, "amont") > 0)
+        if (busy.Count > 0) h.Limits.Add(T("isp.limit_busy", busy.Count, G(Th.BusyMbps)));
+        if (Z(zones, "upstream") > 0)
         {
-            h.Score += (double)Z(zones, "amont") / total >= 0.5 ? 6 : 4;
-            h.Preuves.Add($"{Z(zones, "amont")} épisode(s)/incident(s) sur {total} : la passerelle est saine mais plusieurs destinations Internet indépendantes sont dégradées en même temps, sans trafic notable du PC.");
+            h.Score += (double)Z(zones, "upstream") / total >= 0.5 ? 6 : 4;
+            h.Evidence.Add(T("isp.ev.upstream", Z(zones, "upstream"), total));
         }
-        if (Z(zones, "trajet") > 0 && Z(zones, "amont") == 0)
-        {
-            h.Score += 3;
-            h.Preuves.Add($"{Z(zones, "trajet")} épisode(s) n'affectent qu'UNE destination Internet (les autres et la passerelle restent sains) : plutôt le trajet vers cette destination que la connexion entière.");
-        }
-        if (Z(zones, "trajet_custom") > 0)
+        if (Z(zones, "path") > 0 && Z(zones, "upstream") == 0)
         {
             h.Score += 3;
-            h.Preuves.Add($"{Z(zones, "trajet_custom")} épisode(s) n'affectent que votre destination personnalisée : problème possible sur le trajet ou chez ce serveur.");
+            h.Evidence.Add(T("isp.ev.path", Z(zones, "path")));
         }
-        if (total > 0 && Z(zones, "amont") + Z(zones, "trajet") + Z(zones, "trajet_custom") == 0)
-            h.Contre.Add("Aucun épisode ne dégrade Internet tout en épargnant la passerelle.");
-        if (Z(zones, "local") > 0 && Z(zones, "amont") > 0)
+        if (Z(zones, "custom_path") > 0)
+        {
+            h.Score += 3;
+            h.Evidence.Add(T("isp.ev.custom", Z(zones, "custom_path")));
+        }
+        if (total > 0 && Z(zones, "upstream") + Z(zones, "path") + Z(zones, "custom_path") == 0) h.Counter.Add(T("isp.counter.none"));
+        if (Z(zones, "local") > 0 && Z(zones, "upstream") > 0)
         {
             h.Score = Math.Min(h.Score, Math.Max(1.0, h.Score - 2));
-            h.Limites.Add("Une partie des épisodes touche aussi la passerelle : le réseau local peut expliquer une partie de la dégradation vers Internet.");
+            h.Limits.Add(T("isp.limit_partial_local"));
         }
         foreach (var tr in cx.D.Traces)
         {
@@ -814,96 +791,91 @@ public static class Diagnose
             if (a.Step != null)
             {
                 h.Score += 2;
-                h.Preuves.Add($"Traceroute vers {tr.Target} : la latence monte de {F0(a.Step.FromMs)} à {F0(a.Step.ToMs)} ms au saut {a.Step.Hop} ({a.Step.Ip ?? "adresse inconnue"}) et persiste jusqu'à la destination.");
+                h.Evidence.Add(T("isp.ev.trace_step", tr.Target, F0(a.Step.FromMs), F0(a.Step.ToMs), a.Step.Hop, a.Step.Ip ?? T("isp.unknown_ip")));
             }
             if (a.IntermediateLoss.Count > 0 && !(a.DestLossPct is > 0))
-                h.Contre.Add($"Traceroute vers {tr.Target} : perte(s) sur des sauts intermédiaires ({string.Join(", ", a.IntermediateLoss)}) NON retrouvée(s) à destination → limitation ICMP des routeurs, pas une perte réelle.");
+                h.Counter.Add(T("isp.counter.trace_icmp", tr.Target, string.Join(", ", a.IntermediateLoss)));
             else if (a.DestLossPct is > 0)
             {
                 h.Score += 1;
-                h.Preuves.Add($"Traceroute vers {tr.Target} : perte à la destination ({F0(a.DestLossPct.Value)} %).");
+                h.Evidence.Add(T("isp.ev.trace_destloss", tr.Target, F0(a.DestLossPct.Value)));
             }
         }
-        h.Actions = new()
-        {
-            "Noter heure et fréquence des épisodes et contacter le fournisseur avec le rapport exporté si les épisodes « en amont » se répètent.",
-            "Tester avec un autre appareil/ordinateur en Ethernet branché directement au modem pour exclure le routeur.",
-        };
+        h.Actions = new() { T("isp.action1"), T("isp.action2") };
         return h;
     }
 
     static Hypothesis RuleDns(Ctx cx)
     {
-        var h = H("dns", "Problème DNS");
-        h.Limites.Add("La mesure interroge directement votre résolveur en UDP/53 ; un navigateur qui utilise DNS‑sur‑HTTPS contourne ce résolveur.");
-        h.Limites.Add("Le test « à froid » utilise des noms aléatoires sous example.com (réservé à cet usage).");
-        h.ProchainTest = "Changer le DNS du PC (ex. 1.1.1.1 ou 9.9.9.9), refaire une session et comparer les temps de résolution.";
+        var h = H("dns", "dnsr.title");
+        h.Limits.Add(T("dnsr.limit1"));
+        h.Limits.Add(T("dnsr.limit2"));
+        h.NextTest = T("dnsr.next");
         var hit = Stats.Rtt(cx.Series("dns:sys_hit"));
         var miss = Stats.Rtt(cx.Series("dns:sys_miss"));
         var rf = Stats.Rtt(cx.Series("dns:ref_miss"));
         if (hit is null)
         {
-            h.Limites.Add("Aucune mesure DNS disponible.");
+            h.Limits.Add(T("dnsr.limit_none"));
             return h;
         }
         if (hit.LossPct >= Th.DnsFailPct)
         {
             h.Score += 4;
-            h.Preuves.Add($"Échecs de résolution : {F1(hit.LossPct)} % ({hit.Lost} sur {hit.N}) sur le DNS configuré.");
+            h.Evidence.Add(T("dnsr.ev.fail", F1(hit.LossPct), hit.Lost, hit.N));
         }
         if (hit.Median != null && hit.Median >= Th.DnsMedMs)
         {
             h.Score += 3;
-            h.Preuves.Add($"Résolution lente (noms courants) : médiane {FmtMs(hit.Median)}.");
+            h.Evidence.Add(T("dnsr.ev.slow", FmtMs(hit.Median)));
         }
         if (hit.P95 != null && hit.P95 >= Th.DnsP95Ms)
         {
             h.Score += 2;
-            h.Preuves.Add($"Pics de résolution : p95 {FmtMs(hit.P95)}, max {FmtMs(hit.Max)}.");
+            h.Evidence.Add(T("dnsr.ev.peaks", FmtMs(hit.P95), FmtMs(hit.Max)));
         }
         if (miss?.Median != null && miss.Median >= Th.DnsMissMedMs)
         {
             h.Score += 2;
-            h.Preuves.Add($"Résolution à froid lente : médiane {FmtMs(miss.Median)}.");
+            h.Evidence.Add(T("dnsr.ev.cold", FmtMs(miss.Median)));
         }
         if (rf?.Median != null && miss?.Median != null && rf.Median < 0.5 * miss.Median && miss.Median - rf.Median >= 80)
         {
             h.Score += 2;
-            h.Preuves.Add($"Le résolveur public 1.1.1.1 résout à froid bien plus vite ({FmtMs(rf.Median)}) que votre DNS ({FmtMs(miss.Median)}).");
+            h.Evidence.Add(T("dnsr.ev.ref", FmtMs(rf.Median), FmtMs(miss.Median)));
         }
-        if (h.Score == 0) h.Contre.Add($"DNS rapide et fiable : médiane {FmtMs(hit.Median)}, échecs {F1(hit.LossPct)} %.");
-        h.Actions = new() { "Essayer un autre résolveur (1.1.1.1, 9.9.9.9 ou 8.8.8.8) dans les réglages réseau de Windows." };
+        if (h.Score == 0) h.Counter.Add(T("dnsr.counter.fast", FmtMs(hit.Median), F1(hit.LossPct)));
+        h.Actions = new() { T("dnsr.action") };
         return h;
     }
 
     static Hypothesis RuleBackground(Ctx cx, List<TimelineItem> timeline)
     {
-        var h = H("fond", "Trafic de fond sur mon ordinateur");
-        h.Limites.Add("Méthode : compteurs de l'interface réseau (totaux du PC). Aucune attribution par processus n'est faite car il n'existe pas de méthode fiable sans droits administrateur ni capture : " +
-                      "l'application ne vous désigne donc PAS un programme coupable.");
-        h.Limites.Add("Le trafic des autres appareils de la maison n'est pas visible.");
-        h.ProchainTest = "Ouvrir le Gestionnaire des tâches (onglet Performances/Processus, colonne Réseau) ou le Moniteur de ressources (resmon › Réseau) pendant un lag, puis refaire une session avec les applications de fond fermées.";
+        var h = H("background", "bg.title");
+        h.Limits.Add(T("bg.limit1"));
+        h.Limits.Add(T("bg.limit2"));
+        h.NextTest = T("bg.next");
         var down = Stats.Values(cx.Series("net:down_bps"));
         var up = Stats.Values(cx.Series("net:up_bps"));
         if (down.Count == 0)
         {
-            h.Limites.Add("Trafic du PC indisponible (interface réseau non lue).");
+            h.Limits.Add(T("bg.limit_unavailable"));
             return h;
         }
         double md = Mbps(Stats.Median(down))!.Value, mu = Mbps(Stats.Median(up)) ?? 0;
         if (md >= Th.BgDownMbps || mu >= Th.BgUpMbps)
         {
             h.Score += md >= 10 || mu >= 5 ? 3 : 2;
-            h.Preuves.Add($"Trafic de fond notable hors test : médiane ↓ {F1(md)} Mbps, ↑ {F1(mu)} Mbps.");
+            h.Evidence.Add(T("bg.ev.notable", F1(md), F1(mu)));
         }
-        var idle = PhaseWindow(cx.D, "repos");
+        var idle = PhaseWindow(cx.D, "idle");
         if (idle.Count > 0)
         {
             var iv = Stats.Values(idle.SelectMany(w => Stats.Window(cx.D.S("net:down_bps"), w.A, w.B).Concat(Stats.Window(cx.D.S("net:up_bps"), w.A, w.B))));
             if (iv.Count > 0 && Mbps(Stats.Median(iv))!.Value >= Th.BgIdleMbps / 2)
             {
                 h.Score += 3;
-                h.Preuves.Add($"Pendant la phase de repos du test (rien ne devait circuler), le PC échange déjà {F1(Mbps(Stats.Median(iv))!.Value * 2)} Mbps (↓+↑ cumulés).");
+                h.Evidence.Add(T("bg.ev.idle", F1(Mbps(Stats.Median(iv))!.Value * 2)));
             }
         }
         // correlation: mean traffic at degraded seconds vs the other seconds
@@ -925,17 +897,17 @@ public static class Diagnose
             if (a >= 2 && a / b >= Th.BgSpikeRatio)
             {
                 h.Score += 3;
-                h.Preuves.Add($"Aux instants dégradés, le trafic du PC est {F1(a / b)}× plus élevé que le reste du temps ({F1(a)} contre {F1(b)} Mbps) : corrélation compatible avec une activité de fond (une corrélation n'est pas une preuve).");
+                h.Evidence.Add(T("bg.ev.corr", F1(a / b), F1(a), F1(b)));
             }
         }
         var hot = timeline.Count(i => i.Type is "lag" or "episode" && ((i.Facts!.NetDownMax ?? 0) >= 5 || (i.Facts.NetUpMax ?? 0) >= 5));
         if (hot > 0)
         {
             h.Score += 1;
-            h.Preuves.Add($"{hot} épisode(s)/incident(s) coïncident avec un trafic du PC ≥ 5 Mbps.");
+            h.Evidence.Add(T("bg.ev.hot", hot));
         }
-        if (h.Score == 0) h.Contre.Add($"Trafic du PC faible hors test : médiane ↓ {F2(md)} Mbps, ↑ {F2(mu)} Mbps.");
-        h.Actions = new() { "Fermer sauvegardes cloud, mises à jour, lanceurs de jeux, onglets de streaming pendant le jeu, puis refaire une session pour comparer." };
+        if (h.Score == 0) h.Counter.Add(T("bg.counter.low", F2(md), F2(mu)));
+        h.Actions = new() { T("bg.action") };
         return h;
     }
 
@@ -944,15 +916,7 @@ public static class Diagnose
     {
         var res = new StatsTables();
         foreach (var (tid, x) in cx.T)
-        {
-            var etat = x.State switch
-            {
-                "ok" => "mesuré (ICMP)",
-                "tcp" => "mesuré en TCP (l'ICMP ne répond pas)",
-                _ => "ne répond pas à l'ICMP (cible exclue du diagnostic)",
-            };
-            res.Targets.Add(new TargetRow { Id = tid, Label = x.Tg.Label, Role = x.Tg.Role, Host = x.Tg.Host, State = x.State, Etat = etat, Stats = x.Stats });
-        }
+            res.Targets.Add(new TargetRow { Id = tid, Label = x.Tg.Label, Role = x.Tg.Role, Host = x.Tg.Host, State = x.State, StateText = T("d.state." + x.State), Stats = x.Stats });
         res.Dns = new DnsStats { SysHit = Stats.Rtt(cx.Series("dns:sys_hit")), SysMiss = Stats.Rtt(cx.Series("dns:sys_miss")), RefMiss = Stats.Rtt(cx.Series("dns:ref_miss")) };
         TrafficPart? Part(string d)
         {
@@ -1006,41 +970,39 @@ public static class Diagnose
         };
         foreach (var h in hyps)
         {
-            h.Niveau = Level(h.Score);
+            h.Level = Level(h.Score);
             h.Score = Math.Round(Math.Min(h.Score, 10.0), 1, MidpointRounding.ToEven);
         }
-        var shown = hyps.Where(h => h.Score >= 2 && h.Preuves.Count > 0).OrderByDescending(h => h.Score).ToList();
-        var unlikely = hyps.Where(h => h.Score < 2 && h.Contre.Count > 0).Select(h => new Unlikely { Id = h.Id, Titre = h.Titre, Raisons = h.Contre }).ToList();
-        var notEval = hyps.Where(h => h.NonEvalue != null).Select(h => new NotEvaluated { Id = h.Id, Titre = h.Titre, Raison = h.NonEvalue!, ProchainTest = h.ProchainTest }).ToList();
+        var shown = hyps.Where(h => h.Score >= 2 && h.Evidence.Count > 0).OrderByDescending(h => h.Score).ToList();
+        var unlikely = hyps.Where(h => h.Score < 2 && h.Counter.Count > 0).Select(h => new UnlikelyItem { Id = h.Id, Title = h.Title, Reasons = h.Counter }).ToList();
+        var notEval = hyps.Where(h => h.NotEvaluatedReason != null).Select(h => new NotEvaluatedItem { Id = h.Id, Title = h.Title, Reason = h.NotEvaluatedReason!, NextTest = h.NextTest }).ToList();
         var stat = BuildStats(cx);
         bool sparse = Math.Max(gwN, inetN) < Th.MinSamples;
         bool everythingDead = cx.T.Count > 0 && cx.T.Values.All(x => x.State == "no_response");
         var incidents = timeline.Where(i => i.Type == "lag").ToList();
-        var resume = new List<string>();
+        var summary = new List<string>();
         var actions = new List<string>();
-        if (cx.T.Count == 0) resume.Add("Aucune mesure enregistrée.");
-        else if (everythingDead) resume.Add("Aucune cible n'a répondu : connexion coupée pendant toute la session, ou ICMP bloqué sur cette machine/ce réseau. Rien ne peut être conclu sur le lag.");
-        else if (sparse) resume.Add($"Données insuffisantes ({Math.Max(gwN, inetN)} mesures calmes ; il en faut au moins {Th.MinSamples}). Laissez tourner 10 à 30 minutes.");
+        if (cx.T.Count == 0) summary.Add(T("sum.nodata"));
+        else if (everythingDead) summary.Add(T("sum.dead"));
+        else if (sparse) summary.Add(T("sum.sparse", Math.Max(gwN, inetN), Th.MinSamples));
         if (shown.Count > 0 && !everythingDead)
         {
             var top = shown[0];
-            resume.Add($"Hypothèse la plus compatible avec les mesures : « {top.Titre} » (confiance {top.Niveau}).");
-            if (shown.Count > 1) resume.Add("Autres pistes : " + string.Join(" ; ", shown.Skip(1).Take(3).Select(h => $"{h.Titre} ({h.Niveau})")) + ".");
-            resume.Add("Ce sont des hypothèses déduites de mesures, pas des causes confirmées : voir pour chacune les preuves, les limites et le test suivant.");
+            summary.Add(T("sum.top", top.Title, T("d.level." + top.Level)));
+            if (shown.Count > 1) summary.Add(T("sum.others", string.Join(" ; ", shown.Skip(1).Take(3).Select(h => $"{h.Title} ({T("d.level." + h.Level)})"))));
+            summary.Add(T("sum.disclaimer"));
         }
-        else if (!sparse && !everythingDead)
-            resume.Add("Aucune dégradation nette mesurée pendant cette session : le lag n'a probablement pas été capturé. Relancez la surveillance et cliquez « Je lag maintenant » pendant un épisode.");
+        else if (!sparse && !everythingDead) summary.Add(T("sum.none"));
         foreach (var x in cx.T.Values)
             if (x.State == "no_response" && !everythingDead)
-                resume.Add($"« {x.Tg.Label} » ne répond pas à l'ICMP (ping) : cible exclue du diagnostic. Précisez un port TCP (ex. {x.Tg.Host}:443) pour la mesurer autrement.");
-        int quiet = incidents.Count(i => i.Zone == "aucune");
-        if (incidents.Count > 0 && quiet > 0)
-            resume.Add($"Pour {quiet} signalement(s) sur {incidents.Count}, aucune anomalie réseau n'est mesurée autour de l'instant : piste hors réseau (ordinateur, jeu, serveur).");
+                summary.Add(T("sum.noicmp", x.Tg.Label, x.Tg.Host));
+        int quiet = incidents.Count(i => i.Zone == "none");
+        if (incidents.Count > 0 && quiet > 0) summary.Add(T("sum.quiet", quiet, incidents.Count));
         foreach (var h in shown) foreach (var a in h.Actions) if (!actions.Contains(a)) actions.Add(a);
         return new Analysis
         {
-            Session = data.Id, Resume = resume, Hypotheses = shown, PeuProbables = unlikely, NonEvalue = notEval, Actions = actions, Timeline = timeline,
-            Stats = stat, Bufferbloat = bloat, LimitesGenerales = LimitesGenerales.ToList(), Seuils = Th.AsDictionary(),
+            Session = data.Id, Summary = summary, Hypotheses = shown, Unlikely = unlikely, NotEvaluated = notEval, Actions = actions, Timeline = timeline,
+            Stats = stat, Bufferbloat = bloat, GeneralLimits = Loc.List("d.general", 3), Thresholds = Th.AsDictionary(),
             Metrics = ComputeMetrics(stat, bloat, incidents.Count),
         };
     }
@@ -1062,11 +1024,11 @@ public static class Diagnose
         };
     }
 
-    static readonly (string Label, int Better, Func<Metrics, double?> Get)[] MetricDefs =
+    static readonly (string Key, int Better, Func<Metrics, double?> Get)[] MetricDefs =
     {
-        ("Latence Internet p95 (ms)", -1, m => m.InetP95), ("Perte Internet (%)", -1, m => m.InetLoss), ("Latence passerelle p95 (ms)", -1, m => m.GwP95),
-        ("Gigue Internet (ms)", -1, m => m.JitterInet), ("DNS médiane (ms)", -1, m => m.DnsMed), ("Hausse de latence en téléchargement (ms)", -1, m => m.BloatDown),
-        ("Hausse de latence en envoi (ms)", -1, m => m.BloatUp), ("Débit descendant soutenu (Mbps)", +1, m => m.DownMbps), ("Débit montant soutenu (Mbps)", +1, m => m.UpMbps),
+        ("cmp.inet_p95", -1, m => m.InetP95), ("cmp.inet_loss", -1, m => m.InetLoss), ("cmp.gw_p95", -1, m => m.GwP95),
+        ("cmp.jitter", -1, m => m.JitterInet), ("cmp.dns", -1, m => m.DnsMed), ("cmp.bloat_down", -1, m => m.BloatDown),
+        ("cmp.bloat_up", -1, m => m.BloatUp), ("cmp.down_mbps", +1, m => m.DownMbps), ("cmp.up_mbps", +1, m => m.UpMbps),
     };
 
     /// <summary>
@@ -1076,17 +1038,15 @@ public static class Diagnose
     public static List<CompareRow> Compare(IReadOnlyList<Metrics> groupA, IReadOnlyList<Metrics> groupB)
     {
         var rows = new List<CompareRow>();
-        foreach (var (label, better, get) in MetricDefs)
+        foreach (var (key, better, get) in MetricDefs)
         {
             var a = groupA.Select(get).Where(x => x.HasValue).Select(x => x!.Value).ToList();
             var b = groupB.Select(get).Where(x => x.HasValue).Select(x => x!.Value).ToList();
             if (a.Count == 0 || b.Count == 0) continue;
             double ma = Stats.Median(a)!.Value, mb = Stats.Median(b)!.Value, delta = mb - ma;
             double spread = Math.Max(a.Max() - a.Min(), b.Max() - b.Min());
-            string verdict = a.Count < 2 || b.Count < 2 ? "indicatif (une seule mesure par groupe : répéter pour juger)"
-                : Math.Abs(delta) <= spread ? "indistinct (dans la variabilité entre répétitions)"
-                : delta * better > 0 ? "amélioration" : "dégradation";
-            rows.Add(new CompareRow { Metrique = label, A = ma, B = mb, Delta = delta, Variabilite = spread, CountA = a.Count, CountB = b.Count, Verdict = verdict });
+            string verdict = a.Count < 2 || b.Count < 2 ? "indicative" : Math.Abs(delta) <= spread ? "indistinct" : delta * better > 0 ? "improvement" : "degradation";
+            rows.Add(new CompareRow { Metric = T(key), A = ma, B = mb, Delta = delta, Variability = spread, CountA = a.Count, CountB = b.Count, Verdict = verdict, VerdictText = T("cmp.verdict." + verdict) });
         }
         return rows;
     }

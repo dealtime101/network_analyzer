@@ -22,12 +22,10 @@ public sealed class RttStats
 /// </summary>
 public static class Stats
 {
-    public static readonly Dictionary<string, string> Definitions = new()
+    /// <summary>The four definitions, translated into the current language.</summary>
+    public static Dictionary<string, string> Definitions() => new()
     {
-        ["mediane"] = "Médiane : valeur centrale des temps de réponse reçus.",
-        ["p95"] = "p95 : 95 % des réponses sont plus rapides que cette valeur (rang le plus proche).",
-        ["perte"] = "Perte : requêtes sans réponse ÷ requêtes envoyées. Les pauses système (veille) ne comptent pas.",
-        ["gigue"] = "Gigue : moyenne de |RTT(i) − RTT(i−1)| entre deux réponses consécutives (une perte interrompt la chaîne).",
+        ["median"] = Loc.T("def.median"), ["p95"] = Loc.T("def.p95"), ["loss"] = Loc.T("def.loss"), ["jitter"] = Loc.T("def.jitter"),
     };
 
     public static double? Percentile(IReadOnlyList<double> sorted, double p)

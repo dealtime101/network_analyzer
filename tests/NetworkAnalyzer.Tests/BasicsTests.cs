@@ -79,8 +79,8 @@ public class ProbeTests
     public void PingStatusMapping()
     {
         Assert.Equal("timeout", Probes.MapPingStatus(IPStatus.TimedOut));
-        Assert.Equal("injoignable", Probes.MapPingStatus(IPStatus.DestinationHostUnreachable));
-        Assert.Equal("injoignable", Probes.MapPingStatus(IPStatus.DestinationNetworkUnreachable));
+        Assert.Equal("unreachable", Probes.MapPingStatus(IPStatus.DestinationHostUnreachable));
+        Assert.Equal("unreachable", Probes.MapPingStatus(IPStatus.DestinationNetworkUnreachable));
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class ProbeTests
         Assert.True(a.Reached);
         Assert.Equal(new[] { 3 }, a.IntermediateLoss);
         Assert.True(!a.DestLossPct.HasValue || a.DestLossPct == 0);
-        Assert.Contains(a.Notes, n => n.Contains("limitation") && n.Contains("PAS une perte réelle"));
+        Assert.Contains(Probes.TraceNotes(a), n => n.Contains("rate-limiting") && n.Contains("NOT a real loss"));
     }
 
     [Fact]
@@ -283,7 +283,7 @@ SSID 3 : Autre
     [Fact]
     public void BandFromChannel()
     {
-        Assert.Equal("2,4 GHz", SysInfo.BandFromChannel(6));
+        Assert.Equal("2.4 GHz", SysInfo.BandFromChannel(6));
         Assert.Null(SysInfo.BandFromChannel(null));
     }
 
@@ -310,13 +310,13 @@ SSID 3 : Autre
             Ad("Wi-Fi", "Intel(R) Wi-Fi 6 AX201", "wifi", "Up", "192.168.0.1", "fe80::ff", new[] { "192.168.0.20" }, new[] { "2a01:cb00::5", "fe80::1" }, metric: 0),
             Ad("Ethernet", "Realtek PCIe GbE", "ethernet", "Down"),
             Ad("NordLynx", "NordLynx Tunnel", "vpn", "Up", "10.5.0.1", null, new[] { "10.5.0.2" }),
-            Ad("vEthernet (WSL)", "Hyper-V Virtual Ethernet Adapter", "virtuel", "Up", null, null, new[] { "172.20.0.1" }),
+            Ad("vEthernet (WSL)", "Hyper-V Virtual Ethernet Adapter", "virtual", "Up", null, null, new[] { "172.20.0.1" }),
         });
         Assert.Equal(("Wi-Fi", "wifi", "192.168.0.1"), (env.Active!.Name, env.Active.Kind, env.Active.Gw4));
         Assert.True(env.Vpn.Active);
         Assert.Equal(new[] { "NordLynx" }, env.Vpn.Adapters);
         Assert.True(env.Ipv6Global);
-        Assert.Contains(env.Notes, n => n.Contains("VPN"));
+        Assert.Contains(SysInfo.Notes(env), n => n.Contains("VPN"));
     }
 
     [Fact]
@@ -328,7 +328,7 @@ SSID 3 : Autre
             Ad("Wi-Fi", "Intel Wi-Fi", "wifi", "Up", "192.168.0.1", null, new[] { "192.168.0.20" }, metric: 0),
         });
         Assert.Equal("Wi-Fi", env.Active!.Name);
-        Assert.Contains(env.Notes, n => n.Contains("Plusieurs interfaces"));
+        Assert.Contains(SysInfo.Notes(env), n => n.Contains("Several interfaces"));
     }
 
     [Fact]
@@ -336,14 +336,14 @@ SSID 3 : Autre
     {
         var env = SysInfo.Summarize(new List<AdapterInfo>());
         Assert.Null(env.Active);
-        Assert.NotEmpty(env.Notes);
+        Assert.NotEmpty(SysInfo.Notes(env));
     }
 
     [Theory]
     [InlineData("Wi-Fi", "Intel(R) Wi-Fi 6 AX201", NetworkInterfaceType.Wireless80211, "wifi")]
     [InlineData("Ethernet", "Realtek PCIe GbE Family Controller", NetworkInterfaceType.Ethernet, "ethernet")]
     [InlineData("NordLynx", "NordLynx Tunnel", NetworkInterfaceType.Unknown, "vpn")]
-    [InlineData("vEthernet (WSL)", "Hyper-V Virtual Ethernet Adapter", NetworkInterfaceType.Ethernet, "virtuel")]
+    [InlineData("vEthernet (WSL)", "Hyper-V Virtual Ethernet Adapter", NetworkInterfaceType.Ethernet, "virtual")]
     [InlineData("Connexion au réseau local", "Adaptateur", NetworkInterfaceType.Tunnel, "vpn")]
     public void AdapterKind(string name, string desc, NetworkInterfaceType type, string expected) => Assert.Equal(expected, SysInfo.Kind(name, desc, type));
 
@@ -359,13 +359,13 @@ SSID 3 : Autre
 
     // Names read on a real Windows 11 machine (Hyper-V "External Network Switch" bridging an Intel NIC).
     [Theory]
-    [InlineData("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", NetworkInterfaceType.Tunnel, "virtuel")]
-    [InlineData("6to4 Adapter", "Microsoft 6to4 Adapter", NetworkInterfaceType.Tunnel, "virtuel")]
-    [InlineData("Local Area Connection* 4", "WAN Miniport (PPTP)", NetworkInterfaceType.Ppp, "virtuel")]
-    [InlineData("Local Area Connection* 3", "WAN Miniport (L2TP)", NetworkInterfaceType.Ppp, "virtuel")]
-    [InlineData("Ethernet (Kernel Debugger)", "Microsoft Kernel Debug Network Adapter", NetworkInterfaceType.Ethernet, "virtuel")]
+    [InlineData("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", NetworkInterfaceType.Tunnel, "virtual")]
+    [InlineData("6to4 Adapter", "Microsoft 6to4 Adapter", NetworkInterfaceType.Tunnel, "virtual")]
+    [InlineData("Local Area Connection* 4", "WAN Miniport (PPTP)", NetworkInterfaceType.Ppp, "virtual")]
+    [InlineData("Local Area Connection* 3", "WAN Miniport (L2TP)", NetworkInterfaceType.Ppp, "virtual")]
+    [InlineData("Ethernet (Kernel Debugger)", "Microsoft Kernel Debug Network Adapter", NetworkInterfaceType.Ethernet, "virtual")]
     [InlineData("Ethernet", "Intel(R) I211 Gigabit Network Connection", NetworkInterfaceType.Ethernet, "ethernet")]
-    [InlineData("vEthernet (External Network Switch)", "Hyper-V Virtual Ethernet Adapter #2", NetworkInterfaceType.Ethernet, "virtuel")]
+    [InlineData("vEthernet (External Network Switch)", "Hyper-V Virtual Ethernet Adapter #2", NetworkInterfaceType.Ethernet, "virtual")]
     [InlineData("Cisco AnyConnect", "Cisco AnyConnect Secure Mobility Client Virtual Miniport Adapter for Windows x64", NetworkInterfaceType.Ethernet, "vpn")]
     [InlineData("OpenVPN", "TAP-Windows Adapter V9", NetworkInterfaceType.Ethernet, "vpn")]
     public void WindowsBuiltinsAreNotVpn(string name, string desc, NetworkInterfaceType type, string expected) => Assert.Equal(expected, SysInfo.Kind(name, desc, type));
@@ -376,15 +376,15 @@ SSID 3 : Autre
         // Real case: the IP and the gateway sit on the virtual external switch, the physical NIC has neither.
         var env = SysInfo.Summarize(new List<AdapterInfo>
         {
-            Ad("vEthernet (External Network Switch)", "Hyper-V Virtual Ethernet Adapter #2", "virtuel", "Up", "192.168.0.1", null, new[] { "192.168.0.50" }, metric: 0),
-            Ad("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter", "virtuel", "Up", null, null, new[] { "172.24.0.1" }),
+            Ad("vEthernet (External Network Switch)", "Hyper-V Virtual Ethernet Adapter #2", "virtual", "Up", "192.168.0.1", null, new[] { "192.168.0.50" }, metric: 0),
+            Ad("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter", "virtual", "Up", null, null, new[] { "172.24.0.1" }),
             Ad("Ethernet", "Intel(R) I211 Gigabit Network Connection", "ethernet", "Up"),
-            Ad("Local Area Connection* 5", "WAN Miniport (PPPOE)", "virtuel", "Down"),
+            Ad("Local Area Connection* 5", "WAN Miniport (PPPOE)", "virtual", "Down"),
         });
         Assert.Equal("vEthernet (External Network Switch)", env.Active!.Name);
         Assert.Equal("ethernet", env.Active.Kind);
         Assert.Equal("192.168.0.1", env.Active.Gw4);
-        Assert.Contains(env.Notes, n => n.Contains("interface virtuelle") && n.Contains("Ethernet"));
+        Assert.Contains(SysInfo.Notes(env), n => n.Contains("virtual interface") && n.Contains("Ethernet"));
         Assert.False(env.Vpn.Active);
     }
 

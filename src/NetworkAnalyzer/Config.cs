@@ -25,10 +25,12 @@ public sealed class RouterConfig
     public string? HwVersion { get; set; }
     public string? Firmware { get; set; }
     public bool? QosEnabled { get; set; }
-    public string QosType { get; set; } = "inconnu";
+    /// <summary>unknown | priority | bandwidth_limit | sqm</summary>
+    public string QosType { get; set; } = "unknown";
     public double? LimitDown { get; set; }
     public double? LimitUp { get; set; }
     public string Unit { get; set; } = "Mbps";
+    /// <summary>unknown | yes | no</summary>
     public string? SqmAvailable { get; set; }
     public List<PriorityDevice> PriorityDevices { get; set; } = new();
     public List<BandwidthRule> BandwidthRules { get; set; } = new();

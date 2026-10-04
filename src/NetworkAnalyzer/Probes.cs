@@ -203,6 +203,12 @@ public static class Probes
         return notes;
     }
 
+    /// <summary>True when the status is an ICMP answer from the hop (echo reply, TTL expired, destination unreachable…);
+    /// timeouts and local errors (bad route, packet too big, hardware…) are not.</summary>
+    public static bool IsHopReply(IPStatus s) => s is IPStatus.Success or IPStatus.TtlExpired or IPStatus.TimeExceeded or IPStatus.TtlReassemblyTimeExceeded
+        or IPStatus.DestinationNetworkUnreachable or IPStatus.DestinationHostUnreachable or IPStatus.DestinationProtocolUnreachable
+        or IPStatus.DestinationPortUnreachable or IPStatus.DestinationUnreachable or IPStatus.DestinationProhibited or IPStatus.DestinationScopeMismatch;
+
     public static async Task<TraceResult> TracerouteAsync(string host, int maxHops = 20, CancellationToken ct = default)
     {
         host = ValidateHost(host);
@@ -227,7 +233,7 @@ public static class Probes
                 bool reached = false;
                 foreach (var (r, ms) in replies)
                 {
-                    if (r.Status == IPStatus.TimedOut) { hop.Lost++; continue; }
+                    if (!IsHopReply(r.Status)) { hop.Lost++; continue; }  // a local error is not an answer from the hop
                     hop.Rtts.Add(Math.Round(ms, 1));
                     hop.Ip ??= r.Address?.ToString();
                     if (r.Status == IPStatus.Success) reached = true;

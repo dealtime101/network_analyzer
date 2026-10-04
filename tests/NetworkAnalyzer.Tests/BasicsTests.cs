@@ -176,6 +176,13 @@ public class ProbeTests
         Assert.Null(Probes.ParseDnsReply(new byte[5], 1));
     }
 
+    [Theory]
+    [InlineData(IPStatus.Success, true)] [InlineData(IPStatus.TtlExpired, true)] [InlineData(IPStatus.TimeExceeded, true)]
+    [InlineData(IPStatus.DestinationHostUnreachable, true)] [InlineData(IPStatus.DestinationNetworkUnreachable, true)] [InlineData(IPStatus.DestinationProhibited, true)]
+    [InlineData(IPStatus.TimedOut, false)] [InlineData(IPStatus.BadRoute, false)] [InlineData(IPStatus.PacketTooBig, false)]
+    [InlineData(IPStatus.Unknown, false)] [InlineData(IPStatus.HardwareError, false)] [InlineData(IPStatus.NoResources, false)]
+    public void OnlyARealIcmpReplyCountsAsAnAnsweringHop(IPStatus status, bool answers) => Assert.Equal(answers, Probes.IsHopReply(status));
+
     [Fact]
     public async Task ACancelledTracerouteIsNotAnalysedAsAnUnreachedDestination()
     {

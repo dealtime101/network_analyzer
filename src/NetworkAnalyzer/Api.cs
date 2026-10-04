@@ -53,7 +53,7 @@ public static class Api
             }
             catch (IOException e) { last = e; await web.DisposeAsync(); }
         }
-        throw new InvalidOperationException($"Aucun port libre entre {port} et {port + tries - 1}.", last);
+        throw new InvalidOperationException(Loc.T("err.no_free_port", port.ToString(), (port + tries - 1).ToString()), last);
     }
 
     static async Task Write(HttpContext ctx, int code, object body, string ctype = "application/json; charset=utf-8", Dictionary<string, string>? extra = null)

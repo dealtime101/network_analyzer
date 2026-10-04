@@ -431,6 +431,29 @@ public class StoreTests
     }
 }
 
+public class StartupMessageTests
+{
+    [Fact]
+    public async Task NoFreePortSaysSoInTheReadersLanguage()
+    {
+        int p = 19000 + Random.Shared.Next(500);
+        var taken = new List<System.Net.Sockets.TcpListener>();
+        try
+        {
+            for (int i = 0; i < 2; i++) { var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, p + i); l.Start(); taken.Add(l); }
+            var app = new App(Tmp.Dir());
+            var en = await Assert.ThrowsAsync<InvalidOperationException>(() => Api.StartAsync(app, p, 2));
+            Assert.Equal($"No free port between {p} and {p + 1}.", en.Message);
+            using (Loc.Scope("fr"))
+            {
+                var fr = await Assert.ThrowsAsync<InvalidOperationException>(() => Api.StartAsync(app, p, 2));
+                Assert.Equal($"Aucun port libre entre {p} et {p + 1}.", fr.Message);
+            }
+        }
+        finally { foreach (var l in taken) l.Stop(); }
+    }
+}
+
 public class RequestNumberTests
 {
     [Theory]

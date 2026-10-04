@@ -125,6 +125,7 @@ public static partial class Loc
         Add("note.not_wifi", "Connection is not Wi-Fi (or unknown): no Wi-Fi measurements.", "Connexion non Wi-Fi (ou inconnue) : pas de mesures Wi-Fi.");
         Add("note.wifi_unavailable", "Wi-Fi details unavailable (Windows may require the location permission: Settings › Privacy › Location).", "Infos Wi-Fi indisponibles (Windows peut exiger l'autorisation de localisation : Paramètres › Confidentialité › Localisation).");
         Add("note.no_iface", "No readable physical network interface: computer traffic unavailable.", "Aucune interface réseau physique lisible : trafic de l'ordinateur indisponible.");
+        Add("note.task_failed", "A measurement stopped unexpectedly during this session: some series may end before the others.", "Une mesure s'est arrêtée de façon inattendue pendant cette session : certaines séries peuvent s'arrêter avant les autres.");
         Add("note.write_failed", "Saving to disk failed (disk full or file locked): the measurements taken from now on are NOT being saved.", "L'écriture sur disque a échoué (disque plein ou fichier verrouillé) : les mesures prises à partir de maintenant ne sont PAS enregistrées.");
         Add("note.counters_unreadable", "Network interface counters unreadable: computer traffic unavailable.", "Compteurs de l'interface réseau illisibles : trafic de l'ordinateur indisponible.");
 

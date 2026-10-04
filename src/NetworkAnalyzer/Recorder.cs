@@ -245,7 +245,9 @@ public sealed class Recorder
         {
             EndPhase(curPhase != null ? new PhaseMeta { Interrupted = true } : null);
             c?.Cancel();
-            try { await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(8)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
+            // a measuring task that crashed (anything but a cancellation or the wait running out) must not stop the session from being closed
+            try { await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(8)); } catch (Exception) { }
+            if (pending.Any(t => t.IsFaulted)) AddNote("task_failed");   // ...but it is not silent: the user is told a measurement stopped early
             try { await Task.WhenAll(traces).WaitAsync(TimeSpan.FromSeconds(3)); } catch (Exception) { }  // a failed trace must not keep the session from being finalised
             lock (gate)
             {

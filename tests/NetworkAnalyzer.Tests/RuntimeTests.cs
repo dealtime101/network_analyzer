@@ -1469,6 +1469,22 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task AMeasurementTaskThatCrashedNeverPreventsTheSessionFromBeingFinalised()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store) { WifiPollMs = 20, WifiReader = () => throw new InvalidOperationException("the reader crashed") };
+        int sid = rec.Start(new EnvInfo { Active = new AdapterInfo { Kind = "wifi" } }, new List<Target>(), 1);
+        await Task.Delay(300);                                   // the Wi-Fi task has faulted by now
+        await rec.StopAsync();                                    // used to throw the task's exception before closing anything
+        Assert.NotNull(store.Load(sid)!.Ended);                   // the header was closed...
+        Assert.False(rec.Running);
+        Assert.Contains(rec.Status().Notes, n => n == Loc.T("note.task_failed"));   // ...and the failure is not silent: it is noted
+        int next = rec.Start(new EnvInfo(), new List<Target>(), 1);                // and the recorder is usable again
+        Assert.True(next > sid);
+        await rec.StopAsync();
+    }
+
+    [Fact]
     public async Task ANewSessionCannotStartWhileThePreviousOneIsStillBeingClosed()
     {
         var store = new SessionStore(Tmp.Dir());

@@ -826,9 +826,11 @@ public class RouterTests
     [Fact]
     public void TemporaryPriorityNoted()
     {
-        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "2 hours" } } }), k => k.Txt.Contains("PC") && k.Txt.Contains("2 hours"));
-        Assert.DoesNotContain(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "always" } } }), k => k.Txt.Contains("\"PC\""));
-        Assert.DoesNotContain(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "toujours" } } }), k => k.Txt.Contains("\"PC\""));
+        // one criterion for both directions: the "limited to" note about a priority that expires
+        bool Temporary((string Sev, string Txt) k) => k.Txt.Contains("PC") && k.Txt.Contains("limited to");
+        Assert.Contains(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = "2 hours" } } }), k => Temporary(k) && k.Txt.Contains("2 hours"));
+        foreach (var forever in new[] { "always", "toujours", "Unlimited", "∞" })
+            Assert.DoesNotContain(Kinds(new RouterConfig { QosEnabled = true, PriorityDevices = { new PriorityDevice { Name = "PC", Duration = forever } } }), Temporary);
     }
 
     [Fact]

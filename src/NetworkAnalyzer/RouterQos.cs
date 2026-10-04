@@ -147,8 +147,12 @@ public static class RouterQos
                 });
             }
         }
-        if (worstDelta >= 30 && r.QosType != "sqm")
-            props.Add(new Proposal { Change = Loc.T("router.prop.sqm"), Justification = Loc.T("router.prop.sqm_why"), Rollback = Loc.T("router.prop.sqm_back") });
+        if (worstDelta >= 30 && r.QosType != "sqm" && r.SqmAvailable != "no")  // the model has none: do not advise enabling it
+        {
+            // "prioritisation alone" only makes sense when prioritisation is what is configured
+            var why = r.QosEnabled == true && r.QosType == "priority" ? Loc.T("router.prop.sqm_why") : Loc.T("router.prop.sqm_why_generic", F0(worstDelta));
+            props.Add(new Proposal { Change = Loc.T("router.prop.sqm"), Justification = why, Rollback = Loc.T("router.prop.sqm_back") });
+        }
         return props;
     }
 
@@ -190,6 +194,7 @@ public static partial class Loc
         Add("router.prop.limit_back", "Restore the current value ({0}) or disable the limit, save, then rerun the test.", "Remettre la valeur actuelle ({0}) ou désactiver la limite, enregistrer, puis refaire le test.");
         Add("router.prop.sqm", "Check in your model's official documentation whether queue management (SQM / Smart Queue) exists; enable it only if documented.", "Vérifier dans la documentation officielle de votre modèle si une gestion de file (SQM / Smart Queue) existe ; ne l'activer que si elle est documentée.");
         Add("router.prop.sqm_why", "Prioritisation alone does not fix the line's queue.", "La priorisation seule ne corrige pas la file d'attente de la ligne.");
+        Add("router.prop.sqm_why_generic", "Latency rises by {0} ms under load: the line's queue is not controlled where it forms, which queue management (SQM) addresses directly.", "La latence monte de {0} ms en charge : la file d'attente de la ligne n'est pas maîtrisée là où elle se forme, ce que la gestion de file (SQM) traite directement.");
         Add("router.prop.sqm_back", "Disable the option and restore the settings noted before the change.", "Désactiver l'option et restaurer les réglages notés avant le changement.");
         Add("router.protocol.1", "Same conditions for every measurement: same computer, preferably on Ethernet, same applications closed, same time of day (evening and morning are not comparable).", "Même condition à chaque mesure : même ordinateur, de préférence en Ethernet, mêmes applications fermées, même plage horaire (le soir et la matinée ne sont pas comparables).");
         Add("router.protocol.2", "Run 3 saturation tests BEFORE (label \"before …\") without changing anything between them.", "Faire 3 tests de saturation AVANT (libellé « avant … ») sans rien changer entre les trois.");

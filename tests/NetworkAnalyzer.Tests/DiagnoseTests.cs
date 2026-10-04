@@ -579,6 +579,23 @@ public class RouterTests
 
     static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
+    [Fact]
+    public void SqmProposalMatchesTheQosTypeAndTheModel()
+    {
+        using var _ = Loc.Scope("en");
+        List<Proposal> Props(RouterConfig r) => RouterQos.Propose(r, (null, null), 120);
+        bool IsSqm(Proposal p) => p.Change.Contains("SQM");
+        var prio = Props(new RouterConfig { QosEnabled = true, QosType = "priority" }).Single(IsSqm);
+        Assert.Contains("Prioritisation alone", prio.Justification);
+        foreach (var other in new[] { new RouterConfig { QosEnabled = false }, new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit" }, new RouterConfig() })
+        {
+            var why = Props(other).Single(IsSqm).Justification;
+            Assert.DoesNotContain("Prioritisation", why);
+            Assert.Contains("120", why);   // the measured increase it is based on
+        }
+        Assert.DoesNotContain(Props(new RouterConfig { QosEnabled = true, QosType = "priority", SqmAvailable = "no" }), IsSqm);   // the model has none: no advice to enable it
+    }
+
     [Theory]
     [InlineData(324.0, false)]   // 108 % of the measured 300: Check says consistent, so nothing is proposed
     [InlineData(345.0, true)]    // 115 %: Check says it limits nothing, so a lower limit is proposed

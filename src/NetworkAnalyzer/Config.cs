@@ -59,8 +59,24 @@ public sealed class ConfigStore
     {
         lock (gate)
         {
-            try { return Json.From<AppConfig>(File.ReadAllText(path)) ?? new AppConfig(); }
-            catch (Exception e) when (e is IOException or JsonException) { return new AppConfig(); }
+            string text;
+            try { text = File.ReadAllText(path); }
+            catch (Exception e) when (e is IOException) { return new AppConfig(); }  // no file yet: the normal first run
+            try { return Json.From<AppConfig>(text) ?? new AppConfig(); }
+            catch (JsonException e)
+            {
+                // unreadable (truncated, bad hand edit): the next save would overwrite it with an empty one, so keep a copy first
+                var backup = $"{path}.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}";
+                try
+                {
+                    // once per distinct content: reading the same bad file again must not pile up copies
+                    bool kept = Directory.GetFiles(Path.GetDirectoryName(path)!, Path.GetFileName(path) + ".corrupt-*").Any(f => File.ReadAllText(f) == text);
+                    if (!kept) File.WriteAllText(backup, text, new UTF8Encoding(false));
+                }
+                catch (IOException) { }
+                Console.Error.WriteLine($"[config] {path} is not valid JSON ({e.Message}); a copy was kept as {backup}, defaults are used");
+                return new AppConfig();
+            }
         }
     }
 

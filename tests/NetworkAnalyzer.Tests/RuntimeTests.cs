@@ -490,6 +490,32 @@ public class RequestNumberTests
     }
 }
 
+public class ConfigStoreTests
+{
+    [Fact]
+    public void ACorruptConfigIsKeptAsABackupBeforeItIsReplaced()
+    {
+        var dir = Tmp.Dir();
+        const string broken = "{ \"custom_target\": \"game.example.net:27015\", \"router\": { \"model\": \"Archer";   // truncated hand edit
+        File.WriteAllText(Path.Combine(dir, "config.json"), broken);
+        var store = new ConfigStore(dir);
+        Assert.Equal("", store.Load().CustomTarget);                       // the app still starts, on defaults
+        var backup = Directory.GetFiles(dir, "config.json.corrupt-*").Single();
+        Assert.Equal(broken, File.ReadAllText(backup));                    // what the user typed is not lost
+        store.Update(c => c.CustomTarget = "new.example.net");             // the next save overwrites config.json…
+        Assert.Equal(broken, File.ReadAllText(backup));                    // …but never the backup
+        Assert.Single(Directory.GetFiles(dir, "config.json.corrupt-*"));   // one backup, not one per read
+    }
+
+    [Fact]
+    public void AMissingConfigIsNormalAndLeavesNoBackup()
+    {
+        var dir = Tmp.Dir();
+        Assert.Equal("", new ConfigStore(dir).Load().CustomTarget);
+        Assert.Empty(Directory.GetFiles(dir, "config.json.corrupt-*"));
+    }
+}
+
 public class SessionIdTests
 {
     static SessionHeader H() => new() { Started = Simulator.T0, Meta = new SessionMeta() };

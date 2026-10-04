@@ -339,6 +339,20 @@ public class StoreTests
     }
 }
 
+public class ShotNameTests
+{
+    [Fact]
+    public void TwoScreenshotsAddedInTheSameSecondKeepTheirOwnNames()
+    {
+        var app = new App(Tmp.Dir());
+        var uri = "data:image/png;base64," + Convert.ToBase64String(new byte[] { 1, 2, 3 });
+        var names = Enumerable.Range(0, 20).Select(_ => app.AddShot(uri)).ToList();
+        Assert.Equal(20, names.Distinct().Count());
+        Assert.All(names, n => Assert.NotNull(app.ReadShot(n)));
+        Assert.DoesNotContain(names, n => n.Contains("_00000000."));
+    }
+}
+
 public class ServerTests : IAsyncLifetime
 {
     App app = null!;

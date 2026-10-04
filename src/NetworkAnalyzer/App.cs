@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -277,7 +278,7 @@ public sealed class App
         try { raw = Convert.FromBase64String(m.Groups[2].Value); }
         catch (FormatException) { throw new ApiException(Loc.T("err.invalid_image")); }
         if (raw.Length > MaxShot) throw new ApiException(Loc.T("err.image_too_large"));
-        var name = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Convert.ToHexString(Random.Shared.GetItems(new byte[256], 4)).ToLowerInvariant()}.{(m.Groups[1].Value == "jpeg" ? "jpg" : m.Groups[1].Value)}";
+        var name = $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{RandomNumberGenerator.GetHexString(8, lowercase: true)}.{(m.Groups[1].Value == "jpeg" ? "jpg" : m.Groups[1].Value)}";
         File.WriteAllBytes(Path.Combine(ShotsDir(), name), raw);
         Config.Update(c => { c.Router ??= new RouterConfig(); c.Router.Screenshots.Add(name); });
         return name;

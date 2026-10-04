@@ -96,8 +96,16 @@ public static partial class SysInfo
                 if (active.LinkSpeed.Length == 0) active.LinkSpeed = phys.LinkSpeed;
             }
         }
-        env.Ipv6Global = active != null && active.Gw6 != null && active.Ipv6.Any(a => !a.StartsWith("fe80", StringComparison.OrdinalIgnoreCase) && !a.StartsWith("::1"));
+        env.Ipv6Global = active != null && active.Gw6 != null && active.Ipv6.Any(IsGlobalIpv6);
         return env;
+    }
+
+    /// <summary>A routable IPv6 address: not link-local (fe80::/10), unique-local (fc00::/7), loopback, multicast or unspecified.</summary>
+    public static bool IsGlobalIpv6(string address)
+    {
+        var s = address.Split('%')[0];
+        if (!IPAddress.TryParse(s, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6) return false;
+        return !(ip.IsIPv6LinkLocal || ip.IsIPv6UniqueLocal || ip.IsIPv6Multicast || ip.IsIPv6SiteLocal || IPAddress.IsLoopback(ip) || ip.Equals(IPAddress.IPv6None));
     }
 
     static bool IsUp(AdapterInfo i) => i.Status.Equals("Up", StringComparison.OrdinalIgnoreCase) || i.Status.Equals("Unknown", StringComparison.OrdinalIgnoreCase);

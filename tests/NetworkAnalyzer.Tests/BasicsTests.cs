@@ -272,6 +272,13 @@ SSID 3 : Autre
         Assert.StartsWith("5 GHz", w.Band);
     }
 
+    [Theory]
+    [InlineData("2001:db8::1", true)] [InlineData("2a01:cb00:1::5%12", true)]
+    [InlineData("fd12:3456:789a::1", false)] [InlineData("fc00::1", false)]   // unique local: private, not Internet
+    [InlineData("fe80::1%12", false)] [InlineData("::1", false)] [InlineData("ff02::1", false)] [InlineData("::", false)]
+    [InlineData("192.168.0.2", false)] [InlineData("not an address", false)]
+    public void OnlyARoutableIpv6AddressCountsAsGlobal(string address, bool expected) => Assert.Equal(expected, SysInfo.IsGlobalIpv6(address));
+
     [Fact]
     public async Task ACommandThatTimesOutIsKilled()
     {

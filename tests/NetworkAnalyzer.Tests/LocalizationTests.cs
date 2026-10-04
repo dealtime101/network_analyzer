@@ -281,6 +281,22 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void AVirtualInterfaceIsOnlyAttachedToAPhysicalOneWhenThereIsNoDoubt()
+    {
+        var env = SysInfo.Summarize(new List<AdapterInfo>
+        {
+            new() { Name = "vEthernet (External Network Switch)", Status = "Up", Kind = "virtual", Gw4 = "192.168.0.1", Ipv4 = { "192.168.0.50" }, LinkSpeed = "" },
+            new() { Name = "Ethernet", Status = "Up", Kind = "ethernet", LinkSpeed = "1 Gbps" },
+            new() { Name = "Wi-Fi", Status = "Up", Kind = "wifi", LinkSpeed = "300 Mbps" },
+        });
+        // two candidates and nothing says which one the switch bridges: no guess about type, name or speed
+        Assert.Equal("virtual", env.Active!.Kind);
+        Assert.Null(env.Active.BridgedPhysical);
+        Assert.Equal("", env.Active.LinkSpeed);
+        Assert.DoesNotContain(SysInfo.Notes(env), n => n.Contains("Ethernet") || n.Contains("Wi-Fi"));
+    }
+
+    [Fact]
     public void EnvironmentNotesAreDerivedNotStored()
     {
         var env = SysInfo.Summarize(new List<AdapterInfo>

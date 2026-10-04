@@ -92,7 +92,10 @@ public static partial class SysInfo
         var env = new EnvInfo { Interfaces = ifaces, Active = active, Vpn = new VpnInfo { Active = vpnUp.Count > 0, Adapters = vpnUp.Select(i => i.Name).ToList() } };
         if (active is { Kind: "virtual" })
         {
-            var phys = ifaces.FirstOrDefault(i => i.Kind is "wifi" or "ethernet" && IsUp(i) && i.Gw4 == null && i.Gw6 == null);
+            // the switch's real members are not read: with exactly one idle physical interface it can only be that one; with several,
+            // naming one would be a guess about the type, the name and the speed, so the interface stays "virtual"
+            var physical = ifaces.Where(i => i.Kind is "wifi" or "ethernet" && IsUp(i) && i.Gw4 == null && i.Gw6 == null).ToList();
+            var phys = physical.Count == 1 ? physical[0] : null;
             if (phys != null)
             {
                 active.Kind = phys.Kind;

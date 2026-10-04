@@ -508,6 +508,22 @@ public class ConfigStoreTests
     }
 
     [Fact]
+    public void AnUnreadableConfigFallsBackToDefaultsInsteadOfCrashing()
+    {
+        if (OperatingSystem.IsWindows() || Environment.UserName == "root") return;   // needs a file this account cannot read
+        var dir = Tmp.Dir();
+        var file = Path.Combine(dir, "config.json");
+        File.WriteAllText(file, "{\"custom_target\":\"keep.example.net\"}");
+        File.SetUnixFileMode(file, UnixFileMode.None);
+        try
+        {
+            Assert.Equal("", new ConfigStore(dir).Load().CustomTarget);   // used to throw UnauthorizedAccessException
+        }
+        finally { File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
+        Assert.Equal("keep.example.net", new ConfigStore(dir).Load().CustomTarget);   // the file itself was never touched
+    }
+
+    [Fact]
     public void AMissingConfigIsNormalAndLeavesNoBackup()
     {
         var dir = Tmp.Dir();

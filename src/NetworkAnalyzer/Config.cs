@@ -61,7 +61,12 @@ public sealed class ConfigStore
         {
             string text;
             try { text = File.ReadAllText(path); }
-            catch (Exception e) when (e is IOException) { return new AppConfig(); }  // no file yet: the normal first run
+            catch (IOException) { return new AppConfig(); }  // no file yet: the normal first run
+            catch (UnauthorizedAccessException e)  // not an IOException: a file this account may not read
+            {
+                Console.Error.WriteLine($"[config] cannot read {path} ({e.Message}); defaults are used");
+                return new AppConfig();
+            }
             try { return Json.From<AppConfig>(text) ?? new AppConfig(); }
             catch (JsonException e)
             {

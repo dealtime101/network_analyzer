@@ -40,19 +40,19 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
 <header>
   <h1><span data-i18n="app.title">Network Analyzer</span> <small id="ver" class="muted" style="font-weight:normal"></small></h1>
   <nav role="tablist">
-    <button role="tab" data-tab="live" aria-selected="true" data-i18n="nav.live"></button>
-    <button role="tab" data-tab="sat" data-i18n="nav.sat"></button>
-    <button role="tab" data-tab="diag" data-i18n="nav.diag"></button>
-    <button role="tab" data-tab="router" data-i18n="nav.router"></button>
-    <button role="tab" data-tab="hist" data-i18n="nav.hist"></button>
-    <button role="tab" data-tab="help" data-i18n="nav.help"></button>
+    <button role="tab" id="tabbtn-live" aria-controls="tab-live" data-tab="live" aria-selected="true" tabindex="0" data-i18n="nav.live"></button>
+    <button role="tab" id="tabbtn-sat" aria-controls="tab-sat" data-tab="sat" aria-selected="false" tabindex="-1" data-i18n="nav.sat"></button>
+    <button role="tab" id="tabbtn-diag" aria-controls="tab-diag" data-tab="diag" aria-selected="false" tabindex="-1" data-i18n="nav.diag"></button>
+    <button role="tab" id="tabbtn-router" aria-controls="tab-router" data-tab="router" aria-selected="false" tabindex="-1" data-i18n="nav.router"></button>
+    <button role="tab" id="tabbtn-hist" aria-controls="tab-hist" data-tab="hist" aria-selected="false" tabindex="-1" data-i18n="nav.hist"></button>
+    <button role="tab" id="tabbtn-help" aria-controls="tab-help" data-tab="help" aria-selected="false" tabindex="-1" data-i18n="nav.help"></button>
   </nav>
   <div class="right"><div id="langs" role="group" aria-label="Language"><button data-lang="en">EN</button><button data-lang="fr">FR</button></div><span id="pill"></span></div>
 </header>
 <main>
 
 <!-- ============ MONITORING ============ -->
-<section id="tab-live" class="tab on">
+<section id="tab-live" class="tab on" role="tabpanel" aria-labelledby="tabbtn-live">
   <div class="grid">
     <div class="card">
       <h2 data-i18n="live.start_h"></h2>
@@ -93,7 +93,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
 </section>
 
 <!-- ============ SATURATION TEST ============ -->
-<section id="tab-sat" class="tab">
+<section id="tab-sat" class="tab" role="tabpanel" aria-labelledby="tabbtn-sat">
   <div class="card">
     <h2 data-i18n="sat.h"></h2>
     <p data-i18n-html="sat.p1"></p>
@@ -118,14 +118,14 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
 </section>
 
 <!-- ============ DIAGNOSIS ============ -->
-<section id="tab-diag" class="tab">
+<section id="tab-diag" class="tab" role="tabpanel" aria-labelledby="tabbtn-diag">
   <div class="card"><div class="row"><label for="dsess" style="margin:0" data-i18n="diag.session"></label><select id="dsess" style="min-width:320px"></select>
     <a class="btn" id="x_html" target="_blank" data-i18n="diag.report"></a><a class="btn" id="x_csv">CSV</a><a class="btn" id="x_json">JSON</a></div></div>
   <div id="dbody"></div>
 </section>
 
 <!-- ============ ROUTER ============ -->
-<section id="tab-router" class="tab">
+<section id="tab-router" class="tab" role="tabpanel" aria-labelledby="tabbtn-router">
   <div class="card">
     <h2 data-i18n="router.h"></h2>
     <p class="small" data-i18n-html="router.p"></p>
@@ -152,14 +152,14 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
 </section>
 
 <!-- ============ HISTORY ============ -->
-<section id="tab-hist" class="tab">
+<section id="tab-hist" class="tab" role="tabpanel" aria-labelledby="tabbtn-hist">
   <div class="card"><h2 data-i18n="hist.h"></h2><div style="overflow-x:auto"><table id="htab"></table></div>
     <div class="row" style="margin-top:8px"><button class="btn primary" id="cmp" data-i18n="hist.compare"></button><span class="small muted" data-i18n="hist.hint"></span></div>
     <div id="cmpres"></div></div>
 </section>
 
 <!-- ============ HELP ============ -->
-<section id="tab-help" class="tab">
+<section id="tab-help" class="tab" role="tabpanel" aria-labelledby="tabbtn-help">
   <div class="card"><h2 data-i18n="help.proto_h"></h2>
     <ol><li data-i18n-html="help.p1"></li><li data-i18n-html="help.p2"></li><li data-i18n="help.p3"></li><li data-i18n-html="help.p4"></li><li data-i18n="help.p5"></li><li data-i18n-html="help.p6"></li><li data-i18n-html="help.p7"></li></ol></div>
   <div class="card"><h2 data-i18n="help.defs_h"></h2><ul>
@@ -386,12 +386,19 @@ const withLang = u => u + (u.includes('?') ? '&' : '?') + 'lang=' + LANG;
 // ---------------------------------------------------------------- tabs
 function showTab(n, keepHash) {
   currentTab = n;
-  $$('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === n));
+  $$('nav button').forEach(b => { b.setAttribute('aria-selected', b.dataset.tab === n); b.tabIndex = b.dataset.tab === n ? 0 : -1; });  // only the selected tab is in the tab order
   $$('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + n));
   if (n === 'diag') loadDiagList(); if (n === 'hist') loadHist(); if (n === 'router') loadRouter(); if (n === 'sat') loadEstimate();
   if (!keepHash) history.replaceState(null, '', '#' + n);
 }
 $$('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+// keyboard on the tab list: arrows move to the neighbouring tab (wrapping), Home and End to the first and last
+$('nav').addEventListener('keydown', e => {
+  const names = TABS, i = names.indexOf(currentTab);
+  const to = e.key === 'ArrowRight' ? (i + 1) % names.length : e.key === 'ArrowLeft' ? (i + names.length - 1) % names.length : e.key === 'Home' ? 0 : e.key === 'End' ? names.length - 1 : -1;
+  if (to < 0) return;
+  e.preventDefault(); showTab(names[to]); $('#tabbtn-' + names[to]).focus();
+});
 
 // ---------------------------------------------------------------- canvas charts
 function chart(canvas, o) {

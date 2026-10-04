@@ -83,6 +83,29 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void TabsAndPanelsAreLinkedBothWaysAndOperableFromTheKeyboard()
+    {
+        var tabs = Regex.Matches(Markup, @"<button\b[^>]*\brole=""tab""[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value).ToList();
+        var panels = Regex.Matches(Markup, @"<section\b[^>]*\bclass=""tab[^""]*""[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value).ToList();
+        Assert.Equal(6, tabs.Count);
+        Assert.Equal(tabs.Count, panels.Count);
+        var tabIds = tabs.Select(t => Attr(t, "id")).ToList();
+        var panelIds = panels.Select(p => Attr(p, "id")).ToList();
+        Assert.DoesNotContain(null, tabIds);
+        Assert.Equal(tabIds.Count, tabIds.Distinct().Count());
+        foreach (var t in tabs) Assert.Contains(Attr(t, "aria-controls"), panelIds);              // tab -> its panel
+        foreach (var p in panels)
+        {
+            Assert.Equal("tabpanel", Attr(p, "role"));
+            Assert.Contains(Attr(p, "aria-labelledby"), tabIds);                                   // panel -> its tab
+        }
+        Assert.Equal(panelIds.OrderBy(x => x), tabs.Select(t => Attr(t, "aria-controls")).OrderBy(x => x));   // one panel per tab, none shared
+        // keyboard: only the selected tab is in the tab order; arrows, Home and End move between tabs
+        Assert.Contains("tabindex", Regex.Match(Page, @"function showTab\([^)]*\)\s*\{[\s\S]*?\n\}").Value, StringComparison.OrdinalIgnoreCase);   // b.tabIndex in the DOM API
+        foreach (var key in new[] { "ArrowRight", "ArrowLeft", "Home", "End" }) Assert.Contains($"'{key}'", Page);
+    }
+
+    [Fact]
     public void ToastMessagesAreAnnouncedToScreenReaders()
     {
         var toast = Regex.Match(Markup, @"<div\b[^>]*\bid=""toast""[^>]*>").Value;

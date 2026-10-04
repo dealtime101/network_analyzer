@@ -221,6 +221,16 @@ public sealed class LoadTest
         }
         double elapsed = sw.Elapsed.TotalSeconds;  // read before waiting for the workers: their shutdown is not part of the phase
         long total = Interlocked.Read(ref bytes.N);
+        // the last, partial interval: bytes moved since the previous sample (a stop, a cap or a deadline cut the wait short).
+        // It counts for the peak and as the only rate of a phase stopped before its first sample; in the sustained median it takes
+        // part only when it is long enough (half a second) not to add noise.
+        double tail = elapsed - lastT;
+        if (tail >= 0.2 && total > lastN)
+        {
+            double bps = (total - lastN) * 8 / tail;
+            all.Add(bps);
+            if (elapsed >= WarmupS && tail >= 0.5) rates.Add(bps);
+        }
         phaseCts.Cancel();  // streams stop by themselves: deadline, volume cap or cancellation
         try { await Task.WhenAll(workers).WaitAsync(TimeSpan.FromSeconds(6)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
         var src = rates.Count > 0 ? rates : all;

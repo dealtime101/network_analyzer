@@ -190,6 +190,27 @@ public class LoadTestTests
     }
 
     [Fact]
+    public async Task APhaseInterruptedBeforeItsFirstSampleStillHasARate()
+    {
+        await using var stub = await StubServer.StartAsync();
+        var cfg = new LoadConfig
+        {
+            BaseUrl = stub.Url, Streams = 2, CapDownMb = 2000, CapUpMb = 2000,
+            Phases = new() { new() { Name = "download", DurationS = 20, Direction = "down" } },
+        };
+        var lt = new LoadTest(NewRec(), cfg);
+        lt.Start();
+        await Task.Delay(600);        // before the first one-second sample
+        lt.Cancel();
+        await lt.Task!.WaitAsync(TimeSpan.FromSeconds(20));
+        var r = lt.Status().Results.Single();
+        Assert.True(r.DurationS < 1.0, $"stopped after {r.DurationS} s: the test needs the stop to come before the first sample");
+        Assert.True(r.Bytes > 0 && r.AvgMbps > 0);
+        Assert.True(r.PeakMbps > 0, "peak is 0 although the phase moved bytes: its last, partial interval was dropped");   // red before
+        Assert.True(r.SustainedMbps > 0);
+    }
+
+    [Fact]
     public async Task AnInstanceRunsOnceASecondStartIsRefused()
     {
         await using var stub = await StubServer.StartAsync();

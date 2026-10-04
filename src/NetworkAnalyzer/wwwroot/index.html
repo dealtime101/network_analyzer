@@ -130,18 +130,18 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     <h2 data-i18n="router.h"></h2>
     <p class="small" data-i18n-html="router.p"></p>
     <div class="grid">
-      <div><label data-i18n="r.model"></label><input id="r_model" style="width:100%" data-i18n-ph="r.model_ph"><label data-i18n="r.hw"></label><input id="r_hw" style="width:100%" data-i18n-ph="r.hw_ph"><label data-i18n="r.fw"></label><input id="r_fw" style="width:100%" data-i18n-ph="r.fw_ph"></div>
-      <div><label data-i18n="r.qos"></label><select id="r_qos"><option value="" data-i18n="opt.dontknow"></option><option value="true" data-i18n="opt.yes"></option><option value="false" data-i18n="opt.no"></option></select>
-        <label data-i18n="r.type"></label><select id="r_type"><option value="unknown" data-i18n="opt.dontknow"></option><option value="priority" data-i18n="r.type.priority"></option><option value="bandwidth_limit" data-i18n="r.type.limit"></option><option value="sqm" data-i18n="r.type.sqm"></option></select>
-        <label data-i18n="r.sqm"></label><select id="r_sqm"><option value="unknown" data-i18n="r.sqm.unknown"></option><option value="yes" data-i18n="r.sqm.yes"></option><option value="no" data-i18n="opt.no"></option></select></div>
-      <div><label data-i18n="r.ld"></label><input id="r_ld" type="number" min="0" step="any" style="width:100%"><label data-i18n="r.lu"></label><input id="r_lu" type="number" min="0" step="any" style="width:100%">
-        <label data-i18n="r.unit"></label><select id="r_unit"><option>Mbps</option><option>Kbps</option><option>Gbps</option></select></div>
-      <div><label data-i18n="r.plan"></label><div class="row"><input id="p_down" type="number" min="0" step="any" style="width:48%"><input id="p_up" type="number" min="0" step="any" style="width:48%"></div>
-        <label data-i18n="r.gw"></label><input id="g_over" style="width:100%" placeholder="192.168.0.1"></div>
+      <div><label for="r_model" data-i18n="r.model"></label><input id="r_model" style="width:100%" data-i18n-ph="r.model_ph"><label for="r_hw" data-i18n="r.hw"></label><input id="r_hw" style="width:100%" data-i18n-ph="r.hw_ph"><label for="r_fw" data-i18n="r.fw"></label><input id="r_fw" style="width:100%" data-i18n-ph="r.fw_ph"></div>
+      <div><label for="r_qos" data-i18n="r.qos"></label><select id="r_qos"><option value="" data-i18n="opt.dontknow"></option><option value="true" data-i18n="opt.yes"></option><option value="false" data-i18n="opt.no"></option></select>
+        <label for="r_type" data-i18n="r.type"></label><select id="r_type"><option value="unknown" data-i18n="opt.dontknow"></option><option value="priority" data-i18n="r.type.priority"></option><option value="bandwidth_limit" data-i18n="r.type.limit"></option><option value="sqm" data-i18n="r.type.sqm"></option></select>
+        <label for="r_sqm" data-i18n="r.sqm"></label><select id="r_sqm"><option value="unknown" data-i18n="r.sqm.unknown"></option><option value="yes" data-i18n="r.sqm.yes"></option><option value="no" data-i18n="opt.no"></option></select></div>
+      <div><label for="r_ld" data-i18n="r.ld"></label><input id="r_ld" type="number" min="0" step="any" style="width:100%"><label for="r_lu" data-i18n="r.lu"></label><input id="r_lu" type="number" min="0" step="any" style="width:100%">
+        <label for="r_unit" data-i18n="r.unit"></label><select id="r_unit"><option>Mbps</option><option>Kbps</option><option>Gbps</option></select></div>
+      <div><label for="p_down" data-i18n="r.plan"></label><div class="row"><input id="p_down" type="number" min="0" step="any" style="width:48%"><input id="p_up" type="number" min="0" step="any" style="width:48%"></div>
+        <label for="g_over" data-i18n="r.gw"></label><input id="g_over" style="width:100%" placeholder="192.168.0.1"></div>
     </div>
-    <label data-i18n-html="r.prio"></label><textarea id="r_prio"></textarea>
-    <label data-i18n-html="r.rules"></label><textarea id="r_rules"></textarea>
-    <label data-i18n="r.notes"></label><textarea id="r_notes"></textarea>
+    <label for="r_prio" data-i18n-html="r.prio"></label><textarea id="r_prio"></textarea>
+    <label for="r_rules" data-i18n-html="r.rules"></label><textarea id="r_rules"></textarea>
+    <label for="r_notes" data-i18n="r.notes"></label><textarea id="r_notes"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn primary" id="r_save" data-i18n="r.save"></button><span id="r_msg" class="muted"></span></div>
     <h3 data-i18n="r.shots"></h3>
     <p class="small muted" data-i18n="r.shots_note"></p>

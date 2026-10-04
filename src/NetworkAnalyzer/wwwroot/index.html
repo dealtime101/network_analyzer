@@ -531,8 +531,10 @@ function renderLoad(l) {
 }
 
 // ---------------------------------------------------------------- diagnosis
+let wantDiag = null, diagSeq = 0;  // wantDiag: a session another tab asked to open; diagSeq: only the latest diagnosis request may draw
 async function loadDiagList() {
-  const list = await api('/api/sessions'), sel = $('#dsess'), cur = sel.value;
+  const want = wantDiag; wantDiag = null;
+  const list = await api('/api/sessions'), sel = $('#dsess'), cur = want != null ? String(want) : sel.value;
   sel.innerHTML = list.map(s => `<option value="${s.id}">#${s.id} — ${dt(s.started)} — ${esc(s.label || t('diag.nolabel'))} (${esc(s.link || '?')})${s.running ? ' — ' + t('hist.running') : ''}</option>`).join('');
   if (cur && list.some(s => String(s.id) === cur)) sel.value = cur;
   if (list.length) await showDiag(sel.value); else $('#dbody').innerHTML = `<p class="muted">${t('diag.none')}</p>`;
@@ -541,7 +543,9 @@ $('#dsess').onchange = guard(() => showDiag($('#dsess').value));
 const ul = a => a && a.length ? '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
 const lvl = x => t('lvl.' + x);
 async function showDiag(id) {
+  const my = ++diagSeq;
   const [r, sd] = await Promise.all([api('/api/session/' + id), api(`/api/session/${id}/series`)]), a = r.analysis, s = r.session;
+  if (my !== diagSeq) return;  // a newer request was made while this one was loading: its answer wins, not this one
   $('#x_html').href = withLang(`/api/session/${id}/report.html`); $('#x_csv').href = withLang(`/api/session/${id}/export.csv`); $('#x_json').href = withLang(`/api/session/${id}/export.json`);
   let h = `<div class="card"><h2>${esc(t('diag.sum_h', s.id, s.label || t('diag.nolabel'), dt(s.started), s.ended == null ? t('hist.running') : hm(s.ended), s.link))}</h2>${a.summary.map(x => `<p>${esc(x)}</p>`).join('')}</div>`;
   h += `<div class="card"><h2>${t('diag.hyp_h')}</h2><p class="small muted">${t('diag.hyp_note')}</p>`;
@@ -614,7 +618,7 @@ async function loadHist() {
       <td class="n">${fmt(m.gw_p95, 1)}</td><td class="n">${fmt(m.inet_p95, 1)}</td><td class="n">${fmt(m.inet_loss, 1)}</td><td class="n">${m.bloat_up != null ? '+' + fmt(m.bloat_up) : '—'}</td><td class="n">${m.bloat_down != null ? '+' + fmt(m.bloat_down) : '—'}</td><td class="n">${fmt(m.down_mbps)} / ${fmt(m.up_mbps)}</td>
       <td><button class="btn" data-open="${s.id}" style="padding:0 8px">${t('hist.open')}</button> <button class="btn" data-rm="${s.id}" style="padding:0 8px">${t('hist.delete')}</button></td></tr>`; }).join('');
   $$('#htab [data-g]').forEach(c => c.onchange = () => { const set = hsel[c.dataset.g], id = +c.value; c.checked ? set.add(id) : set.delete(id); });
-  $$('#htab [data-open]').forEach(b => b.onclick = () => { showTab('diag'); setTimeout(async () => { $('#dsess').value = b.dataset.open; await showDiag(b.dataset.open); }, 300); });
+  $$('#htab [data-open]').forEach(b => b.onclick = () => { wantDiag = b.dataset.open; showTab('diag'); });
   $$('#htab [data-rm]').forEach(b => b.onclick = guard(async () => { if (confirm(t('hist.confirm_delete', b.dataset.rm))) { await api(`/api/session/${b.dataset.rm}/delete`, {}); loadHist(); } }));
   $$('#htab [data-ren]').forEach(b => b.onclick = guard(async () => { const l = prompt(t('hist.rename_prompt'), b.textContent === '—' ? '' : b.textContent); if (l !== null) { await api(`/api/session/${b.dataset.ren}/label`, {label: l}); loadHist(); } }));
 }

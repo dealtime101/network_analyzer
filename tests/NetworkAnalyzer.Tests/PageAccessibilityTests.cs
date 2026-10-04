@@ -105,6 +105,24 @@ public class PageAccessibilityTests
         foreach (var key in new[] { "ArrowRight", "ArrowLeft", "Home", "End" }) Assert.Contains($"'{key}'", Page);
     }
 
+    // ---- behaviour of the page's script, checked on its text (there is no browser in the test run)
+    [Fact]
+    public void OpeningASessionFromHistoryDoesNotRaceWithTheDiagnosisList()
+    {
+        // no more "switch tab, wait 300 ms, hope the list has loaded"
+        Assert.DoesNotContain("setTimeout(async () => { $('#dsess').value", Page);
+        var openHandler = Regex.Match(Page, @"\[data-open\]'\)\.forEach\([^\n]*").Value;
+        Assert.NotEmpty(openHandler);
+        Assert.DoesNotContain("setTimeout", openHandler);
+        Assert.Contains("wantDiag", openHandler);                                   // the clicked id is handed over to the loader
+        var loader = Regex.Match(Page, @"async function loadDiagList\(\)\s*\{[\s\S]*?\n\}").Value;
+        Assert.Contains("wantDiag", loader);                                       // and the loader prefers it to the old selection
+        // and whatever the order of the answers, only the latest request may draw
+        var show = Regex.Match(Page, @"async function showDiag\(id\)\s*\{[\s\S]*?\n\}").Value;
+        Assert.Contains("diagSeq", show);
+        Assert.Matches(@"if \(\w+ !== diagSeq\) return;", show);
+    }
+
     [Fact]
     public void TheLanguageSwitchExposesItsStateAndItsNameIsTranslated()
     {

@@ -230,6 +230,18 @@ public sealed class LoadTest
 
     static bool Stopped(long cap, CancellationToken ct, Counter bytes) => ct.IsCancellationRequested || Interlocked.Read(ref bytes.N) >= cap;
 
+    /// <summary>Takes up to <paramref name="want"/> bytes from the volume budget in one atomic step; 0 when the cap is reached.
+    /// Several streams therefore never count more than the cap together.</summary>
+    static int Reserve(Counter bytes, long cap, int want)
+    {
+        while (true)
+        {
+            long cur = Interlocked.Read(ref bytes.N);
+            int grant = (int)Math.Min(want, Math.Max(0, cap - cur));
+            if (grant == 0 || Interlocked.CompareExchange(ref bytes.N, cur + grant, cur) == cur) return grant;
+        }
+    }
+
     void AddError(Exception e) { lock (gate) errors.Add($"{e.GetType().Name}: {e.Message}"); }
 
     async Task DownWorker(long cap, CancellationToken ct, Counter bytes)
@@ -246,9 +258,11 @@ public sealed class LoadTest
                 await using var s = await resp.Content.ReadAsStreamAsync(ct);
                 while (!Stopped(cap, ct, bytes))
                 {
-                    int n = await s.ReadAsync(buf, ct);
+                    int want = Reserve(bytes, cap, buf.Length);
+                    if (want == 0) break;
+                    int n = await s.ReadAsync(buf.AsMemory(0, want), ct);
+                    if (n < want) Interlocked.Add(ref bytes.N, n - want);  // a short read gives back what it did not use
                     if (n == 0) break;
-                    Interlocked.Add(ref bytes.N, n);
                 }
             }
             catch (OperationCanceledException) { return; }
@@ -265,12 +279,12 @@ public sealed class LoadTest
     {
         readonly long size;
         readonly Func<bool> stopped;
-        readonly Action<int> counted;
+        readonly Func<int, int> reserve;
         readonly byte[] block;
 
-        public BodyContent(long size, byte[] block, Func<bool> stopped, Action<int> counted)
+        public BodyContent(long size, byte[] block, Func<bool> stopped, Func<int, int> reserve)
         {
-            this.size = size; this.block = block; this.stopped = stopped; this.counted = counted;
+            this.size = size; this.block = block; this.stopped = stopped; this.reserve = reserve;
             Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         }
 
@@ -281,10 +295,10 @@ public sealed class LoadTest
             long sent = 0;
             while (sent < size && !stopped())
             {
-                int len = (int)Math.Min(block.Length, size - sent);  // the last block is cut to the announced length
+                int len = reserve((int)Math.Min(block.Length, size - sent));  // the last block is cut to the announced length and to the volume budget
+                if (len == 0) break;
                 await stream.WriteAsync(block.AsMemory(0, len), ct);
                 sent += len;
-                counted(len);
             }
             if (sent < size) throw new OperationCanceledException();  // never end a half body as if it were complete
         }
@@ -302,7 +316,7 @@ public sealed class LoadTest
             try
             {
                 using var req = new HttpRequestMessage(HttpMethod.Post, cfg.BaseUrl + "/__up") { Version = HttpVersion.Version11, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
-                req.Content = new BodyContent(10_000_000, block, () => Stopped(cap, ct, bytes), n => Interlocked.Add(ref bytes.N, n));
+                req.Content = new BodyContent(10_000_000, block, () => Stopped(cap, ct, bytes), want => Reserve(bytes, cap, want));
                 using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
                 if (!resp.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)resp.StatusCode}");  // a refused upload is a failure, as for the download
                 await resp.Content.ReadAsByteArrayAsync(ct);

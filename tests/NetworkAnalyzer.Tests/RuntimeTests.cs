@@ -139,11 +139,11 @@ public class LoadTestTests
         Assert.Equal(new[] { "idle", "download", "recovery1", "upload" }, rec.Status().Phases.Select(p => p.Name).ToArray());
         var res = lt.Status().Results;
         Assert.True(res[1].VolumeCapReached == true && res[3].VolumeCapReached == true);
-        // the cap is a promise about the user's data: a worker checks it before every 64 KiB read or write, so at most one chunk per
-        // stream can be in flight when it is crossed (Streams = 2). Both directions, with that exact margin.
-        const long cap = 30_000_000L, margin = 2 * 65536L;
-        Assert.InRange(res[1].Bytes!.Value, cap, cap + margin);
-        Assert.InRange(res[3].Bytes!.Value, cap, cap + margin);
+        // the cap is a promise about the user's data: each read or write first reserves its bytes from one shared budget,
+        // so the counted volume is exactly the cap, with several streams, in both directions
+        const long cap = 30_000_000L;
+        Assert.Equal(cap, res[1].Bytes!.Value);
+        Assert.Equal(cap, res[3].Bytes!.Value);
         Assert.True(res[1].DurationS < 4.5);
         Assert.True(res[1].AvgMbps > 1);
         var live = rec.LiveSince(0);

@@ -576,14 +576,18 @@ function row(l, state, s) {
 
 // ---------------------------------------------------------------- router
 const lines = txt => txt.split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p[0]);
+let routerDirty = false;  // the user typed in the router form and has not saved: a reload (language switch, shot deleted) must not overwrite it
+$('#tab-router').addEventListener('input', () => { routerDirty = true; });
 async function loadRouter() {
   const [v, c] = await Promise.all([api('/api/router'), api('/api/config')]), r = v.config || {};
+  if (!routerDirty) {
   $('#r_model').value = r.model || ''; $('#r_hw').value = r.hw_version || ''; $('#r_fw').value = r.firmware || '';
   $('#r_qos').value = r.qos_enabled === true ? 'true' : r.qos_enabled === false ? 'false' : ''; $('#r_type').value = r.qos_type || 'unknown'; $('#r_sqm').value = r.sqm_available || 'unknown';
   $('#r_ld').value = r.limit_down ?? ''; $('#r_lu').value = r.limit_up ?? ''; $('#r_unit').value = r.unit || 'Mbps';
   $('#p_down').value = c.plan_down_mbps ?? ''; $('#p_up').value = c.plan_up_mbps ?? ''; $('#g_over').value = c.gateway_override || ''; if (c.custom_target) $('#custom').value = c.custom_target;
   $('#r_prio').value = (r.priority_devices || []).map(d => [d.name, d.priority || '', d.duration || ''].join(' | ')).join('\n');
   $('#r_rules').value = (r.bandwidth_rules || []).map(d => [d.name, d.down ?? '', d.up ?? ''].join(' | ')).join('\n'); $('#r_notes').value = r.notes || '';
+  }
   $('#r_shots').innerHTML = (r.screenshots || []).map(n => `<span><a href="/api/router/shot/${n}" target="_blank"><img class="thumb" src="/api/router/shot/${n}"></a><button class="btn" data-del="${n}" style="padding:0 6px">✕</button></span>`).join('');
   $$('#r_shots [data-del]').forEach(b => b.onclick = guard(async () => { await api('/api/router/shot/delete', {name: b.dataset.del}); loadRouter(); }));
   const an = v.analysis;
@@ -598,7 +602,7 @@ $('#r_save').onclick = guard(async () => {
     sqm_available: $('#r_sqm').value, limit_down: num('#r_ld'), limit_up: num('#r_lu'), unit: $('#r_unit').value, notes: $('#r_notes').value,
     priority_devices: lines($('#r_prio').value).map(p => ({name: p[0], priority: p[1] || '', duration: p[2] || ''})), bandwidth_rules: lines($('#r_rules').value).map(p => ({name: p[0], down: p[1] === '' ? null : +p[1], up: p[2] === '' ? null : +p[2]}))};
   await api('/api/config', {router, plan_down_mbps: num('#p_down'), plan_up_mbps: num('#p_up'), gateway_override: $('#g_over').value, custom_target: $('#custom').value});
-  $('#r_msg').textContent = t('r.saved'); loadRouter();
+  $('#r_msg').textContent = t('r.saved'); routerDirty = false; loadRouter();
 });
 $('#r_file').onchange = guard(async () => {
   for (const f of $('#r_file').files) {

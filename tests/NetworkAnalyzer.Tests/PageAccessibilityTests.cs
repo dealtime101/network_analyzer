@@ -124,6 +124,23 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void SwitchingLanguageDoesNotEraseWhatWasTypedInTheRouterForm()
+    {
+        var load = Regex.Match(Page, @"async function loadRouter\(\)\s*\{[\s\S]*?\n\}").Value;
+        Assert.NotEmpty(load);
+        // the form is refilled from the saved values only while the user has not typed anything...
+        Assert.Matches(@"if \(!routerDirty\) \{[\s\S]*r_model[\s\S]*r_notes[\s\S]*\}", load);
+        // ...the analysis texts are re-rendered either way (they are what changes with the language)...
+        Assert.Contains("r_analysis", load);
+        Assert.True(load.IndexOf("r_analysis", StringComparison.Ordinal) > load.LastIndexOf("r_notes", StringComparison.Ordinal));
+        // ...typing marks the form as modified, and saving clears the mark
+        Assert.Matches(@"getElementById\('tab-router'\)\.addEventListener\('input'|\$\('#tab-router'\)\.addEventListener\('input'", Page);
+        var save = Regex.Match(Page, @"\$\('#r_save'\)\.onclick = guard\(async \(\) => \{[\s\S]*?\n\}\);").Value;
+        Assert.NotEmpty(save);
+        Assert.Contains("routerDirty = false", save);
+    }
+
+    [Fact]
     public void TheLanguageSwitchExposesItsStateAndItsNameIsTranslated()
     {
         var group = Regex.Match(Markup, @"<div\b[^>]*\bid=""langs""[^>]*>").Value;

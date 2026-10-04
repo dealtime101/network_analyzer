@@ -424,7 +424,9 @@ public class ScenarioTests
         };
         var h = Diagnose.Analyze(d, new AppConfig()).Hypotheses.First(x => x.Id == "isp");
         Assert.Contains(h.Evidence, p => p.Contains("hop 4"));
-        Assert.Contains(h.Counter, c => c.Contains("NOT found again") && c.Contains("rate-limiting"));
+        // the counter-evidence is worded as compatible with ICMP rate-limiting, never as a demonstrated cause or an absence of loss
+        Assert.Contains(h.Counter, c => c.Contains("did not show up again") && c.Contains("compatible with") && c.Contains("rate-limiting") && c.Contains("does not prove"));
+        Assert.DoesNotContain(h.Counter, c => c.Contains("not a real loss", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

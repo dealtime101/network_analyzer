@@ -145,7 +145,7 @@ public static partial class Loc
         Add("trace.error.cancelled", "Traceroute interrupted before it finished.", "Traceroute interrompu avant la fin.");
         Add("trace.error.failed", "Traceroute failed.", "Traceroute impossible.");
         Add("trace.nohops", "No readable hop.", "Aucun saut lisible.");
-        Add("trace.intermediate", "Loss at hop(s) {0} but the following hops answer: most likely ICMP rate-limiting by the router, NOT a real loss.", "Perte(s) au(x) saut(s) {0} mais les sauts suivants répondent : très probablement une limitation ICMP du routeur, PAS une perte réelle.");
+        Add("trace.intermediate", "Loss at hop(s) {0} but the following hops answer: compatible with the router rate-limiting or de-prioritising its own ICMP replies; this does not prove that no forwarded traffic is lost.", "Perte(s) au(x) saut(s) {0} mais les sauts suivants répondent : compatible avec un routeur qui limite ou dépriorise ses propres réponses ICMP ; cela ne prouve pas qu'aucun trafic acheminé n'est perdu.");
         Add("trace.step", "Latency goes from {0} to {1} ms at hop {2} and does not come back down to the destination: the increase starts at this point of the path.", "La latence passe de {0} à {1} ms au saut {2} et ne redescend pas jusqu'à la destination : l'augmentation commence à ce niveau du trajet.");
         Add("trace.unreached", "The destination did not answer the traceroute (may be ICMP filtering, not necessarily an outage).", "La destination n'a pas répondu au traceroute (peut être un filtrage ICMP, pas forcément une panne).");
         Add("trace.destloss", "{0}% loss at the destination (over {1} probes: too few to conclude alone).", "Perte de {0} % à la destination (sur {1} sondes : trop peu pour conclure seul).");

@@ -427,7 +427,9 @@ public class ProbeTests
         Assert.True(a.Reached);
         Assert.Equal(new[] { 3 }, a.IntermediateLoss);
         Assert.Equal(0.0, a.DestLossPct);   // the destination answered all 3 probes: exactly 0, not "not computed"
-        Assert.Contains(Probes.TraceNotes(a), n => n.Contains("rate-limiting") && n.Contains("NOT a real loss"));
+        Assert.Contains(Probes.TraceNotes(a), n => n.Contains("compatible with") && n.Contains("rate-limiting") && n.Contains("does not prove"));
+        Assert.DoesNotContain(Probes.TraceNotes(a), n => n.Contains("NOT a real loss") || n.Contains("most likely"));   // no categorical cause
+        using (Loc.Scope("fr")) Assert.Contains(Probes.TraceNotes(a), n => n.Contains("compatible avec") && n.Contains("ne prouve pas"));
     }
 
     [Fact]

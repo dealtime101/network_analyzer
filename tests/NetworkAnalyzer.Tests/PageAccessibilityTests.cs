@@ -83,6 +83,24 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void ToastMessagesAreAnnouncedToScreenReaders()
+    {
+        var toast = Regex.Match(Markup, @"<div\b[^>]*\bid=""toast""[^>]*>").Value;
+        Assert.NotEmpty(toast);
+        Assert.Equal("status", Attr(toast, "role"));
+        Assert.Equal("polite", Attr(toast, "aria-live"));
+        // a live region must stay in the accessibility tree: hiding it with display:none (or visibility:hidden) would make it silent
+        var css = Regex.Match(Page, @"#toast\{([^}]*)\}").Groups[1].Value;
+        Assert.NotEmpty(css);
+        Assert.DoesNotContain("display:none", css);
+        Assert.DoesNotContain("visibility:hidden", css);
+        var script = Regex.Match(Page, @"function toast\([^)]*\)\s*\{[^\n]*").Value;
+        Assert.NotEmpty(script);
+        Assert.DoesNotContain("display = 'none'", script);
+        Assert.DoesNotContain("display = 'block'", script);
+    }
+
+    [Fact]
     public void EveryChartCanvasIsAnImageWithAName()
     {
         // the static markup AND the markup the script builds (the diagnosis tab's charts)

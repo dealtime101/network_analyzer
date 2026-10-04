@@ -83,12 +83,12 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     </div>
   </div>
   <div class="card"><h2><span data-i18n="cards.h"></span> <span class="muted small" data-i18n="cards.sub"></span></h2><div class="grid" id="tcards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div></div>
-  <div class="card"><h2 data-i18n="chart.latency"></h2><canvas id="c_lat"></canvas><div class="legend" id="l_lat"></div><p class="small muted" data-i18n="chart.latency_note"></p></div>
+  <div class="card"><h2 data-i18n="chart.latency"></h2><canvas id="c_lat" role="img" data-i18n-aria="chart.latency"></canvas><div class="legend" id="l_lat"></div><p class="small muted" data-i18n="chart.latency_note"></p></div>
   <div class="grid">
-    <div class="card"><h2 data-i18n="chart.traffic"></h2><canvas id="c_net"></canvas><div class="legend" id="l_net"></div></div>
-    <div class="card"><h2 data-i18n="chart.dns"></h2><canvas id="c_dns"></canvas><div class="legend" id="l_dns"></div></div>
+    <div class="card"><h2 data-i18n="chart.traffic"></h2><canvas id="c_net" role="img" data-i18n-aria="chart.traffic"></canvas><div class="legend" id="l_net"></div></div>
+    <div class="card"><h2 data-i18n="chart.dns"></h2><canvas id="c_dns" role="img" data-i18n-aria="chart.dns"></canvas><div class="legend" id="l_dns"></div></div>
   </div>
-  <div class="card" id="wifi_card"><h2 data-i18n="chart.wifi"></h2><canvas id="c_wifi"></canvas><div class="legend" id="l_wifi"></div><p class="small muted" data-i18n-html="chart.wifi_note"></p></div>
+  <div class="card" id="wifi_card"><h2 data-i18n="chart.wifi"></h2><canvas id="c_wifi" role="img" data-i18n-aria="chart.wifi"></canvas><div class="legend" id="l_wifi"></div><p class="small muted" data-i18n-html="chart.wifi_note"></p></div>
   <p class="small muted" data-i18n="chart.traffic_note"></p>
 </section>
 
@@ -544,7 +544,7 @@ async function showDiag(id) {
   h += '</div>';
   if (a.actions.length) h += `<div class="card"><h2>${t('diag.actions')}</h2><ol>${a.actions.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   h += `<div class="card"><h2>${t('diag.timeline')}</h2>` + (a.timeline.length ? a.timeline.map(i => `<div class="tl ${i.type}"><b>${hm(i.t)}</b> — ${esc(t('type.' + i.type))}${i.zone ? ' — <b>' + esc(t('zone.' + i.zone)) + '</b>' : ''}<div class="small">${esc(i.zone_text || '')}</div>${(i.details || []).map(d => `<div class="small muted">${esc(d)}</div>`).join('')}${i.note ? `<div class="small muted">${esc(i.note)}</div>` : ''}</div>`).join('') : `<p class="muted">${t('diag.noinc')}</p>`) + '</div>';
-  h += `<div class="card"><h2>${t('diag.curves')}</h2><canvas id="d_lat"></canvas><div class="legend" id="dl_lat"></div><canvas id="d_net"></canvas><div class="legend" id="dl_net"></div><canvas id="d_dns" style="height:150px"></canvas><div class="legend" id="dl_dns"></div><div id="d_wc"><canvas id="d_wifi" style="height:150px"></canvas><div class="legend" id="dl_wifi"></div></div></div>`;
+  h += `<div class="card"><h2>${t('diag.curves')}</h2><canvas id="d_lat" role="img" aria-label="${t('chart.latency')}"></canvas><div class="legend" id="dl_lat"></div><canvas id="d_net" role="img" aria-label="${t('chart.traffic')}"></canvas><div class="legend" id="dl_net"></div><canvas id="d_dns" role="img" aria-label="${t('chart.dns')}" style="height:150px"></canvas><div class="legend" id="dl_dns"></div><div id="d_wc"><canvas id="d_wifi" role="img" aria-label="${t('chart.wifi')}" style="height:150px"></canvas><div class="legend" id="dl_wifi"></div></div></div>`;
   h += `<div class="card"><h2>${t('diag.measures')}</h2><div style="overflow-x:auto"><table><tr><th>${t('th.target')}</th><th>${t('th.state')}</th><th class="n">${t('th.req')}</th><th class="n">${t('th.loss')}</th><th class="n">${t('th.median')}</th><th class="n">p95</th><th class="n">${t('th.max')}</th><th class="n">${t('th.jitter')}</th></tr>` +
     a.stats.targets.map(x => row(x.label + ' — ' + x.host, x.state_text, x.stats)).join('') + [['sys_hit', 'diag.dns_hit'], ['sys_miss', 'diag.dns_miss'], ['ref_miss', 'diag.dns_ref']].filter(k => a.stats.dns[k[0]]).map(k => row(t(k[1]), t('diag.measured'), a.stats.dns[k[0]])).join('') +
     `</table></div><p class="small muted">${t('diag.meas_note')}</p>`;

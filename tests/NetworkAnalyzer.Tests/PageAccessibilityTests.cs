@@ -83,6 +83,19 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void EveryChartCanvasIsAnImageWithAName()
+    {
+        // the static markup AND the markup the script builds (the diagnosis tab's charts)
+        var canvases = Regex.Matches(Page, @"<canvas\b[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value).ToList();
+        Assert.True(canvases.Count >= 8, $"only {canvases.Count} canvases found");
+        var bad = canvases.Where(c => Attr(c, "role") != "img" || (Attr(c, "aria-label") is null && Attr(c, "data-i18n-aria") is null)).ToList();
+        Assert.Empty(bad);
+        // a data-i18n-aria name must be a real, translated key
+        foreach (var c in canvases.Select(c => Attr(c, "data-i18n-aria")).Where(k => k != null))
+            Assert.True(Regex.Matches(Page, $@"'{Regex.Escape(c!)}'\s*:").Count >= 2, $"{c} is not in both dictionaries");
+    }
+
+    [Fact]
     public void TheParserSeesTheFormControls()
     {
         Assert.True(Regex.Matches(Markup, @"<(input|select|textarea)\b", RegexOptions.IgnoreCase).Count > 25, "the checks below would prove nothing");

@@ -549,6 +549,9 @@ public class RecorderTests
         Assert.Equal("192.168.1.254", t[0].Host);
         t = Recorder.BuildTargets(new EnvInfo { Active = new AdapterInfo { Gw6 = "fe80::1", Index = 12 } }, "");
         Assert.Equal(6, t[0].Family);
+        Assert.Equal("fe80::1%12", t[0].Host);   // a link-local gateway needs its zone, on every platform
+        Assert.Equal("fe80::1%3", Recorder.BuildTargets(new EnvInfo { Active = new AdapterInfo { Gw6 = "fe80::1%3", Index = 12 } }, "")[0].Host);
+        Assert.Equal("fe80::1", Recorder.BuildTargets(new EnvInfo { Active = new AdapterInfo { Gw6 = "fe80::1", Index = 0 } }, "")[0].Host);   // unknown index: no bogus zone
     }
 
     [Fact]

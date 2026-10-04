@@ -112,7 +112,7 @@ public sealed class Recorder
             t.Add(new Target { Id = "gateway", Host = Probes.ValidateHost(gw), Role = "gateway", Family = 4 });
         else if (a?.Gw6 != null)
         {
-            var scope = OperatingSystem.IsWindows() && a.Gw6.StartsWith("fe80", StringComparison.OrdinalIgnoreCase) && !a.Gw6.Contains('%') ? $"%{a.Index}" : "";
+            var scope = a.Index > 0 && a.Gw6.StartsWith("fe80", StringComparison.OrdinalIgnoreCase) && !a.Gw6.Contains('%') ? $"%{a.Index}" : "";
             t.Add(new Target { Id = "gateway", Host = a.Gw6 + scope, Role = "gateway", Family = 6 });
         }
         foreach (var (id, host) in InternetTargets)

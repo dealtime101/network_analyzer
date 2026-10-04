@@ -872,11 +872,14 @@ public static partial class Diagnose
         var idle = PhaseWindow(cx.D, "idle");
         if (idle.Count > 0)
         {
-            var iv = Stats.Values(idle.SelectMany(w => Stats.Window(cx.D.S("net:down_bps"), w.A, w.B).Concat(Stats.Window(cx.D.S("net:up_bps"), w.A, w.B))));
-            if (iv.Count > 0 && Mbps(Stats.Median(iv))!.Value >= Th.BgIdleMbps / 2)
+            // down and up are sampled at the same instant: add them second by second
+            var perSecond = idle.SelectMany(w => Stats.Window(cx.D.S("net:down_bps"), w.A, w.B).Concat(Stats.Window(cx.D.S("net:up_bps"), w.A, w.B)))
+                .Where(s => s.V != null).GroupBy(s => s.T).Select(g => g.Sum(s => s.V!.Value)).ToList();
+            var idleMbps = Mbps(Stats.Median(perSecond));
+            if (idleMbps != null && idleMbps.Value >= Th.BgIdleMbps)
             {
                 h.Score += 3;
-                h.Evidence.Add(T("bg.ev.idle", F1(Mbps(Stats.Median(iv))!.Value * 2)));
+                h.Evidence.Add(T("bg.ev.idle", F1(idleMbps.Value)));
             }
         }
         // correlation: mean traffic at degraded seconds vs the other seconds

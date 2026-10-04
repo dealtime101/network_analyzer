@@ -169,6 +169,20 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void IdleTrafficIsTheSumOfBothDirectionsPerSecond()
+    {
+        // Bursty background download in the idle phase (3 Mbps in 60 % of the seconds, nothing up):
+        // the median of the mixed down+up values is 0, the median of the per-second sum is 3.
+        var d = Simulator.Make("bufferbloat", 7);
+        double t0 = Simulator.T0 + 30, t1 = Simulator.T0 + 40;
+        foreach (var name in new[] { "net:down_bps", "net:up_bps" })
+            d.Series[name] = d.Series[name].Select(s =>
+                s.T < t0 || s.T > t1 ? s : s with { V = name == "net:down_bps" && (int)(s.T - t0) % 5 < 3 ? 3e6 : 0 }).ToList();
+        var a = Diagnose.Analyze(d, new AppConfig());
+        Assert.Contains("already exchanges 3.0 Mbps", Text(a));
+    }
+
+    [Fact]
     public void SaturationNeedsKnownCapacity()
     {
         var a = Run("saturation");

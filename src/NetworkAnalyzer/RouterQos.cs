@@ -101,6 +101,8 @@ public static class RouterQos
                 Add("problem", Loc.T("router.limit_exceeded", Loc.T("dir." + dir + ".m"), F0(m.Value), G(l)));
             else if (ratio >= NoEffectRatio)
                 Add(worstDelta >= 30 ? "warning" : "info", Loc.T("router.limit_noeffect", Cap(d), G(l), src, F0(rf)));
+            else if (qos != true)  // saved but not known to be applied: the numbers can be compared, their effect on the traffic cannot be claimed
+                Add("info", Loc.T("router.limit_unapplied", Cap(d), G(l), F0(ratio * 100), src, Loc.T(qos == false ? "router.qos_state.off" : "router.qos_state.unknown")));
             else if (ratio < 0.5)
                 Add("warning", Loc.T("router.limit_toolow", Cap(d), G(l), src, F0(rf)));
             else if (ratio < 0.85)
@@ -191,7 +193,10 @@ public static partial class Loc
         Add("router.limit_noeffect", "{0} limit ({1} Mbps) above the {2} ({3} Mbps): it limits nothing, the queue stays in the modem/line.", "Limite {0} ({1} Mbps) supérieure au {2} ({3} Mbps) : elle ne limite rien, la file d'attente reste dans le modem/la ligne.");
         Add("router.limit_toolow", "{0} limit ({1} Mbps) far below the {2} ({3} Mbps): needlessly throttles the connection.", "Limite {0} ({1} Mbps) très inférieure au {2} ({3} Mbps) : bride inutilement la connexion.");
         Add("router.limit_below", "{0} limit ({1} Mbps) at {2}% of the {3}: acceptable if the goal is to keep the queue empty, at the cost of throughput.", "Limite {0} ({1} Mbps) à {2} % du {3} : acceptable si l'objectif est de garder la file vide, au prix de débit.");
-        Add("router.limit_ok", "{0} limit ({1} Mbps) consistent with the {2} ({3} Mbps): {4}%.", "Limite {0} ({1} Mbps) cohérente avec le {2} ({3} Mbps) : {4} %.");
+        Add("router.limit_unapplied", "{0} limit ({1} Mbps) saved at {2}% of the {3}, but QoS is {4}: whether it is applied is not established, so nothing is concluded about its effect.", "Limite {0} ({1} Mbps) enregistrée à {2} % du {3}, mais la QoS est {4} : son application n'est pas établie, aucune conclusion sur son effet.");
+        Add("router.qos_state.off", "off", "désactivée");
+        Add("router.qos_state.unknown", "unknown", "inconnue");
+        Add("router.limit_ok","{0} limit ({1} Mbps) consistent with the {2} ({3} Mbps): {4}%.", "Limite {0} ({1} Mbps) cohérente avec le {2} ({3} Mbps) : {4} %.");
         Add("router.rule_low", "Bandwidth rule \"{0}\": {1} limit {2} Mbps, far below the measured throughput ({3} Mbps). If this rule applies to your PC (or its address range), it throttles it; check which devices it applies to.", "Règle de bande passante « {0} » : limite {1} {2} Mbps, très inférieure au débit mesuré ({3} Mbps). Si cette règle s'applique à votre PC (ou à sa plage d'adresses), elle le bride ; vérifiez à quels appareils elle s'applique.");
         Add("router.priority_temp", "Priority of \"{0}\" limited to {1}: if the lag episode happened after it expired, the device was no longer prioritised.", "Priorité de « {0} » limitée à {1} : si l'épisode de lag a eu lieu après expiration, l'appareil n'était plus prioritaire.");
         Add("router.sqm_unknown", "SQM on your model: unknown. Check the official documentation (model + hardware version + firmware) before assuming it.", "Présence de SQM sur votre modèle : inconnue. À vérifier dans la documentation officielle (modèle + version matérielle + firmware) avant de la supposer.");

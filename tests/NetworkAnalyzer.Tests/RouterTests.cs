@@ -81,6 +81,24 @@ public class RouterTests
         Assert.Contains("about 276 Mbps", RouterQos.Propose(r, (300.0, null), 200).Select(p => p.Change).First());
     }
 
+    [Theory]
+    [InlineData(false, "off")] [InlineData(null, "unknown")]
+    public void ALimitOfAnInactiveQosIsNotBlamedForTheTraffic(bool? qos, string state)
+    {
+        using var en = Loc.Scope("en");
+        var plan = new AppConfig { PlanDownMbps = 300 };
+        // 50 Mbps against a 300 Mbps plan (nothing measured) is far below: with QoS on that "needlessly throttles"; with it off or unknown nothing is known to be applied
+        var r = new RouterConfig { QosEnabled = qos, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };
+        var f = RouterQos.Check(r, (null, null), plan, 10);
+        Assert.DoesNotContain(f, x => x.Text.Contains("needlessly throttles") || x.Text.Contains("acceptable if the goal") || x.Text.Contains("consistent with"));
+        Assert.Contains(f, x => x.Severity == "info" && x.Text.Contains("not established") && x.Text.Contains(state == "off" ? "off" : "unknown"));
+        using (Loc.Scope("fr"))
+            Assert.Contains(RouterQos.Check(r, (null, null), plan, 10), x => x.Text.Contains("pas établi"));
+        // the same limit with QoS on keeps its verdict
+        var on = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };
+        Assert.Contains(RouterQos.Check(on, (null, null), plan, 10), x => x.Text.Contains("needlessly throttles"));
+    }
+
     [Fact]
     public void ALimitIsNeverProposedAsZero()
     {

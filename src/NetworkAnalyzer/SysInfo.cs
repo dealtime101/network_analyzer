@@ -211,7 +211,7 @@ public static partial class SysInfo
             else if (k.StartsWith("debit de reception") || k.StartsWith("receive rate")) cur.RxRate = Num(v);
             else if (k.StartsWith("debit de transmission") || k.StartsWith("transmit rate")) cur.TxRate = Num(v);
         }
-        var b = blocks.FirstOrDefault(x => x.Connected && x.Signal.HasValue);
+        var b = blocks.FirstOrDefault(x => x.Connected);   // a connection without a Signal line is still a connection: Signal stays null
         if (b != null) b.Band ??= BandFromChannel(b.Channel, b.Radio);
         return b;
     }

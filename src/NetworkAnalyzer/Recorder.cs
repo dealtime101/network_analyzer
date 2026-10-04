@@ -495,7 +495,7 @@ public sealed class Recorder
                 else
                 {
                     var info = System.Text.Json.JsonSerializer.Serialize(new { channel = w.Channel, band = w.Band, bssid = w.Bssid, radio = w.Radio });
-                    Emit("wifi:signal", w.Signal, true, info, null, ct);
+                    if (w.Signal.HasValue) Emit("wifi:signal", w.Signal, true, info, null, ct);   // no value, no sample
                     if (w.RxRate.HasValue) Emit("wifi:rx", w.RxRate, true, "", null, ct);
                     if (w.TxRate.HasValue) Emit("wifi:tx", w.TxRate, true, "", null, ct);
                     if (first)

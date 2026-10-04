@@ -892,6 +892,21 @@ SSID 3 : Autre
     }
 
     [Fact]
+    public void AConnectedWifiWithoutASignalLineIsStillReportedWithItsOtherDetails()
+    {
+        var text = NetshEn.Replace("    Signal                 : 92%\n", "").Replace("    Signal                 : 92%\r\n", "");
+        Assert.DoesNotContain("Signal", text);
+        var w = SysInfo.ParseNetshInterfaces(text);
+        Assert.NotNull(w);                                    // red before: null, the whole connection was dropped
+        Assert.Null(w!.Signal);                               // the missing value stays missing, it is not invented
+        Assert.Equal((36, 866.7, 780.0), (w.Channel, w.RxRate, w.TxRate));
+        Assert.Equal("11:22:33:44:55:66", w.Bssid);
+        Assert.StartsWith("5 GHz", w.Band);
+        // a disconnected adapter is still null
+        Assert.Null(SysInfo.ParseNetshInterfaces(text.Replace("connected", "disconnected")));
+    }
+
+    [Fact]
     public void LiveTeredoTunnelIsNotReportedAsVpn()
     {
         var teredo = Ad("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", SysInfo.Kind("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", NetworkInterfaceType.Tunnel), "Up", v6: new[] { "2001:0:1::2" });

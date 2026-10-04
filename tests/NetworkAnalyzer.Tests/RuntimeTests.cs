@@ -1861,6 +1861,26 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task AWifiReadingWithoutASignalRecordsTheRatesAndNoFakeSignal()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store)
+        {
+            WifiPollMs = 30,
+            WifiReader = () => Task.FromResult<WifiInfo?>(new WifiInfo { Connected = true, Signal = null, Channel = 6, Bssid = "aa:bb", TxRate = 300, RxRate = 200 }),
+            NeighborReader = (_, _) => Task.FromResult<WifiNeighbors?>(null),
+        };
+        rec.Start(new EnvInfo { Active = new AdapterInfo { Kind = "wifi" } }, new List<Target>(), 1);
+        await Task.Delay(400);
+        var id = rec.Status().Sid!.Value;
+        var live = rec.LiveSince(0);
+        await rec.StopAsync();
+        Assert.True(live.ContainsKey("wifi:tx") && live.ContainsKey("wifi:rx"));
+        Assert.False(live.ContainsKey("wifi:signal"), "a signal sample was recorded without any signal");   // red before: null values flagged ok
+        Assert.Equal(6, store.LoadHeader(id)!.Meta.Wifi!.Channel);                                               // the details are kept
+    }
+
+    [Fact]
     public async Task AnOutageAfterAnswersIsFailuresNotAFilteredIcmpTarget()
     {
         // NoResponse is the "does not answer ICMP" badge, decided from the first 8 probes. A target that answered and then goes down is an

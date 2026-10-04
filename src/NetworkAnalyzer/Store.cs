@@ -160,7 +160,6 @@ public sealed class SessionStore
     public int SaveComplete(SessionData d)
     {
         var h = new SessionHeader { Started = d.Started, Ended = d.Ended, Label = d.Label, Link = d.Link, PlannedS = d.PlannedS, Meta = d.Meta };
-        int id = Create(h);
         var sb = new StringBuilder();
         foreach (var (name, list) in d.Series)
             foreach (var s in list)
@@ -168,7 +167,10 @@ public sealed class SessionStore
         foreach (var m in d.Marks) sb.AppendLine(JsonSerializer.Serialize(new object?[] { "m", m.T, m.Kind, m.Note }));
         foreach (var p in d.Phases) sb.AppendLine(JsonSerializer.Serialize(new object?[] { "p", p.Name, p.T0, p.T1, JsonSerializer.SerializeToElement(p.Meta, Json.Options) }));
         foreach (var t in d.Traces) sb.AppendLine(JsonSerializer.Serialize(new object?[] { "tr", t.T, t.Target, JsonSerializer.SerializeToElement(t.Data, Json.Options) }));
-        File.WriteAllText(LinesPath(id), sb.ToString(), new UTF8Encoding(false));
+        // everything is serialised before anything is created, so a serialisation failure leaves nothing behind; only then is the id taken
+        int id = Create(h);
+        try { File.WriteAllText(LinesPath(id), sb.ToString(), new UTF8Encoding(false)); }
+        catch { Delete(id); throw; }   // a write failure must not leave an empty session listed with the full header
         return id;
     }
 }

@@ -712,6 +712,18 @@ public class StoreTests
     }
 
     [Fact]
+    public void ASessionThatCannotBeSerialisedIsNotLeftBehindHalfPublished()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        var data = Simulator.Make("healthy", 7, p => p.Minutes = 1);
+        data.Series["ping:gateway"].Add(new Sample(5, double.NaN, true, ""));   // JSON has no NaN: serialising this line throws
+        Assert.ThrowsAny<Exception>(() => store.SaveComplete(data));
+        Assert.Empty(store.List());                                                                                      // red before: an empty session with the full header stayed listed
+        Assert.Empty(Directory.GetFiles(Path.Combine(dir, "sessions")).Where(f => !f.EndsWith("last_id.txt")));
+    }
+
+    [Fact]
     public void ANewSessionNeverTruncatesAMeasurementFileThatAlreadyExists()
     {
         var dir = Tmp.Dir();

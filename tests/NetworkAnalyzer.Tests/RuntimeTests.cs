@@ -532,6 +532,29 @@ public class ReportTests
     }
 
     [Fact]
+    public void EveryChartCarriesATextAlternativeWithItsFigures()
+    {
+        var series = new List<Report.ChartSeries>
+        {
+            new() { Name = "Gateway", Pts = Enumerable.Range(0, 100).Select(i => ((double)i, i < 90 ? 2.0 : 40.0)).ToList(), Lost = new() { 10.0, 11.0, 12.0 } },
+            new() { Name = "Silent", Pts = new(), Lost = new() },
+        };
+        string Svg(string lang) { using (Loc.Scope(lang)) return Report.SvgChart(series, 0, 100, title: "Latency", unit: "ms"); }
+        var en = Svg("en");
+        var m = System.Text.RegularExpressions.Regex.Match(en, "aria-describedby=\"([^\"]+)\"");
+        Assert.True(m.Success, "the svg must point at its description");
+        var desc = System.Text.RegularExpressions.Regex.Match(en, $"<desc id=\"{System.Text.RegularExpressions.Regex.Escape(m.Groups[1].Value)}\">([^<]*)</desc>");
+        Assert.True(desc.Success, "and the description must exist under that id");
+        Assert.Contains("Gateway: median 2 ms, maximum 40 ms, failed probes: 3", desc.Groups[1].Value);   // the figures of the curve and its failures
+        Assert.DoesNotContain("Silent:", desc.Groups[1].Value);                                            // a curve with nothing in it is not described
+        var fr = Svg("fr");
+        Assert.Contains("Gateway : médiane 2 ms, maximum 40 ms, sondes échouées : 3", System.Net.WebUtility.HtmlDecode(fr));   // the markup encodes é as &#233;
+        // two charts never share a description id (ids are unique in a document)
+        var ids = Enumerable.Range(0, 3).Select(_ => System.Text.RegularExpressions.Regex.Match(Svg("en"), "aria-describedby=\"([^\"]+)\"").Groups[1].Value).ToList();
+        Assert.Equal(3, ids.Distinct().Count());
+    }
+
+    [Fact]
     public void ACurveIsNotDrawnAcrossAHoleInTheMeasurements()
     {
         int Lines(string svg) => System.Text.RegularExpressions.Regex.Matches(svg, "<polyline").Count;

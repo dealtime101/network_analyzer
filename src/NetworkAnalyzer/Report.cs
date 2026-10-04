@@ -60,6 +60,8 @@ public static class Report
         public List<double> Lost { get; init; } = new();
     }
 
+    static int chartSeq;
+
     /// <summary>Curve = maximum per column (spikes stay visible).</summary>
     public static string SvgChart(List<ChartSeries> series, double t0, double t1, IEnumerable<Mark>? marks = null, IEnumerable<Phase>? phases = null, int height = 170, string unit = "ms", double? clip = null, string title = "")
     {
@@ -75,7 +77,13 @@ public static class Report
         string N1(double x) => x.ToString("0.0", Inv);
         // accessible name: what the chart shows, then the curves it holds
         var name = E((title.Length > 0 ? title + ": " : "") + string.Join(", ", series.Select(s => s.Name)) + " (" + unit + ")");
-        var o = new StringBuilder($"<svg viewBox=\"0 0 {W} {H}\" role=\"img\" class=\"chart\" aria-label=\"{name}\"><title>{name}</title>");
+        // text alternative: what the curves say, figure by figure (a screen reader cannot read a drawing)
+        string F(double v) => v.ToString("0.#", Loc.Fmt);
+        var desc = E(string.Join(" ", series.Where(s => s.Pts.Count > 0 || s.Lost.Count > 0).Select(s => s.Pts.Count > 0
+            ? T("rep.chart_desc", s.Name, F(Stats.Median(s.Pts.Select(p => p.V)) ?? 0), unit, F(s.Pts.Max(p => p.V)), s.Lost.Count)
+            : T("rep.chart_desc_loss", s.Name, s.Lost.Count))));
+        var descId = $"chart-desc-{Interlocked.Increment(ref chartSeq)}";   // ids are unique in a document, and a report holds several charts
+        var o = new StringBuilder($"<svg viewBox=\"0 0 {W} {H}\" role=\"img\" class=\"chart\" aria-label=\"{name}\" aria-describedby=\"{descId}\"><title>{name}</title><desc id=\"{descId}\">{desc}</desc>");
         foreach (var p in phases ?? Enumerable.Empty<Phase>())
             o.Append($"<rect x=\"{N1(X(p.T0))}\" y=\"4\" width=\"{N1(Math.Max(1, X(p.T1) - X(p.T0)))}\" height=\"{H - B - 4}\" fill=\"#8884\" /><text x=\"{N1(X(p.T0) + 2)}\" y=\"14\" font-size=\"9\" fill=\"#666\">{E(p.Name)}</text>");
         for (int i = 0; i < 5; i++)
@@ -348,6 +356,8 @@ public static partial class Loc
         Add("rep.s.dns", "DNS (common name)", "DNS (nom courant)");
         Add("rep.s.wifi", "Wi-Fi signal (%)", "Signal Wi-Fi (%)");
         Add("rep.nochart", "No data for this chart.", "Aucune donnée pour ce graphique.");
+        Add("rep.chart_desc", "{0}: median {1} {2}, maximum {3} {2}, failed probes: {4}.", "{0} : médiane {1} {2}, maximum {3} {2}, sondes échouées : {4}.");
+        Add("rep.chart_desc_loss", "{0}: no successful measurement, failed probes: {1}.", "{0} : aucune mesure réussie, sondes échouées : {1}.");
         Add("rep.h.measures", "Measurements", "Mesures");
         Add("rep.th.target", "Target", "Cible");
         Add("rep.th.state", "State", "État");

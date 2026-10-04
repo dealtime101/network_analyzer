@@ -295,6 +295,7 @@ public sealed class LoadTest
                 using var req = new HttpRequestMessage(HttpMethod.Post, cfg.BaseUrl + "/__up") { Version = HttpVersion.Version11, VersionPolicy = HttpVersionPolicy.RequestVersionExact };
                 req.Content = new BodyContent(10_000_000, block, () => Stopped(cap, ct), n => Interlocked.Add(ref bytes, n));
                 using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+                if (!resp.IsSuccessStatusCode) throw new HttpRequestException($"HTTP {(int)resp.StatusCode}");  // a refused upload is a failure, as for the download
                 await resp.Content.ReadAsByteArrayAsync(ct);
             }
             catch (OperationCanceledException) { return; }

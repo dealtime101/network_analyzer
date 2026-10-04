@@ -41,7 +41,7 @@ sealed class StubServer : IAsyncDisposable
             try { while (n > 0) { int k = (int)Math.Min(n, blk.Length); await c.Response.Body.WriteAsync(blk.AsMemory(0, k), c.RequestAborted); n -= k; } }
             catch (OperationCanceledException) { }
         });
-        var counters = new int[3];   // started, exact, wrong
+        var counters = new int[4] { 0, 0, 0, 200 };   // started, exact, wrong, status to answer
         app.MapPost("/__up", async (HttpContext c) =>
         {
             Interlocked.Increment(ref counters[0]);
@@ -54,6 +54,7 @@ sealed class StubServer : IAsyncDisposable
                 Interlocked.Increment(ref counters[read == declared ? 1 : 2]);
             }
             catch (OperationCanceledException) { }
+            c.Response.StatusCode = Volatile.Read(ref counters[3]);
         });
         await app.StartAsync();
         var url = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
@@ -64,6 +65,7 @@ sealed class StubServer : IAsyncDisposable
     public int UploadsStarted => Volatile.Read(ref counters[0]);
     public int UploadsExact => Volatile.Read(ref counters[1]);
     public int UploadsWrong => Volatile.Read(ref counters[2]);
+    public int UploadStatus { set => Volatile.Write(ref counters[3], value); }
 
     public async ValueTask DisposeAsync() { await web.StopAsync(); await web.DisposeAsync(); }
 }
@@ -114,6 +116,24 @@ public class LoadTestTests
         Assert.True(stub.UploadsStarted >= 2, "several complete POSTs were expected");
         Assert.Equal(stub.UploadsStarted, stub.UploadsExact);   // every body had exactly the announced length
         Assert.Equal(0, stub.UploadsWrong);
+    }
+
+    [Fact]
+    public async Task ARefusedUploadIsReportedNotCountedAsASuccess()
+    {
+        await using var stub = await StubServer.StartAsync();
+        stub.UploadStatus = 429;
+        var cfg = new LoadConfig
+        {
+            BaseUrl = stub.Url, Streams = 1, CapDownMb = 100000, CapUpMb = 30,
+            Phases = new() { new() { Name = "upload", DurationS = 5, Direction = "up" } },
+        };
+        var lt = new LoadTest(NewRec(), cfg);
+        lt.Start();
+        await lt.Task!.WaitAsync(TimeSpan.FromSeconds(30));
+        var r = lt.Status().Results.Single();
+        Assert.NotNull(r.Errors);
+        Assert.Contains(r.Errors!, e => e.Contains("HTTP 429"));
     }
 
     [Fact]

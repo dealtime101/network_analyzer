@@ -28,12 +28,17 @@ public static class Api
     static readonly Regex ShotRx = new(@"^/api/router/shot/([0-9a-f_]+\.(?:png|jpg|webp))$", RegexOptions.Compiled);
     static readonly Regex SessionActionRx = new(@"^/api/session/(\d+)/(delete|label)$", RegexOptions.Compiled);
 
-    static string IndexHtml()
+    static readonly Lazy<byte[]> indexBytes = new(() =>
     {
+        // the page is an embedded resource: it cannot change while the program runs
         using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("index.html")!;
-        using var r = new StreamReader(s, Encoding.UTF8);
-        return r.ReadToEnd();
-    }
+        using var ms = new MemoryStream();
+        s.CopyTo(ms);
+        return ms.ToArray();
+    });
+
+    /// <summary>The web page, as served (UTF-8), read once.</summary>
+    public static byte[] IndexBytes => indexBytes.Value;
 
     public static async Task<(WebApplication Web, int Port)> StartAsync(App app, int port, int tries = 20)
     {
@@ -122,7 +127,7 @@ public static class Api
         var rec = app.Rec;
         if (method == "GET")
         {
-            if (path == "/") return new Raw(Encoding.UTF8.GetBytes(IndexHtml()), "text/html; charset=utf-8");
+            if (path == "/") return new Raw(IndexBytes, "text/html; charset=utf-8");
             if (path == "/favicon.ico") return new Raw(Array.Empty<byte>(), "image/x-icon");
             if (path == "/api/identity") return new { app = "NetworkAnalyzer", version = AppVersion.Display };
             if (path == "/api/env")

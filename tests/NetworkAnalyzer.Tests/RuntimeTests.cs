@@ -627,6 +627,15 @@ public class ServerTests : IAsyncLifetime
         Assert.DoesNotContain("Overflow", r.Body);
     }
 
+    [Fact]
+    public async Task ThePageIsReadFromTheResourceOnceAndServedFromMemory()
+    {
+        Assert.Same(Api.IndexBytes, Api.IndexBytes);   // the same buffer, not a new read + encode per call
+        var r = await http.GetByteArrayAsync("/");
+        Assert.Equal(Api.IndexBytes, r);
+        Assert.Contains("<html", System.Text.Encoding.UTF8.GetString(r), StringComparison.OrdinalIgnoreCase);
+    }
+
     [Theory]
     [InlineData("/api/session/1/foo")] [InlineData("/api/session/1/export.xml")] [InlineData("/api/session/1/report.csv")]
     public async Task AnUnknownSubResourceIsRejectedBeforeAnySessionWork(string path)

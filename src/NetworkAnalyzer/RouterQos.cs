@@ -93,7 +93,7 @@ public static class RouterQos
             var d = Dir(dir);
             if ((ratio >= 800 && ratio <= 1200) || (ratio >= 0.0008 && ratio <= 0.0012))
                 Add("problem", Loc.T("router.limit_unit", Cap(d), G(l), G(ratio), src, F0(rf)));
-            else if (m is > 0 && qos == true && m > 1.15 * l)
+            else if (m is > 0 && m > 1.15 * l)  // measured above the limit: it does not apply, whether QoS is on, off or unknown
                 Add("problem", Loc.T("router.limit_exceeded", Loc.T("dir." + dir + ".m"), F0(m.Value), G(l)));
             else if (ratio >= NoEffectRatio)
                 Add(worstDelta >= 30 ? "warning" : "info", Loc.T("router.limit_noeffect", Cap(d), G(l), src, F0(rf)));

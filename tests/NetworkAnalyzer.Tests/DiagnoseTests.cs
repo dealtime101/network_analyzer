@@ -618,14 +618,27 @@ public class RouterTests
         }
     }
 
+    [Theory]
+    [InlineData(null)] [InlineData(false)] [InlineData(true)]
+    public void AMeasuredRateAboveTheLimitIsReportedAsALimitThatDoesNotApplyWhateverTheQosState(bool? qos)
+    {
+        var r = new RouterConfig { QosEnabled = qos, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };   // 300 Mbps measured through a 50 Mbps limit
+        using var _ = Loc.Scope("en");
+        var texts = Kinds(r).Select(k => k.Txt).ToList();
+        Assert.Contains(texts, t => t.Contains("EXCEEDS the configured limit"));
+        Assert.DoesNotContain(texts, t => t.Contains("needlessly throttles"));
+    }
+
     [Fact]
     public void DirectionIsCapitalisedOnlyWhereItOpensTheSentence()
     {
-        var r = new RouterConfig { QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };   // far below the 300 Mbps measured (QoS state unknown, so not the 'exceeds' branch)
-        using (Loc.Scope("en")) Assert.Contains(Kinds(r), k => k.Txt.StartsWith("Download limit"));
+        // a limit far below the PLAN (nothing measured yet): the 'throttles needlessly' message
+        var r = new RouterConfig { QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };
+        List<(string Sev, string Txt)> Kinds2() => RouterQos.Check(r, (null, null), new AppConfig { PlanDownMbps = 300 }, 200).Select(f => (f.Severity, f.Text)).ToList();
+        using (Loc.Scope("en")) Assert.Contains(Kinds2(), k => k.Txt.StartsWith("Download limit"));
         using (Loc.Scope("fr"))
         {
-            var fr = Kinds(r).Select(k => k.Txt).ToList();
+            var fr = Kinds2().Select(k => k.Txt).ToList();
             Assert.Contains(fr, t => t.StartsWith("Limite descendante"));
             Assert.DoesNotContain(fr, t => t.Contains("Descendante"));
         }

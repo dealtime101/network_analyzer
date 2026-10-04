@@ -21,7 +21,13 @@ public static class Report
     static string Num(double? x, int d = 0, string unit = "") => x is null ? "—" : x.Value.ToString("F" + d, Loc.Fmt) + unit;
 
     /// <summary>A change with an explicit sign: +4, -3, 0; an em dash when there is no value.</summary>
-    static string Signed(double? x, int d = 0, string unit = "") => x is null ? "—" : (x.Value > 0 && Math.Round(x.Value, d) != 0 ? "+" : "") + Num(x, d, unit);
+    static string Signed(double? x, int d = 0, string unit = "")
+    {
+        if (x is null) return "—";
+        double rounded = Math.Round(x.Value, d);
+        if (rounded == 0) return Num(0.0, d, unit);   // a change that shows as 0 has no sign: not "+0", not "-0"
+        return (rounded > 0 ? "+" : "") + Num(x, d, unit);
+    }
 
     // ------------------------------------------------------------------ exports
     static string Csv(string? s)

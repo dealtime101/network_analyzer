@@ -532,6 +532,22 @@ public class ReportTests
     }
 
     [Fact]
+    public void ASignedChangeHasNoSignWhenItIsZeroOrRoundsToZero()
+    {
+        var d = Simulator.Make("bufferbloat");
+        var a = Diagnose.Analyze(d, new AppConfig());
+        var down = a.Bufferbloat!.Directions["down"]; var up = a.Bufferbloat.Directions["up"];
+        down.Delta = 0; down.GwDelta = 0.4;                  // exactly zero; and one that is shown as 0 ms
+        up.Delta = 0.6; up.GwDelta = -0.4;                    // rounds to +1; and one that rounds to -0
+        var html = Report.Html(d, a);
+        Assert.DoesNotContain("+0 ms", html);
+        Assert.DoesNotContain("-0 ms", html);
+        Assert.DoesNotContain("+-", html);
+        Assert.Contains("<td class='n'>0 ms</td>", html);
+        Assert.Contains("<td class='n'>+1 ms</td>", html);
+    }
+
+    [Fact]
     public void TheTrafficChartAppearsWhenOnlyTheUploadWasMeasured()
     {
         var d = Simulator.Make("healthy", 7, p => p.Minutes = 2);

@@ -1298,6 +1298,29 @@ public class ShotSizeTests
     }
 }
 
+public class ShotPathTests
+{
+    [Fact]
+    public void AShotNameCanNeverLeadOutsideTheShotsFolder()
+    {
+        var dir = Tmp.Dir();
+        var app = new App(dir);
+        var uri = "data:image/png;base64," + Convert.ToBase64String(new byte[] { 1, 2, 3 });
+        var good = app.AddShot(uri);
+        File.WriteAllBytes(Path.Combine(dir, "outside.png"), new byte[] { 9, 9, 9 });             // a real image-named file one level up from router_shots
+        File.WriteAllBytes(Path.Combine(dir, "router_shots", "a1.png"), new byte[] { 4 });
+        Assert.NotNull(app.ReadShot(good));
+        Assert.NotNull(app.ReadShot("a1.png"));
+        foreach (var bad in new[] { "../outside.png", "..\\outside.png", "/etc/passwd.png", "a/../a1.png", "./a1.png", "a1.png/", "a1.png\n", "a1.png\0", "%2e%2e/outside.png", "..", "", "A1.PNG", "a1.png.png", Path.Combine(dir, "outside.png") })
+        {
+            Assert.Null(app.ReadShot(bad));                                                         // no read…
+            Assert.Throws<ApiException>(() => app.DelShot(bad));                                 // …and no delete
+        }
+        Assert.True(File.Exists(Path.Combine(dir, "outside.png")));                                 // the file outside is untouched
+        Assert.True(File.Exists(Path.Combine(dir, "router_shots", "a1.png")));
+    }
+}
+
 public class ShotNameTests
 {
     [Fact]

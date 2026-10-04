@@ -42,7 +42,8 @@ public sealed class SessionSummary
 /// <summary>Application layer: sessions, saturation test, analyses, settings. No HTTP here (see <see cref="Api"/>).</summary>
 public sealed class App
 {
-    static readonly Regex ShotRx = new(@"^[0-9a-f_]+\.(png|jpg|webp)$", RegexOptions.Compiled);
+    // \z, not $: "$" also matches before a final newline, so "a1.png\n" would have been a valid name
+    static readonly Regex ShotRx = new(@"\A[0-9a-f_]+\.(png|jpg|webp)\z", RegexOptions.Compiled);
     static readonly Regex DataUriRx = new(@"^data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$", RegexOptions.Compiled);
     static readonly Regex UrlRx = new(@"^https?://[A-Za-z0-9.\-:]+$", RegexOptions.Compiled);
     const int MaxShot = 5_000_000;

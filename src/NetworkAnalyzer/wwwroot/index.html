@@ -73,7 +73,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     <div class="card" style="text-align:center">
       <h2 data-i18n="lag.h"></h2>
       <button class="lag" id="lag" data-i18n="lag.btn"></button>
-      <div style="margin-top:8px"><input id="lagnote" data-i18n-ph="lag.note_ph" data-i18n-aria="lag.note_ph" maxlength="200" style="width:90%"></div>
+      <div style="margin-top:8px"><label for="lagnote" class="small" data-i18n="lag.note_label"></label><br><input id="lagnote" data-i18n-ph="lag.note_ph" maxlength="200" style="width:90%"></div>
       <p class="small muted" data-i18n="lag.blurb"></p>
       <ul id="marks" class="small" style="text-align:left"></ul>
       <button class="btn" id="seediag" style="display:none" data-i18n="lag.see"></button>
@@ -184,7 +184,7 @@ en: {
  'live.custom': 'Custom destination (game server…): <code>host</code> or <code>host:port</code>', 'live.custom_ph': 'e.g. 203.0.113.10 or game.example.net:27015',
  'live.blurb': 'Pings every second to the gateway, 3 independent Internet destinations (Cloudflare, Google, Quad9) and your destination; DNS every 5 s. Traffic generated: ≈ 1 to 2 KB/s (≈ 2 to 4 MB for 30 min). A target that does not answer ping is flagged (and measured over TCP when possible).',
  'live.start': '▶ Start', 'live.stop': '■ Stop', 'live.remaining': '{0} min {1} s left', 'live.phase': ' — phase: {0}', 'live.started': 'Monitoring started. Use your computer normally.', 'live.stopped': 'Monitoring stopped.',
- 'lag.h': 'During a lag', 'lag.btn': "I'm lagging now", 'lag.note_ph': 'Note (optional): what you were doing',
+ 'lag.note_label': 'Note (optional)', 'lag.h': 'During a lag', 'lag.btn': "I'm lagging now", 'lag.note_ph': 'Note (optional): what you were doing',
  'lag.blurb': 'Marks the moment, keeps the measurements before/after (45 s before and 30 s after are analysed) and starts a path diagnosis (traceroute) in the background. Without a running monitoring, a 15-minute session starts automatically.',
  'lag.none': 'No incident marked.', 'lag.see': "See this session's diagnosis →", 'lag.toast': 'Incident marked at {0}.', 'lag.toast_auto': ' Monitoring started automatically (15 min).', 'lag.toast_trace': ' Traceroute running in the background.',
  'env.h': 'Detected connection', 'env.refresh': 'Refresh', 'env.iface': 'Interface', 'env.ipv4': 'IPv4 address', 'env.gateway': 'Gateway', 'env.dns': 'DNS', 'env.ipv6': 'Global IPv6', 'env.vpn': 'VPN', 'env.vpn_yes': 'detected: {0}', 'env.vpn_no': 'not detected', 'env.noconn': 'No connection detected.',
@@ -267,7 +267,7 @@ fr: {
  'live.custom': 'Destination personnalisée (serveur de jeu…) : <code>hôte</code> ou <code>hôte:port</code>', 'live.custom_ph': 'ex. 203.0.113.10 ou jeu.example.net:27015',
  'live.blurb': 'Pings toutes les secondes vers la passerelle, 3 destinations Internet indépendantes (Cloudflare, Google, Quad9) et votre destination ; DNS toutes les 5 s. Trafic généré : ≈ 1 à 2 Ko/s (≈ 2 à 4 Mo pour 30 min). Une cible qui ne répond pas au ping est signalée (et mesurée en TCP si possible).',
  'live.start': '▶ Démarrer', 'live.stop': '■ Arrêter', 'live.remaining': 'reste {0} min {1} s', 'live.phase': ' — phase : {0}', 'live.started': 'Surveillance démarrée. Utilisez votre ordinateur normalement.', 'live.stopped': 'Surveillance arrêtée.',
- 'lag.h': 'Pendant un lag', 'lag.btn': 'Je lag maintenant', 'lag.note_ph': 'Note (facultatif) : ce que vous faisiez',
+ 'lag.note_label': 'Note (facultatif)', 'lag.h': 'Pendant un lag', 'lag.btn': 'Je lag maintenant', 'lag.note_ph': 'Note (facultatif) : ce que vous faisiez',
  'lag.blurb': "Marque l'instant, conserve les mesures avant/après (45 s avant, 30 s après analysées) et lance un diagnostic de trajet (traceroute) en arrière-plan. Sans surveillance en cours, une session de 15 min démarre automatiquement.",
  'lag.none': 'Aucun incident marqué.', 'lag.see': 'Voir le diagnostic de cette session →', 'lag.toast': 'Incident marqué à {0}.', 'lag.toast_auto': ' Surveillance démarrée automatiquement (15 min).', 'lag.toast_trace': ' Traceroute en cours en arrière-plan.',
  'env.h': 'Connexion détectée', 'env.refresh': 'Actualiser', 'env.iface': 'Interface', 'env.ipv4': 'Adresse IPv4', 'env.gateway': 'Passerelle', 'env.dns': 'DNS', 'env.ipv6': 'IPv6 global', 'env.vpn': 'VPN', 'env.vpn_yes': 'détecté : {0}', 'env.vpn_no': 'non détecté', 'env.noconn': 'Aucune connexion détectée.',

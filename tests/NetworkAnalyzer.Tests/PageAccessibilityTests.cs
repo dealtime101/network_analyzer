@@ -372,6 +372,16 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void TheIncidentNoteHasAPermanentVisibleLabel()
+    {
+        // a placeholder disappears as soon as the user types: the field also needs a label that stays
+        Assert.Matches("<label\\b[^>]*\\bfor=\"lagnote\"[^>]*\\bdata-i18n=\"lag\\.note_label\"", Markup);
+        Assert.Equal(2, Regex.Matches(Page, "'lag\\.note_label'\\s*:").Count);   // English and French
+        Assert.Contains("'lag.note_label': 'Note (optional)", Page);
+        Assert.Contains("'lag.note_label': 'Note (facultatif)", Page);
+    }
+
+    [Fact]
     public void EveryLabelIsTiedToAControl()
     {
         var ids = Regex.Matches(Markup, @"<(?:input|select|textarea)\b[^>]*>", RegexOptions.IgnoreCase).Select(m => Attr(m.Value, "id")).Where(i => i != null).ToHashSet();

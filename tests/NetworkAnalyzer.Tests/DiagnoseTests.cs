@@ -401,6 +401,21 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void TheP95DefinitionMatchesTheNearestRankCalculation()
+    {
+        // nearest rank: the value at rank ceil(0.95 n); at least 95 % of the replies are <= it (not strictly "faster")
+        var v = Enumerable.Range(1, 20).Select(i => (double)i).ToList();
+        var p95 = Stats.Percentile(v, 95)!.Value;
+        Assert.Equal(19.0, p95);
+        Assert.True(v.Count(x => x <= p95) >= 0.95 * v.Count);
+        Assert.Contains("at least 95% of the replies are at most this value", Loc.Raw("def.p95").En);
+        Assert.Contains("au moins 95 % des réponses sont au plus égales à cette valeur", Loc.Raw("def.p95").Fr);
+        var html = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "NetworkAnalyzer", "wwwroot", "index.html"));
+        Assert.DoesNotContain("are faster", html);
+        Assert.DoesNotContain("sont plus rapides", html);
+    }
+
+    [Fact]
     public void EnglishWritesPercentWithoutASpace()
     {
         // French puts a space before %, English does not: "5% loss"

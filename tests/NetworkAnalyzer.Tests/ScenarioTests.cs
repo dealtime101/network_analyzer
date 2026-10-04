@@ -368,6 +368,21 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void ThroughputIsReportedEvenWhenTheBloatVerdictOfThatDirectionIsInvalid()
+    {
+        // Finding NET467.228 asked to hide the speeds when the bloat is invalid. They are different quantities: the speed is the bytes the
+        // test counted itself (load:*_bps), the bloat is a latency change that needs at least BloatMinMbps of load to mean anything.
+        // A 0.8 Mbps line makes the bloat invalid, and its speed is still a true measurement that the router analysis and the comparison use.
+        var a = Run("bufferbloat", null, p => p.Load!.MbpsDown = 0.8);
+        Assert.False(a.Bufferbloat!.Directions["down"].Valid);
+        Assert.Null(a.Metrics.BloatDown);                                   // the latency figure is withheld…
+        Assert.InRange(a.Metrics.DownMbps!.Value, 0.6, 1.0);                // …the measured speed is not
+        Assert.True(a.Bufferbloat.Directions["up"].Valid);                  // the other direction is unaffected
+        Assert.NotNull(a.Metrics.BloatUp);
+        Assert.InRange(a.Metrics.UpMbps!.Value, 20, 40);
+    }
+
+    [Fact]
     public void SaturationNeedsKnownCapacity()
     {
         var a = Run("saturation");

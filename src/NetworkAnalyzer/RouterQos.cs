@@ -51,7 +51,9 @@ public static class RouterQos
     public static double? ToMbps(double? value, string? unit)
     {
         if (value is null) return null;
-        return (unit ?? "Mbps").ToLowerInvariant() switch
+        // "Kbit/s", "Mb/s", " mbps " … all mean the same thing
+        var u = (unit ?? "Mbps").Trim().ToLowerInvariant().Replace(" ", "").Replace("bit/s", "bps").Replace("b/s", "bps");
+        return u switch
         {
             "kbps" => value * 0.001,
             "mbps" => value,
@@ -73,6 +75,8 @@ public static class RouterQos
         var qos = r.QosEnabled;
         var typ = r.QosType;
         var (ld, lu) = Limits(r);
+        // a unit we cannot read would silently drop the limit from every check below: say so
+        if ((r.LimitDown.HasValue || r.LimitUp.HasValue) && ToMbps(1, r.Unit) is null) Add("info", Loc.T("router.unit_unknown", r.Unit));
         if (qos is null) Add("info", Loc.T("router.qos_unknown"));
         else if (qos == false)
         {
@@ -106,6 +110,7 @@ public static class RouterQos
         }
         foreach (var rule in r.BandwidthRules)
         {
+            if ((rule.Down.HasValue || rule.Up.HasValue) && ToMbps(1, rule.Unit ?? r.Unit) is null) Add("info", Loc.T("router.unit_unknown", rule.Unit ?? r.Unit));
             foreach (var (val, m, dir) in new[] { (rule.Down, meas.Down, "down"), (rule.Up, meas.Up, "up") })
             {
                 var lim = ToMbps(val, rule.Unit ?? r.Unit);
@@ -179,6 +184,7 @@ public static partial class Loc
         Add("router.qos_off_bloat", "QoS disabled while latency rises by {0} ms under load: no limit or queue management protects latency.", "QoS désactivée alors que la latence monte de {0} ms sous charge : aucune limite ni gestion de file ne protège la latence.");
         Add("router.priority_bloat", "The enabled QoS is priority-based: it does not remove the line's queue, which is consistent with the latency increase measured under load.", "La QoS activée est de type priorisation : elle ne supprime pas la file d'attente de la ligne, ce qui est compatible avec la hausse de latence mesurée sous charge.");
         Add("router.type_unknown", "QoS type unknown (priority, rate limit or SQM?): specify it, the conclusion depends on it.", "Type de QoS inconnu (priorisation, limite de débit ou SQM ?) : précisez-le, la conclusion en dépend.");
+        Add("router.unit_unknown", "Unrecognised unit '{0}' (Kbps, Mbps or Gbps expected): the limits entered with it were not checked.", "Unité « {0} » non reconnue (Kbps, Mbps ou Gbps attendus) : les limites saisies avec cette unité n'ont pas été vérifiées.");
         Add("router.limit_unit", "{0} limit ({1} Mbps) ≈ ×{2} of the {3} ({4} Mbps): Kbps/Mbps unit mix-up likely in the entry or in the router.", "Limite {0} ({1} Mbps) ≈ ×{2} du {3} ({4} Mbps) : confusion d'unité Kbps/Mbps probable dans la saisie ou dans le routeur.");
         Add("router.limit_exceeded", "Measured {0} throughput ({1} Mbps) EXCEEDS the configured limit ({2} Mbps): the limit does not apply to this flow (QoS inactive, per-device limit, wrong unit…).", "Débit {0} mesuré ({1} Mbps) DÉPASSE la limite configurée ({2} Mbps) : la limite ne s'applique pas à ce flux (QoS inactive, limite par appareil, mauvaise unité…).");
         Add("router.limit_noeffect", "{0} limit ({1} Mbps) above the {2} ({3} Mbps): it limits nothing, the queue stays in the modem/line.", "Limite {0} ({1} Mbps) supérieure au {2} ({3} Mbps) : elle ne limite rien, la file d'attente reste dans le modem/la ligne.");

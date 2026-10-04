@@ -579,6 +579,22 @@ public class RouterTests
 
     static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
+    [Theory]
+    [InlineData("Kbit/s", 0.005)] [InlineData("Mb/s", 5.0)] [InlineData(" mbps ", 5.0)] [InlineData("Gbit/s", 5000.0)] [InlineData("Mbit/s", 5.0)] [InlineData("Mbps", 5.0)]
+    public void CommonSpellingsOfTheUnitAreUnderstood(string unit, double expected) => Assert.Equal(expected, RouterQos.ToMbps(5, unit));
+
+    [Fact]
+    public void AnUnrecognisedUnitIsReportedNotSilentlyIgnored()
+    {
+        using var _ = Loc.Scope("en");
+        var r = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 50, Unit = "furlongs" };
+        var f = RouterQos.Check(r, (300.0, 30.0), new AppConfig(), 200);
+        Assert.Contains(f, x => x.Severity == "info" && x.Text.Contains("furlongs"));
+        var withRule = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", BandwidthRules = { new BandwidthRule { Name = "Kids", Down = 5, Unit = "parsecs" } } };
+        Assert.Contains(RouterQos.Check(withRule, (300.0, 30.0), new AppConfig(), 200), x => x.Severity == "info" && x.Text.Contains("parsecs"));
+        Assert.DoesNotContain(RouterQos.Check(new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" }, (300.0, 30.0), new AppConfig(), 200), x => x.Text.Contains("unit '"));
+    }
+
     [Fact]
     public void CurrentValueShownInTheProposalAlwaysHasItsUnit()
     {

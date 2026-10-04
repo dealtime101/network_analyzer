@@ -532,6 +532,20 @@ public class ReportTests
     }
 
     [Fact]
+    public void LossesThatOnlyHappenAtTheEndOfALongSessionAreNotHidden()
+    {
+        // an hour of clean measurements, then a burst of 600 failures in the last ten minutes: the old cut-off kept the FIRST 400 in time order
+        var lost = Enumerable.Range(0, 600).Select(i => 3000.0 + i).ToList();
+        var svg = Report.SvgChart(new() { new Report.ChartSeries { Name = "gateway", Pts = Enumerable.Range(0, 3000).Select(i => ((double)i, 5.0)).ToList(), Lost = lost } }, 0, 3600);
+        var xs = System.Text.RegularExpressions.Regex.Matches(svg, "<line x1=\"([0-9.]+)\" x2=\"[0-9.]+\" y1=\"[0-9.]+\" y2=\"[0-9.]+\" stroke=\"#555\" stroke-width=\"1.5\"")
+            .Select(m => double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)).ToList();
+        Assert.NotEmpty(xs);
+        Assert.True(xs.Min() > 0.8 * 860, $"the leftmost failure tick is at x={xs.Min()}: failures belong to the last sixth of the chart");
+        Assert.True(xs.Max() > 0.95 * 860, $"the last tick is at x={xs.Max()}: the end of the burst must be there");
+        Assert.InRange(xs.Count, 60, 85);     // one tick per chart column: 600 s of 3600 s over 430 columns is about 72, not 600 elements and not 400 early ones
+    }
+
+    [Fact]
     public void DnsFailuresAreChartedEvenWhenNoLookupEverSucceeded()
     {
         var d = Simulator.Make("healthy", 7, p => p.Minutes = 2);

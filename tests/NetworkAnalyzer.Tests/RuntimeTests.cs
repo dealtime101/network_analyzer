@@ -583,6 +583,20 @@ public class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SimultaneousRequestsEachKeepTheirOwnLanguage()
+    {
+        // 80 requests in flight at once, alternating languages: none may answer in the other one
+        var calls = Enumerable.Range(0, 80).Select(async i =>
+        {
+            var fr = i % 2 == 0;
+            var r = await Call("/api/session/999999", lang: fr ? "fr" : "en");
+            return (fr, Msg: J(r.Body)["error"]!.GetValue<string>());
+        }).ToList();
+        foreach (var (fr, msg) in await Task.WhenAll(calls))
+            Assert.Equal(fr ? "Session introuvable." : "Session not found.", msg);
+    }
+
+    [Fact]
     public async Task LanguageIsEnglishByDefaultThenHeaderThenQuery()
     {
         string Err(string json) => J(json)["error"]!.GetValue<string>();

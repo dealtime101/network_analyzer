@@ -316,7 +316,9 @@ public sealed class App
             foreach (var k in new[] { "custom_target", "gateway_override" })
             {
                 if (!body.ContainsKey(k)) continue;
-                var v = (body[k]?.GetValue<string>() ?? "").Trim();
+                var raw = body[k];
+                if (raw is not null && !(raw is JsonValue rv && rv.TryGetValue<string>(out _))) throw new ApiException(Loc.T("err.invalid_host", raw.ToJsonString()));
+                var v = (raw?.GetValue<string>() ?? "").Trim();
                 if (k == "custom_target")
                 {
                     try { Recorder.ParseCustom(v); } catch (ArgumentException e) { throw new ApiException(e.Message); }

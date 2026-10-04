@@ -362,6 +362,23 @@ public class RequestNumberTests
     }
 }
 
+public class ConfigInputTests
+{
+    [Theory]
+    [InlineData("{\"custom_target\": 5}")] [InlineData("{\"gateway_override\": true}")] [InlineData("{\"custom_target\": {\"a\": 1}}")]
+    public void ANonTextAddressIsABadRequestNotAServerError(string json) =>
+        Assert.Throws<ApiException>(() => new App(Tmp.Dir()).SaveConfig((System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(json)!));
+
+    [Fact]
+    public void TextAndNullStillWork()
+    {
+        var app = new App(Tmp.Dir());
+        var c = app.SaveConfig((System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse("{\"custom_target\": \" game.example.net:27015 \", \"gateway_override\": null}")!);
+        Assert.Equal("game.example.net:27015", c.CustomTarget);
+        Assert.Equal("", c.GatewayOverride);
+    }
+}
+
 public class ShotNameTests
 {
     [Fact]

@@ -1469,6 +1469,29 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task ANewSessionCannotStartWhileThePreviousOneIsStillBeingClosed()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store)
+        {
+            WifiPollMs = 20,
+            // a Wi-Fi reading that takes 1.5 s keeps the stop waiting for that task, so the window between "stopping" and "stopped" is wide
+            WifiReader = async () => { await Task.Delay(1500); return null; },
+        };
+        var env = new EnvInfo { Active = new AdapterInfo { Kind = "wifi" } };
+        int first = rec.Start(env, new List<Target>(), 1);
+        await Task.Delay(300);
+        var stopping = rec.StopAsync();
+        Assert.Throws<InvalidOperationException>(() => rec.Start(env, new List<Target>(), 1));   // not while the first is closing
+        await stopping;
+        Assert.NotNull(store.Load(first)!.Ended);                                                // the first session was finalised, with its own header
+        int second = rec.Start(new EnvInfo(), new List<Target>(), 1);                           // and once it is closed a new one starts normally
+        Assert.True(second > first);
+        await rec.StopAsync();
+        Assert.NotNull(store.Load(second)!.Ended);
+    }
+
+    [Fact]
     public async Task ATransientCounterErrorDoesNotEndTrafficMeasurement()
     {
         int calls = 0;

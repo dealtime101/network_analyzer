@@ -89,6 +89,7 @@ public static partial class Loc
 
         // ---- API errors
         Add("err.running", "A monitoring session is already running.", "Une surveillance est déjà en cours.");
+        Add("err.stopping", "The previous session is still being closed: try again in a few seconds.", "La session précédente est en cours de fermeture : réessayez dans quelques secondes.");
         Add("err.invalid_duration", "Invalid duration.", "Durée invalide.");
         Add("err.invalid_link", "Invalid link type.", "Type de liaison invalide.");
         Add("err.invalid_number", "Invalid number.", "Nombre invalide.");

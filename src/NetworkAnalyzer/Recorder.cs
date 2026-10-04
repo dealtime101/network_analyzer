@@ -68,6 +68,7 @@ public sealed class Recorder
     SessionHeader? header;
     (string Name, double T0, PhaseMeta Meta)? curPhase;
     double lastGap;
+    bool stopping;   // StopAsync is closing the previous session: Start must wait
     readonly List<Task> traceTasks = new();
 
     public Recorder(SessionStore store) => this.store = store;
@@ -189,6 +190,7 @@ public sealed class Recorder
         lock (gate)
         {
             if (Running) throw new InvalidOperationException(Loc.T("err.running"));
+            if (stopping) throw new InvalidOperationException(Loc.T("err.stopping"));
             if (link == "auto") link = env.Active?.Kind ?? "unknown";
             Started = Clock.Now();
             PlannedS = (int)(minutes * 60);
@@ -226,24 +228,32 @@ public sealed class Recorder
     {
         Task[] pending, traces;
         CancellationTokenSource? c;
+        SessionHeader? hdr;
+        SessionWriter? wr;
         lock (gate)
         {
             if (!Running) return;
             Running = false;
+            stopping = true;     // no Start until this stop has finished: it still has the session's header and writer to close
+            hdr = header; wr = writer;   // this session's own, not whatever the fields hold later
             c = cts;
             pending = tasks.ToArray();
             traces = traceTasks.ToArray();  // Running is false now: TraceAsync adds no more
             traceTasks.Clear();             // the next session must not wait for this one's traces
         }
-        EndPhase(curPhase != null ? new PhaseMeta { Interrupted = true } : null);
-        c?.Cancel();
-        try { await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(8)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
-        try { await Task.WhenAll(traces).WaitAsync(TimeSpan.FromSeconds(3)); } catch (Exception) { }  // a failed trace must not keep the session from being finalised
-        lock (gate)
+        try
         {
-            if (header != null) { header.Ended = Clock.Now(); store.SaveHeader(header); }
+            EndPhase(curPhase != null ? new PhaseMeta { Interrupted = true } : null);
+            c?.Cancel();
+            try { await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(8)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
+            try { await Task.WhenAll(traces).WaitAsync(TimeSpan.FromSeconds(3)); } catch (Exception) { }  // a failed trace must not keep the session from being finalised
+            lock (gate)
+            {
+                if (hdr != null) { hdr.Ended = Clock.Now(); store.SaveHeader(hdr); }
+            }
+            if (wr != null) await wr.CompleteAsync();
         }
-        if (writer != null) await writer.CompleteAsync();
+        finally { lock (gate) stopping = false; }   // whatever happened, a new session may start now
     }
 
     public void Stop() => StopAsync().GetAwaiter().GetResult();

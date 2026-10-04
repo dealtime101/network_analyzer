@@ -106,7 +106,8 @@ public sealed class App
             if (label.Length > 80) label = label[..80];
             if (custom != cfg.CustomTarget) Config.Update(c => c.CustomTarget = custom);  // only once everything else is accepted
             Load = null;
-            return Rec.Start(e2, targets, minutes, label, link, snap);
+            try { return Rec.Start(e2, targets, minutes, label, link, snap); }
+            catch (InvalidOperationException e) { throw new ApiException(e.Message, 409); }  // still closing the previous session: a clean 409, not a server error
         }
     }
 

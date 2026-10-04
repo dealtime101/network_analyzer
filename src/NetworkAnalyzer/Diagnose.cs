@@ -909,7 +909,7 @@ public static partial class Diagnose
                 h.Evidence.Add(T("bg.ev.corr", F1(a / b), F1(a), F1(b)));
             }
         }
-        var hot = timeline.Count(i => i.Type is "lag" or "episode" && ((i.Facts!.NetDownMax ?? 0) >= 5 || (i.Facts.NetUpMax ?? 0) >= 5));
+        var hot = timeline.Count(i => i.Type is "lag" or "episode" && PcBusy(i.Facts!));
         if (hot > 0)
         {
             h.Score += 1;

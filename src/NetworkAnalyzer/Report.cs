@@ -67,8 +67,9 @@ public static class Report
         int H = height;
         double span = Math.Max(1.0, t1 - t0);
         var allv = series.SelectMany(s => s.Pts.Select(p => p.V)).ToList();
-        if (allv.Count == 0) return $"<p class=\"muted\">{E(T("rep.nochart"))}</p>";
-        double ymax = Math.Max(clip ?? allv.Max(), 1e-9) * 1.08;
+        // nothing at all is "no data"; failures alone are a chart (a total outage is a run of failures, not an absence of measurement)
+        if (allv.Count == 0 && !series.Any(s => s.Lost.Count > 0)) return $"<p class=\"muted\">{E(T("rep.nochart"))}</p>";
+        double ymax = Math.Max(clip ?? (allv.Count > 0 ? allv.Max() : 100.0), 1e-9) * 1.08;   // no value to scale on: a default scale
         double X(double t) => L + (t - t0) / span * (W - L - 6);
         double Y(double v) => 4 + (1 - Math.Min(v, ymax) / ymax) * (H - B - 4);
         string N1(double x) => x.ToString("0.0", Inv);
@@ -112,11 +113,14 @@ public static class Report
     static List<ChartSeries> LatencySeries(SessionData d)
     {
         var res = new List<ChartSeries>();
+        // a target that never answers while others do is filtered ICMP (not a loss), so its failures are not drawn;
+        // but when NOTHING answered anywhere it is an outage, and the failures are the whole story
+        bool anyAnswered = d.Targets.Any(t => d.S($"ping:{t.Id}").Any(s => s.Ok));
         foreach (var tg in d.Targets)
         {
             var raw = d.S($"ping:{tg.Id}").ToList();
             if (raw.Any(s => s.Info == "tcp")) raw = raw.Where(s => s.Info != "icmp_no_reply").ToList();
-            bool answered = raw.Any(s => s.Ok);
+            bool answered = raw.Any(s => s.Ok) || !anyAnswered;
             res.Add(new ChartSeries
             {
                 Name = tg.Label, Color = Colors.GetValueOrDefault(tg.Id, "#555"),
@@ -204,7 +208,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
         };
         if (tr[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.traffic"))}</h3>").Append(SvgChart(tr, d.Started, end, marks, d.Phases, unit: "Mbps", title: T("rep.traffic"))).Append(Legend(tr));
         var dns = new List<ChartSeries> { new() { Name = T("rep.s.dns"), Color = "#1a7f37", Pts = d.S("dns:sys_hit").Where(s => s.Ok && s.V.HasValue).Select(s => (s.T, s.V!.Value)).ToList(), Lost = d.S("dns:sys_hit").Where(s => !s.Ok).Select(s => s.T).ToList() } };
-        if (dns[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.dns"))}</h3>").Append(SvgChart(dns, d.Started, end, marks, d.Phases, height: 120, title: T("rep.dns"))).Append(Legend(dns));
+        if (dns[0].Pts.Count > 0 || dns[0].Lost.Count > 0) o.Append($"<h3>{E(T("rep.dns"))}</h3>").Append(SvgChart(dns, d.Started, end, marks, d.Phases, height: 120, title: T("rep.dns"))).Append(Legend(dns));
         var wf = new List<ChartSeries> { new() { Name = T("rep.s.wifi"), Color = "#8250df", Pts = d.S("wifi:signal").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value)).ToList() } };
         if (wf[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.s.wifi"))}</h3>").Append(SvgChart(wf, d.Started, end, marks, d.Phases, height: 110, unit: "%", title: T("rep.s.wifi"))).Append(Legend(wf));
 

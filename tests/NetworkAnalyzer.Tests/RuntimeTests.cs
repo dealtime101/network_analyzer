@@ -507,6 +507,44 @@ public class ReportTests
     }
 
     [Fact]
+    public void AChartMadeOnlyOfFailuresIsDrawnNotReportedAsNoData()
+    {
+        var onlyLoss = Report.SvgChart(new() { new Report.ChartSeries { Name = "gateway", Lost = new() { 1.0, 2.0, 5.0, 9.0 } } }, 0, 10);
+        Assert.DoesNotContain("No data for this chart", onlyLoss);
+        Assert.Contains("<svg", onlyLoss);
+        Assert.Equal(4, System.Text.RegularExpressions.Regex.Matches(onlyLoss, "stroke-width=\"1.5\"").Count);   // one tick per failed second
+        Assert.Contains("No data for this chart", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));   // truly nothing: still says so
+    }
+
+    [Fact]
+    public void ATotalOutageShowsItsFailuresInTheLatencyChartWhileOneFilteredTargetDoesNot()
+    {
+        // every target silent: a session of nothing but failures. The chart must show them, not claim there was no measurement.
+        var outage = Simulator.Make("healthy", 7, p => { p.Minutes = 2; p.IcmpBlocked.AddRange(new[] { "gateway", "cloudflare", "google", "quad9", "custom" }); });
+        var html = Report.Html(outage, Diagnose.Analyze(outage, new AppConfig()));
+        var latency = html[html.IndexOf("<h3>Latency", StringComparison.Ordinal)..];
+        latency = latency[..latency.IndexOf("</svg>", StringComparison.Ordinal)];
+        Assert.Contains("stroke-width=\"1.5\"", latency);
+        // one target that never answers while the others do is filtered ICMP, not loss: no ticks for it
+        var oneBlocked = Simulator.Make("healthy", 7, p => { p.Minutes = 2; p.IcmpBlocked.Add("custom"); });
+        var ticksBlocked = System.Text.RegularExpressions.Regex.Matches(Report.Html(oneBlocked, Diagnose.Analyze(oneBlocked, new AppConfig())), "stroke=\"#cf222e\" stroke-width=\"1.5\"").Count;   // #cf222e is the custom target's colour
+        Assert.Equal(0, ticksBlocked);
+    }
+
+    [Fact]
+    public void DnsFailuresAreChartedEvenWhenNoLookupEverSucceeded()
+    {
+        var d = Simulator.Make("healthy", 7, p => p.Minutes = 2);
+        d.Series["dns:sys_hit"] = d.Series["dns:sys_hit"].Select(s => new Sample(s.T, null, false, "timeout")).ToList();   // DNS down all session
+        var html = Report.Html(d, Diagnose.Analyze(d, new AppConfig()));
+        var from = html.IndexOf("<h3>DNS resolution", StringComparison.Ordinal);
+        Assert.True(from > 0, "the DNS chart section is missing");
+        var section = html[from..];
+        section = section[..section.IndexOf("</svg>", StringComparison.Ordinal)];
+        Assert.Contains("stroke-width=\"1.5\"", section);   // the failed lookups are drawn
+    }
+
+    [Fact]
     public void ChartSurvivesEmptyAndSingleSeries()
     {
         Assert.Contains("No data for this chart", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));

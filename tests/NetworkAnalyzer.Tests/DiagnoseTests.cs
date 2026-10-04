@@ -169,6 +169,19 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void EpisodeListIsCappedWithAWarning()
+    {
+        foreach (var lang in new[] { "en", "fr" })
+            using (Loc.Scope(lang))
+            {
+                var a = Run("healthy", null, p => { p.Minutes = 15; for (int i = 0; i < 50; i++) p.Events.Add(new("inet_all", 10 + 16 * i, 15 + 16 * i)); });
+                Assert.Equal(Th.MaxEpisodes, a.Timeline.Count(i => i.Type == "episode"));
+                Assert.True(a.GeneralLimits.Any(l => l.Contains("first 40") || l.Contains("40 premiers")), string.Join(" / ", a.GeneralLimits));
+                Assert.DoesNotContain("‹", string.Join(" ", a.GeneralLimits));
+            }
+    }
+
+    [Fact]
     public void IspCounterEvidenceIsNotClaimedWhenUpstreamEpisodesWereSetAsideAsPcBusy()
     {
         var a = Run("background");

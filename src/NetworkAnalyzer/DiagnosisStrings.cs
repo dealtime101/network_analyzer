@@ -32,6 +32,7 @@ public static partial class Loc
         Add("d.general.1", "ICMP pings may be handled at low priority by a router or filtered: an ICMP loss is not always a real traffic loss.", "Les pings ICMP peuvent être traités en basse priorité par un routeur ou filtrés : une perte ICMP n'est pas toujours une perte réelle de trafic.");
         Add("d.general.2", "Measurements come from THIS computer: they do not represent the traffic of the other devices in the home.", "Les mesures viennent de CET ordinateur : elles ne représentent pas le trafic des autres appareils de la maison.");
         Add("d.general.3", "No communication content is captured: only metadata (timings, counters) is used.", "Aucune capture du contenu des communications n'est faite : seules des métadonnées (temps, compteurs) sont utilisées.");
+        Add("d.general.episodes_capped", "The session has {0} episodes: only the first {1} are listed and scored, the others are not.", "La session compte {0} épisodes : seuls les {1} premiers sont listés et évalués, les autres ne le sont pas.");
 
         // ---- Wi-Fi / local network
         Add("lan.title", "Wi‑Fi or local network instability", "Instabilité du Wi‑Fi ou du réseau local");

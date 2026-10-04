@@ -227,7 +227,7 @@ public static class Th
     public const double DnsMedMs = 100.0, DnsP95Ms = 300.0, DnsMissMedMs = 300.0, DnsFailPct = 2.0;
     public const double BgDownMbps = 3.0, BgUpMbps = 1.0, BgIdleMbps = 1.0, BgSpikeRatio = 3.0;
     public const double SatRatio = 0.8, BusyMbps = 5.0;
-    public const int EpisodeGapS = 8, EpisodeMinEvents = 3, IncidentBeforeS = 45, IncidentAfterS = 30, MinSamples = 60;
+    public const int MaxEpisodes = 40, EpisodeGapS = 8, EpisodeMinEvents = 3, IncidentBeforeS = 45, IncidentAfterS = 30, MinSamples = 60;
 
     public static Dictionary<string, object> AsDictionary() => new()
     {
@@ -260,6 +260,8 @@ public sealed class Ctx
     public TargetCtx? Gw { get; }
     public List<TargetCtx> Inet { get; }
     public string Link { get; }
+    /// <summary>Real episodes left out of the timeline because of Th.MaxEpisodes (set by BuildTimeline).</summary>
+    public int EpisodesDropped { get; set; }
 
     public Ctx(SessionData data)
     {
@@ -432,7 +434,7 @@ public static partial class Diagnose
             foreach (var (_, tid) in c) counts[tid] = counts.GetValueOrDefault(tid) + 1;
             res.Add(new Episode(c[0].T - 3, c[^1].T + 3, c.Count, counts));
         }
-        return res.Take(40).ToList();
+        return res;
     }
 
     static List<TimelineItem> BuildTimeline(Ctx cx)
@@ -449,18 +451,21 @@ public static partial class Diagnose
             else if (m.Kind is "gap" or "roam")
                 items.Add(new TimelineItem { Type = m.Kind, T = m.T, Zone = null, ZoneText = T("mark." + m.Kind) });
         }
+        var episodes = new List<TimelineItem>();
         foreach (var e in DetectEpisodes(cx))
         {
             var f = WindowFactsOf(cx, e.T0 - 2, e.T1 + 2);
             var z = Localize(f);
             if (z is "none" or "undetermined") continue;  // isolated, scattered losses: noise, not an episode
             var names = string.Join(", ", e.Targets.Select(kv => $"{cx.T[kv.Key].Tg.Label} ({kv.Value})"));
-            items.Add(new TimelineItem
+            episodes.Add(new TimelineItem
             {
                 Type = "episode", T = e.T0, T0 = e.T0, T1 = e.T1, Zone = z, ZoneText = ZoneTextOf(z, f),
                 Note = T("d.episode.note", e.Events, names), Details = Describe(f), Facts = f,
             });
         }
+        cx.EpisodesDropped = Math.Max(0, episodes.Count - Th.MaxEpisodes);
+        items.AddRange(episodes.Take(Th.MaxEpisodes));
         return items.OrderBy(i => i.T).ToList();
     }
 
@@ -959,6 +964,13 @@ public static partial class Diagnose
         return new AppConfig { CustomTarget = live.CustomTarget, GatewayOverride = live.GatewayOverride, PlanDownMbps = snap.PlanDownMbps, PlanUpMbps = snap.PlanUpMbps, Router = snap.Router };
     }
 
+    static List<string> GeneralLimits(Ctx cx)
+    {
+        var l = Loc.List("d.general", 3);
+        if (cx.EpisodesDropped > 0) l.Add(T("d.general.episodes_capped", Th.MaxEpisodes + cx.EpisodesDropped, Th.MaxEpisodes));
+        return l;
+    }
+
     public static Analysis Analyze(SessionData data, AppConfig? cfg = null)
     {
         cfg ??= new AppConfig();
@@ -1006,7 +1018,7 @@ public static partial class Diagnose
         return new Analysis
         {
             Session = data.Id, Summary = summary, Hypotheses = shown, Unlikely = unlikely, NotEvaluated = notEval, Actions = actions, Timeline = timeline,
-            Stats = stat, Bufferbloat = bloat, GeneralLimits = Loc.List("d.general", 3), Thresholds = Th.AsDictionary(),
+            Stats = stat, Bufferbloat = bloat, GeneralLimits = GeneralLimits(cx), Thresholds = Th.AsDictionary(),
             Metrics = ComputeMetrics(stat, bloat, incidents.Count),
         };
     }

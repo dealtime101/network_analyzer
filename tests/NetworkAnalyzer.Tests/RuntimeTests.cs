@@ -699,6 +699,33 @@ public class StoreTests
     }
 
     [Fact]
+    public void TwoStoresOnTheSameFolderNeverHandOutTheSameId()
+    {
+        var dir = Tmp.Dir();
+        var a = new SessionStore(dir);
+        var b = new SessionStore(dir);
+        var ids = new System.Collections.Concurrent.ConcurrentBag<int>();
+        Parallel.For(0, 200, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
+            ids.Add((i % 2 == 0 ? a : b).Create(new SessionHeader { Label = "t" + i })));
+        Assert.Equal(200, ids.Distinct().Count());
+        Assert.Equal(200, Directory.GetFiles(Path.Combine(dir, "sessions"), "*.meta.json").Length);
+    }
+
+    [Fact]
+    public void ANewSessionNeverTruncatesAMeasurementFileThatAlreadyExists()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        int first = store.Create(new SessionHeader());
+        var orphan = Path.Combine(dir, "sessions", $"{first + 1}.jsonl");   // data whose header is gone: still somebody's measurements
+        File.WriteAllText(orphan, "[\"s\", 1.0, \"ping:gw\", 2.0]\n");
+        int next = store.Create(new SessionHeader());
+        Assert.NotEqual(first + 1, next);                                    // red before: reused the id and emptied the file
+        Assert.Equal("[\"s\", 1.0, \"ping:gw\", 2.0]\n", File.ReadAllText(orphan));
+        Assert.True(File.Exists(Path.Combine(dir, "sessions", $"{next}.jsonl")));
+    }
+
+    [Fact]
     public void TruncatedLastLineIsIgnoredAndDeleteRemovesBothFiles()
     {
         var dir = Tmp.Dir();

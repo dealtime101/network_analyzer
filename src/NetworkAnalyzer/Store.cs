@@ -63,13 +63,19 @@ public sealed class SessionStore
             int id = Math.Max(last, Directory.EnumerateFiles(dir, "*.meta.json").Select(f => int.TryParse(Path.GetFileName(f).Split('.')[0], out var n) ? n : 0).DefaultIfEmpty(0).Max()) + 1;
             while (true)  // reserve it atomically: another process on the same folder cannot get the same number
             {
-                try { using (new FileStream(MetaPath(id), FileMode.CreateNew, FileAccess.Write)) { } break; }
+                try
+                {
+                    // both files are created, never opened for writing over an old one: an id whose measurements exist is taken even without its header
+                    using (new FileStream(LinesPath(id), FileMode.CreateNew, FileAccess.Write)) { }
+                    try { using (new FileStream(MetaPath(id), FileMode.CreateNew, FileAccess.Write)) { } }
+                    catch (IOException) { File.Delete(LinesPath(id)); throw; }   // we created the empty lines file just now: give it back
+                    break;
+                }
                 catch (IOException) { id++; }
             }
             h.Id = id;
             File.WriteAllText(counter, id.ToString(CultureInfo.InvariantCulture));
             SaveHeader(h);
-            File.WriteAllText(LinesPath(h.Id), "");
             return h.Id;
         }
     }

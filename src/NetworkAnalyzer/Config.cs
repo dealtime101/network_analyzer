@@ -65,23 +65,34 @@ public static class DurableFile
 {
     public static void WriteAllText(string path, string text)
     {
-        var tmp = path + ".tmp";
-        using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+        var tmp = $"{path}.{Guid.NewGuid():N}.tmp";   // its own name: two writers never share a temporary file
+        try
         {
-            var bytes = new UTF8Encoding(false).GetBytes(text);
-            fs.Write(bytes, 0, bytes.Length);
-            fs.Flush(flushToDisk: true);
+            using (var fs = new FileStream(tmp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                var bytes = new UTF8Encoding(false).GetBytes(text);
+                fs.Write(bytes, 0, bytes.Length);
+                fs.Flush(flushToDisk: true);
+            }
+            File.Move(tmp, path, true);
         }
-        File.Move(tmp, path, true);
+        catch { try { File.Delete(tmp); } catch (IOException) { } throw; }
     }
 }
 
 public sealed class ConfigStore
 {
+    // one lock per file, shared by every store on it: two instances on the same folder serialise their read-change-write
+    // (another PROCESS on the same folder is not covered: the rename keeps the file whole, but a change can still be lost)
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, object> Gates = new();
     readonly string path;
-    readonly object gate = new();
+    readonly object gate;
 
-    public ConfigStore(string dataDir) => path = Path.Combine(dataDir, "config.json");
+    public ConfigStore(string dataDir)
+    {
+        path = Path.Combine(dataDir, "config.json");
+        gate = Gates.GetOrAdd(Path.GetFullPath(path), _ => new object());
+    }
 
     /// <summary>Why the last Load fell back to defaults: "invalid" (not valid JSON; a copy was kept) or "unreadable" (the file exists but cannot be read).
     /// Null when the settings were loaded, or when there is no file yet (a first run is not a problem).</summary>

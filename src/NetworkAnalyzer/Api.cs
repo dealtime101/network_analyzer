@@ -113,7 +113,7 @@ public static class Api
                 body = o;
             }
             catch (JsonException) { await Write(ctx, 400, new { error = Loc.T("err.invalid_json") }); return; }
-            catch (Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException e) when (e.StatusCode == 413) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
+            catch (Microsoft.AspNetCore.Http.BadHttpRequestException e) when (e.StatusCode == 413) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
         }
         else if (method != "GET") { await Write(ctx, 405, new { error = Loc.T("err.method") }); return; }
         try

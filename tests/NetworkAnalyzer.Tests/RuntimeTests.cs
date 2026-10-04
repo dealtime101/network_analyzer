@@ -980,6 +980,19 @@ public class ConfigStoreTests
     }
 
     [Fact]
+    public void TwoStoresOnTheSameFolderDoNotLoseEachOthersChanges()
+    {
+        var dir = Tmp.Dir();
+        var a = new ConfigStore(dir);
+        var b = new ConfigStore(dir);
+        a.Update(c => c.PlanDownMbps = 0);
+        Parallel.For(0, 160, new ParallelOptions { MaxDegreeOfParallelism = 8 }, i =>
+            (i % 2 == 0 ? a : b).Update(c => c.PlanDownMbps = (c.PlanDownMbps ?? 0) + 1));   // read, change, write: each one counts
+        Assert.Equal(160, new ConfigStore(dir).Load().PlanDownMbps);                         // red before: lost updates and temp-file collisions
+        Assert.Empty(Directory.GetFiles(dir, "*.tmp"));                                      // no temporary file left behind
+    }
+
+    [Fact]
     public void AMissingConfigIsNormalAndLeavesNoBackup()
     {
         var dir = Tmp.Dir();

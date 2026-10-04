@@ -157,6 +157,25 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void AnInconclusivePhaseSaysWhyAndDoesNotClaimTheLineWasNotLoaded()
+    {
+        // 1) the line really was not loaded (0.2 Mbps): "throughput too low"
+        var lowRate = Run("bufferbloat", null, p => p.Load = new LoadSim { MbpsDown = 0.2, MbpsUp = 0.2 });
+        var low = string.Join(" ", lowRate.Hypotheses.SelectMany(h => h.Limits).Concat(lowRate.NotEvaluated.Select(n => n.Reason)));
+        Assert.Contains("too low", low);
+        // 2) the line carried 300 Mbps but every target went silent during the download (probes filtered during a transfer):
+        //    the rate is fine, only the latency is missing, and the message must not say the line was not loaded
+        var d = Simulator.Make("bufferbloat");
+        var dl = d.Phases.Single(p => p.Name == "download");
+        foreach (var k in d.Series.Keys.Where(k => k.StartsWith("ping:")).ToList())
+            d.Series[k] = d.Series[k].Where(s => s.T < dl.T0 + 3 || s.T > dl.T1).ToList();
+        var a = Diagnose.Analyze(d, new AppConfig());
+        var texts = a.Hypotheses.SelectMany(h => h.Limits).Concat(a.NotEvaluated.Select(n => n.Reason)).ToList();
+        Assert.Contains(texts, t => t.Contains("did not answer enough") && t.Contains("download phase", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(texts, t => t.Contains("was not really loaded") || t.Contains("not been loaded"));
+    }
+
+    [Fact]
     public void PhaseWithTooFewLatencySamplesIsNotAVerdict()
     {
         var d = Simulator.Make("bufferbloat");

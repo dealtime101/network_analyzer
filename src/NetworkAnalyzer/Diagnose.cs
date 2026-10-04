@@ -653,6 +653,7 @@ public static partial class Diagnose
             h.NotEvaluatedReason = T("bloat.not_eval.none");
             return h;
         }
+        var invalid = new List<string>();
         foreach (var dkey in new[] { "down", "up" })
         {
             if (!bloat.Directions.TryGetValue(dkey, out var r)) continue;
@@ -662,7 +663,12 @@ public static partial class Diagnose
             {
                 var ph = cx.D.Phases.FirstOrDefault(p => p.Name == (dkey == "down" ? "download" : "upload"));
                 bool early = ph?.Meta.VolumeCapReached == true;
-                h.Limits.Add(T("bloat.limit_invalid", dname, r.Mbps != null ? F1(r.Mbps.Value) + " Mbps" : T("bloat.none")) + (early ? T("bloat.cap_early", G(ph!.Meta.DurationS ?? 0)) : ""));
+                // two different reasons, said differently: the line was not loaded enough, or it was but the latency could not be measured
+                bool rateTooLow = r.Mbps == null || r.Mbps < Th.BloatMinMbps;
+                var rate = r.Mbps != null ? F1(r.Mbps.Value) + " Mbps" : T("bloat.none");
+                var why = T(rateTooLow ? "bloat.limit_invalid" : "bloat.limit_silent", dname, rate) + (early ? T("bloat.cap_early", G(ph!.Meta.DurationS ?? 0)) : "");
+                h.Limits.Add(why);
+                invalid.Add(why);
                 continue;
             }
             double delta = r.Delta!.Value;
@@ -681,7 +687,8 @@ public static partial class Diagnose
         }
         if (!bloat.Directions.Values.Any(r => r.Valid))
         {
-            h.NotEvaluatedReason = T("bloat.not_eval.unusable");
+            // the user sees this reason (the hypothesis itself is not shown): say, per direction, why the phase could not be used
+            h.NotEvaluatedReason = T("bloat.not_eval.unusable") + (invalid.Count > 0 ? " " + string.Join(" ", invalid) : "");
             return h;
         }
         if (cx.Link == "wifi" && h.Score > 0)

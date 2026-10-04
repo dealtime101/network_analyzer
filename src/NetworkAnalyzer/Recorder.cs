@@ -140,6 +140,7 @@ public sealed class Recorder
     public void Emit(string series, double? value, bool ok, string info = "", double? t = null, CancellationToken ct = default)
     {
         var tt = t ?? Clock.Now();
+        if (value is { } x && !double.IsFinite(x)) { value = null; ok = false; info = "invalid_value"; }  // e.g. a rate computed over a zero interval: not a measurement
         SessionWriter? w;
         lock (gate)
         {

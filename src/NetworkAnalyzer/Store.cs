@@ -191,7 +191,7 @@ public sealed class SessionWriter
     /// <summary>False once the writer stopped (finished or failed).</summary>
     public bool IsAccepting => Failure is null && !ch.Reader.Completion.IsCompleted;
 
-    public void Sample(double t, string series, double? v, bool ok, string info) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "s", Math.Round(t, 3), series, v.HasValue ? Math.Round(v.Value, 3) : null, ok ? 1 : 0, info }));
+    public void Sample(double t, string series, double? v, bool ok, string info) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "s", Math.Round(t, 3), series, v.HasValue && double.IsFinite(v.Value) ? Math.Round(v.Value, 3) : null, ok ? 1 : 0, info }));  // NaN/Infinity are not JSON numbers
     public void Mark(double t, string kind, string note) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "m", t, kind, note }));
     public void Phase(string name, double t0, double t1, PhaseMeta meta) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "p", name, t0, t1, JsonDocument.Parse(Json.To(meta)).RootElement }));
     public void Trace(double t, string target, TraceResult r) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "tr", t, target, JsonDocument.Parse(Json.To(r)).RootElement }));

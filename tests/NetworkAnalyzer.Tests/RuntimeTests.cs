@@ -505,6 +505,26 @@ public class WriterFailureTests
         await w.CompleteAsync();   // and finishing does not throw
     }
 
+    [Theory]
+    [InlineData(double.NaN)] [InlineData(double.PositiveInfinity)] [InlineData(double.NegativeInfinity)]
+    public async Task ANonFiniteMeasurementDoesNotThrowOnTheMeasuringThread(double value)
+    {
+        var path = Path.Combine(Tmp.Dir(), "1.jsonl");
+        var w = new SessionWriter(path);
+        w.Sample(1, "net:down_bps", value, true, "");      // used to throw ArgumentException from System.Text.Json
+        await w.CompleteAsync();
+        var line = File.ReadAllLines(path).Single();
+        Assert.Contains("null", line);
+
+        var rec = new Recorder(new SessionStore(Tmp.Dir()));
+        rec.Start(new EnvInfo(), new List<Target>(), 1);
+        rec.Emit("net:down_bps", value, true);              // nor from the recorder, which also keeps it out of the live statistics
+        var s = rec.LiveSince(0)["net:down_bps"].Single();
+        Assert.Null(s[1]);
+        Assert.Equal(0, s[2]);
+        await rec.StopAsync();
+    }
+
     [Fact]
     public async Task AHealthyWriterStaysHealthy()
     {

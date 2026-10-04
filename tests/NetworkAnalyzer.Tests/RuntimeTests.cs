@@ -1068,6 +1068,7 @@ public class StoreToleranceTests
         // ...but not silently: the count is kept and the analysis says that figures come from the readable rest
         Assert.Equal(mixed.Count - good.Count, loaded.SkippedLines);
         using (Loc.Scope("en")) Assert.Contains(Diagnose.Analyze(loaded).GeneralLimits, l => l.Contains($"{loaded.SkippedLines} line") && l.Contains("skipped"));
+        using (Loc.Scope("en")) Assert.Contains(Diagnose.Analyze(loaded).Summary, l => l.Contains($"{loaded.SkippedLines} line") && l.Contains("skipped"));   // the page shows the summary, not the general limits
         using (Loc.Scope("fr")) Assert.Contains(Diagnose.Analyze(loaded).GeneralLimits, l => l.Contains($"{loaded.SkippedLines} ligne") && l.Contains("ignorée"));
     }
 

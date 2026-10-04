@@ -1039,6 +1039,7 @@ public static partial class Diagnose
                 summary.Add(T("sum.noicmp", x.Tg.Label, x.Tg.Host));
         int quiet = incidents.Count(i => i.Zone == "none");
         if (incidents.Count > 0 && quiet > 0) summary.Add(T("sum.quiet", quiet, incidents.Count));
+        if (data.SkippedLines > 0) summary.Add(T("d.general.lines_skipped", data.SkippedLines));   // the page shows the summary; the report also lists it among the limits
         foreach (var h in shown) foreach (var a in h.Actions) if (!actions.Contains(a)) actions.Add(a);
         return new Analysis
         {

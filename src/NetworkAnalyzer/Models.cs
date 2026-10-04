@@ -177,6 +177,8 @@ public sealed class LoadMeta
     public int Streams { get; set; }
     public int CapDownMb { get; set; }
     public int CapUpMb { get; set; }
+    /// <summary>One row per planned phase, as stored in the session file: [name, duration in seconds, direction ("down" | "up" | null)].
+    /// Kept as rows (not a class) because existing session files hold this shape; nothing reads it back, it is a record of the plan.</summary>
     public List<object?[]> Phases { get; set; } = new();
 }
 

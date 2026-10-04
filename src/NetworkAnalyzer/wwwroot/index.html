@@ -543,7 +543,7 @@ const lvl = x => t('lvl.' + x);
 async function showDiag(id) {
   const [r, sd] = await Promise.all([api('/api/session/' + id), api(`/api/session/${id}/series`)]), a = r.analysis, s = r.session;
   $('#x_html').href = withLang(`/api/session/${id}/report.html`); $('#x_csv').href = withLang(`/api/session/${id}/export.csv`); $('#x_json').href = withLang(`/api/session/${id}/export.json`);
-  let h = `<div class="card"><h2>${esc(t('diag.sum_h', s.id, s.label || t('diag.nolabel'), dt(s.started), hm(s.ended), s.link))}</h2>${a.summary.map(x => `<p>${esc(x)}</p>`).join('')}</div>`;
+  let h = `<div class="card"><h2>${esc(t('diag.sum_h', s.id, s.label || t('diag.nolabel'), dt(s.started), s.ended == null ? t('hist.running') : hm(s.ended), s.link))}</h2>${a.summary.map(x => `<p>${esc(x)}</p>`).join('')}</div>`;
   h += `<div class="card"><h2>${t('diag.hyp_h')}</h2><p class="small muted">${t('diag.hyp_note')}</p>`;
   h += a.hypotheses.length ? a.hypotheses.map(x => `<div class="card" style="margin:8px 0"><h3 style="margin-top:0">${esc(x.title)} <span class="badge b-${x.level}">${esc(t('diag.confidence', lvl(x.level)))}</span></h3><b>${t('diag.evidence')}</b>${ul(x.evidence)}${x.counter.length ? `<b>${t('diag.counter')}</b>` + ul(x.counter) : ''}<b>${t('diag.limits')}</b>${ul(x.limits)}<p><b>${t('diag.next')}</b> ${esc(x.next_test)}</p></div>`).join('') : `<p>${t('diag.nohyp')}</p>`;
   if (a.unlikely.length) h += `<h3>${t('diag.unlikely')}</h3><ul>` + a.unlikely.map(u => `<li><b>${esc(u.title)}</b> — ${esc(u.reasons.join(' '))}</li>`).join('') + '</ul>';
@@ -563,7 +563,7 @@ async function showDiag(id) {
     h += `</table><p class="small muted">${t('diag.grades')}</p></div>`; }
   $('#dbody').innerHTML = h;
   const mp = {}; for (const [k, v] of Object.entries(sd.series)) mp[k] = v.map(p => [p[0], p[1], p[2], '']);
-  drawAll(mp, sd.targets, sd.started, sd.ended, sd.marks.filter(m => m.kind === 'lag'), sd.phases, {lat: 'd_lat', net: 'd_net', dns: 'd_dns', wifi: 'd_wifi', ll: 'dl_lat', ln: 'dl_net', ld: 'dl_dns', lw: 'dl_wifi', wc: 'd_wc'});
+  drawAll(mp, sd.targets, sd.started, sd.ended ?? Date.now() / 1000, sd.marks.filter(m => m.kind === 'lag'), sd.phases, {lat: 'd_lat', net: 'd_net', dns: 'd_dns', wifi: 'd_wifi', ll: 'dl_lat', ln: 'dl_net', ld: 'dl_dns', lw: 'dl_wifi', wc: 'd_wc'});
 }
 function row(l, state, s) {
   if (!s) return `<tr><td>${esc(l)}</td><td>${esc(state)}</td><td class="n" colspan="6">—</td></tr>`;

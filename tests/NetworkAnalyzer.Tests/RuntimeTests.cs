@@ -943,6 +943,25 @@ public class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ASessionStillRunningNeverReachesThePageWithoutAnEndTime()
+    {
+        int id = app.Store.SaveComplete(Simulator.Make("healthy", 7, p => p.Minutes = 2));
+        var h = app.Store.LoadHeader(id)!;
+        h.Ended = null;                       // as a header is while the recording is still going
+        app.Store.SaveHeader(h);
+        var detail = J((await Call($"/api/session/{id}")).Body)["session"]!;
+        var series = J((await Call($"/api/session/{id}/series")).Body);
+        double started = detail["started"]!.GetValue<double>();
+        double ended = detail["ended"]!.GetValue<double>();                       // the last measurement, not null (and not epoch 0)
+        Assert.True(ended > started + 60, $"ended={ended} started={started}");
+        Assert.Equal(ended, series["ended"]!.GetValue<double>());
+        // the page also copes if a null ever arrived: it shows 'running' and draws up to now
+        var page = System.Text.Encoding.UTF8.GetString(Api.IndexBytes);
+        Assert.Contains("s.ended == null", page);
+        Assert.Contains("sd.ended ?? ", page);
+    }
+
+    [Fact]
     public async Task TheFixtureReleasesTheServerAndItsFolder()
     {
         var probe = new ServerTests();

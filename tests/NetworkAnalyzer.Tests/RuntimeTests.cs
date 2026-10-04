@@ -994,12 +994,19 @@ public class ServerTests : IAsyncLifetime
     [Fact]
     public async Task ConfigNeverStoresCredentials()
     {
-        var (code, _) = await Call("/api/config", new { router = new { model = "X", password = "hunter2", token = "t", cookie = "c", qos_type = "priority" } });
+        // distinctive secrets (a one-letter value would match anything), under the three usual credential keys, plus the same values under unrelated keys
+        var secrets = new[] { "pw-Zx81-secret", "tok-9f3a-secret", "cookie-7b21-secret" };
+        var (code, _) = await Call("/api/config", new { router = new { model = "X", password = secrets[0], token = secrets[1], cookie = secrets[2], notes = "plain note", qos_type = "priority" } });
         Assert.Equal(200, code);
         var raw = File.ReadAllText(Path.Combine(dir, "config.json"));
-        Assert.DoesNotContain("hunter2", raw);
-        Assert.DoesNotContain("password", raw);
-        Assert.Contains("\"model\":\"X\"", raw);
+        foreach (var s in secrets) Assert.DoesNotContain(s, raw);                  // none of the values anywhere in the file
+        foreach (var key in new[] { "password", "token", "cookie" }) Assert.DoesNotContain($"\"{key}\"", raw);   // nor a field for them
+        var router = System.Text.Json.JsonDocument.Parse(raw).RootElement.GetProperty("router");
+        Assert.Equal("X", router.GetProperty("model").GetString());                // the legitimate fields are kept
+        Assert.Equal("plain note", router.GetProperty("notes").GetString());
+        // and what the API gives back never carries them either
+        Assert.DoesNotContain("secret", (await Call("/api/config")).Body);
+        Assert.DoesNotContain("secret", (await Call("/api/router")).Body);
     }
 
     [Fact]

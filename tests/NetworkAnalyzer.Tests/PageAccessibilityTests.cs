@@ -124,6 +124,21 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void TabLoadersReportAFailureInsteadOfFailingSilently()
+    {
+        var show = Regex.Match(Page, @"function showTab\([^)]*\)\s*\{[\s\S]*?\n\}").Value;
+        Assert.NotEmpty(show);
+        foreach (var loader in new[] { "loadDiagList", "loadHist", "loadRouter", "loadEstimate" })
+        {
+            Assert.Contains($"guard({loader})()", show);                                   // errors become a toast
+            Assert.DoesNotMatch($@"(?<!guard\()\b{loader}\(\)", show);                      // and none is called bare
+        }
+        Assert.Matches(@"const guard = fn => async \(\.\.\.a\) => \{ try \{ return await fn\(\.\.\.a\); \} catch \(e\) \{ toast\(", Page);   // what guard does
+        // and inside the guarded handlers a reload is awaited, so its failure reaches the guard too
+        Assert.DoesNotMatch(@"(?<!await )(?<!function )(?<!guard\()\bloadRouter\(\);", Page);
+    }
+
+    [Fact]
     public void SwitchingLanguageDoesNotEraseWhatWasTypedInTheRouterForm()
     {
         var load = Regex.Match(Page, @"async function loadRouter\(\)\s*\{[\s\S]*?\n\}").Value;

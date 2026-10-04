@@ -388,7 +388,8 @@ function showTab(n, keepHash) {
   currentTab = n;
   $$('nav button').forEach(b => { b.setAttribute('aria-selected', b.dataset.tab === n); b.tabIndex = b.dataset.tab === n ? 0 : -1; });  // only the selected tab is in the tab order
   $$('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + n));
-  if (n === 'diag') loadDiagList(); if (n === 'hist') loadHist(); if (n === 'router') loadRouter(); if (n === 'sat') loadEstimate();
+  // guard: a failing API call becomes a visible message instead of a rejected promise nobody sees
+  if (n === 'diag') guard(loadDiagList)(); if (n === 'hist') guard(loadHist)(); if (n === 'router') guard(loadRouter)(); if (n === 'sat') guard(loadEstimate)();
   if (!keepHash) history.replaceState(null, '', '#' + n);
 }
 $$('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -589,7 +590,7 @@ async function loadRouter() {
   $('#r_rules').value = (r.bandwidth_rules || []).map(d => [d.name, d.down ?? '', d.up ?? ''].join(' | ')).join('\n'); $('#r_notes').value = r.notes || '';
   }
   $('#r_shots').innerHTML = (r.screenshots || []).map(n => `<span><a href="/api/router/shot/${n}" target="_blank"><img class="thumb" src="/api/router/shot/${n}"></a><button class="btn" data-del="${n}" style="padding:0 6px">✕</button></span>`).join('');
-  $$('#r_shots [data-del]').forEach(b => b.onclick = guard(async () => { await api('/api/router/shot/delete', {name: b.dataset.del}); loadRouter(); }));
+  $$('#r_shots [data-del]').forEach(b => b.onclick = guard(async () => { await api('/api/router/shot/delete', {name: b.dataset.del}); await loadRouter(); }));
   const an = v.analysis;
   $('#r_analysis').innerHTML = (v.measures_from_session ? `<p class="muted">${esc(t('r.measures_from', v.measures_from_session, fmt(v.measured.down), fmt(v.measured.up)))}</p>` : `<p class="warn">${t('r.no_test')}</p>`) +
     (an.findings.length ? '<ul>' + an.findings.map(f => `<li class="sev-${f.severity}"><b>${esc(t('sev.' + f.severity))}</b> — ${esc(f.text)}</li>`).join('') + '</ul>' : `<p class="muted">${t('r.nothing')}</p>`) +
@@ -602,14 +603,14 @@ $('#r_save').onclick = guard(async () => {
     sqm_available: $('#r_sqm').value, limit_down: num('#r_ld'), limit_up: num('#r_lu'), unit: $('#r_unit').value, notes: $('#r_notes').value,
     priority_devices: lines($('#r_prio').value).map(p => ({name: p[0], priority: p[1] || '', duration: p[2] || ''})), bandwidth_rules: lines($('#r_rules').value).map(p => ({name: p[0], down: p[1] === '' ? null : +p[1], up: p[2] === '' ? null : +p[2]}))};
   await api('/api/config', {router, plan_down_mbps: num('#p_down'), plan_up_mbps: num('#p_up'), gateway_override: $('#g_over').value, custom_target: $('#custom').value});
-  $('#r_msg').textContent = t('r.saved'); routerDirty = false; loadRouter();
+  $('#r_msg').textContent = t('r.saved'); routerDirty = false; await loadRouter();
 });
 $('#r_file').onchange = guard(async () => {
   for (const f of $('#r_file').files) {
     const uri = await new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = ko; fr.readAsDataURL(f); });
     await api('/api/router/shot', {data: uri});
   }
-  $('#r_file').value = ''; loadRouter();
+  $('#r_file').value = ''; await loadRouter();
 });
 
 // ---------------------------------------------------------------- history

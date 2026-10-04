@@ -243,7 +243,6 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
             var ra = RouterQos.Analysis(rcfg, meas, cfg, worst);
             o.Append($"<h2>{E(T("rep.h.router"))}</h2>");
             var qos = T(rcfg?.QosEnabled switch { true => "rep.qos.on", false => "rep.qos.off", _ => "rep.qos.unknown" });
-            var unset = T("rep.notset");
             o.Append("<p>" + T("rep.router_line", E(string.IsNullOrEmpty(rcfg?.Model) ? T("rep.notentered") : rcfg!.Model), E(string.IsNullOrEmpty(rcfg?.HwVersion) ? "?" : rcfg!.HwVersion), E(string.IsNullOrEmpty(rcfg?.Firmware) ? "?" : rcfg!.Firmware), qos, E(T("rep.qostype." + (rcfg?.QosType is "priority" or "bandwidth_limit" or "sqm" ? rcfg.QosType : "unknown")))) + "</p>");
             o.Append("<ul>" + string.Concat(ra.Findings.Select(f => $"<li><b>{E(T("rep.sev." + f.Severity))}</b> — {E(f.Text)}</li>")) + "</ul>");
             if (ra.Proposals.Count > 0)
@@ -362,7 +361,6 @@ public static partial class Loc
         Add("rep.qostype.priority", "Prioritisation", "Priorisation");
         Add("rep.qostype.bandwidth_limit", "Rate limit", "Limite de débit");
         Add("rep.qostype.sqm", "SQM (Smart Queue)", "SQM (Smart Queue)");
-        Add("rep.notset", "not set", "non renseigné");
         Add("rep.notentered", "not entered", "non renseigné");
         Add("rep.router_line", "Model: <b>{0}</b>, hardware version {1}, firmware {2}. QoS: {3} (type: {4}).", "Modèle : <b>{0}</b>, version matérielle {1}, firmware {2}. QoS : {3} (type : {4}).");
         Add("rep.sev.ok", "ok", "ok");

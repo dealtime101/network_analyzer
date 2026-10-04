@@ -583,6 +583,17 @@ public class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheEstimateReadsDecimalAndNegativeQueryValuesLikeNumbers()
+    {
+        // streams 3.7 -> 3, cap_down_mb -5 -> clamped to 10, cap_up_mb 55.5 -> 55, phase_s 7.5 -> 7
+        var e = J((await Call("/api/loadtest/estimate?streams=3.7&cap_down_mb=-5&cap_up_mb=55.5&phase_s=7.5")).Body);
+        Assert.Equal(3, e["streams"]!.GetValue<int>());
+        Assert.Equal(10 * 1 + 55 * 1, e["max_total_mb"]!.GetValue<int>());
+        var plain = J((await Call("/api/loadtest/estimate?streams=3&cap_down_mb=10&cap_up_mb=55&phase_s=7")).Body);
+        Assert.Equal(plain["duration_s"]!.GetValue<int>(), e["duration_s"]!.GetValue<int>());
+    }
+
+    [Fact]
     public async Task SimultaneousRequestsEachKeepTheirOwnLanguage()
     {
         // 80 requests in flight at once, alternating languages: none may answer in the other one

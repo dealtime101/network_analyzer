@@ -143,7 +143,7 @@ public static class Api
             if (path == "/api/loadtest/estimate")
             {
                 var b = new JsonObject();
-                foreach (var (k, v) in q) b[k] = double.TryParse(v, out var n) && v.All(char.IsDigit) ? JsonValue.Create(n) : JsonValue.Create(v);
+                foreach (var (k, v) in q) b[k] = JsonValue.Create(v);  // App.Num reads numeric strings (decimal, negative) itself
                 return app.Estimate(b);
             }
             if (path == "/api/sessions") return app.Sessions();

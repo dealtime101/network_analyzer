@@ -375,6 +375,14 @@ public static partial class Diagnose
         return h != null && h.N >= 2 && (h.LossPct >= Th.DnsFailPct || (h.Median ?? 0) >= Th.DnsMedMs);
     }
 
+    /// <summary>Uncached ("cold") lookups: slow or failing, judged on at least 3 of them (they are sent only every 15 s,
+    /// so a window holds few) against their own, higher threshold: a normal cold lookup takes tens of milliseconds.</summary>
+    static bool DnsMissBad(WindowFacts f)
+    {
+        var m = f.DnsMiss;
+        return m != null && m.N >= 3 && (m.LossPct >= Th.DnsFailPct || (m.Median ?? 0) >= Th.DnsMissMedMs);
+    }
+
     public static string Localize(WindowFacts f)
     {
         var gw = f.Targets.Values.Where(v => v.Role == "gateway").ToList();
@@ -385,7 +393,7 @@ public static partial class Diagnose
         if (badInet.Count >= 2 || (inet.Count == 1 && badInet.Count > 0)) return "upstream";
         if (badInet.Count > 0) return "path";
         if (cust.Any(v => v.Bad)) return "custom_path";  // any custom target, not only the first one
-        if (DnsBad(f)) return "dns";
+        if (DnsBad(f) || DnsMissBad(f)) return "dns";
         if (!f.Targets.Values.Any(v => v.Stats != null && v.Stats.N >= 3)) return "undetermined";
         return "none";
     }

@@ -41,6 +41,20 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void SlowOrFailingUncachedDnsQueriesAreLocatedAsDnsEvenWhenCachedOnesAreFast()
+    {
+        TargetFacts T(string role) => new() { Role = role, Label = role, Bad = false, Stats = new RttStats { N = 20 } };
+        RttStats Dns(int n, double median, double loss = 0) => new() { N = n, Median = median, LossPct = loss };
+        WindowFacts W(RttStats? hit, RttStats? miss) => new() { Targets = { ["gateway"] = T("gateway"), ["cloudflare"] = T("internet") }, DnsHit = hit, DnsMiss = miss };
+        Assert.Equal("dns", Diagnose.Localize(W(Dns(10, 15), Dns(4, 600))));        // cached answers fast, uncached ones slow: the DNS RuleDns calls out
+        Assert.Equal("dns", Diagnose.Localize(W(Dns(10, 15), Dns(4, 80, loss: 50)))); // uncached queries failing
+        Assert.Equal("none", Diagnose.Localize(W(Dns(10, 15), Dns(4, 70))));        // a normal uncached lookup (tens of ms) is not an incident
+        Assert.Equal("none", Diagnose.Localize(W(Dns(10, 15), Dns(1, 900))));       // one slow sample is too little to conclude
+        Assert.Equal("none", Diagnose.Localize(W(Dns(10, 15), null)));              // no uncached query in the window
+        Assert.Equal("dns", Diagnose.Localize(W(Dns(10, 250), Dns(4, 70))));        // and the cached-query rule is unchanged
+    }
+
+    [Fact]
     public void AnyDegradedCustomTargetMakesTheWindowACustomPathNotOnlyTheFirst()
     {
         TargetFacts T(string role, bool bad) => new() { Role = role, Label = role, Bad = bad, Stats = new RttStats { N = 20 } };

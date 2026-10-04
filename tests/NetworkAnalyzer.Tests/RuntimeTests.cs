@@ -1071,6 +1071,31 @@ public class ConfigInputTests
     }
 }
 
+public class ShotSizeTests
+{
+    [Fact]
+    public void AnOversizedScreenshotIsRefusedWithoutDecodingOrCopyingIt()
+    {
+        var app = new App(Tmp.Dir());
+        var huge = "data:image/png;base64," + new string('A', 40_000_000);   // about 30 MB once decoded
+        app.AddShot("data:image/png;base64,AAAA");                          // warm up: the first call JITs and builds the regex
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var ex = Assert.Throws<ApiException>(() => app.AddShot(huge));
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Equal(Loc.T("err.image_too_large"), ex.Message);
+        Assert.True(allocated < 1_000_000, $"{allocated} bytes allocated to refuse a screenshot");   // red before: decoded and copied tens of MB
+    }
+
+    [Fact]
+    public void AScreenshotJustUnderTheLimitIsStillAccepted()
+    {
+        var app = new App(Tmp.Dir());
+        var raw = new byte[4_999_999];
+        var name = app.AddShot("data:image/png;base64," + Convert.ToBase64String(raw));
+        Assert.Equal(raw.Length, app.ReadShot(name)!.Value.Bytes.Length);
+    }
+}
+
 public class ShotNameTests
 {
     [Fact]

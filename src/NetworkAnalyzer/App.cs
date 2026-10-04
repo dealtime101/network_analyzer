@@ -286,6 +286,8 @@ public sealed class App
 
     public string AddShot(string? dataUri)
     {
+        // the size is judged on the text, before the regex copies it and before it is decoded: MaxShot bytes are at most 4/3 of that in base64 plus the prefix
+        if (dataUri is { Length: > (MaxShot + 2) / 3 * 4 + 32 }) throw new ApiException(Loc.T("err.image_too_large"));
         var m = DataUriRx.Match(dataUri ?? "");
         if (!m.Success) throw new ApiException(Loc.T("err.invalid_image"));
         byte[] raw;

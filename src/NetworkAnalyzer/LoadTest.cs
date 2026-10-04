@@ -127,7 +127,11 @@ public sealed class LoadTest
         Task = Task.Run(RunAsync);
     }
 
-    public void Cancel() => cancel.Cancel();
+    public void Cancel()
+    {
+        try { cancel.Cancel(); }
+        catch (ObjectDisposedException) { }  // the test already ended and released its token source
+    }
     public string State => state;
 
     public LoadStatus Status()
@@ -171,6 +175,9 @@ public sealed class LoadTest
         }
         phase = null;
         current = 0;
+        // a test runs once: release its sockets and token source now instead of leaving them to the finaliser
+        http.Dispose();
+        cancel.Dispose();
     }
 
     async Task<PhaseMeta> Idle(int dur)

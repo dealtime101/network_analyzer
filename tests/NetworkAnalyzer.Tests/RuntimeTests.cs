@@ -118,6 +118,26 @@ public class LoadTestTests
         Assert.Equal(0, stub.UploadsWrong);
     }
 
+    sealed class TrackedHandler : DelegatingHandler
+    {
+        public TrackedHandler() : base(new SocketsHttpHandler()) { }
+        public volatile bool Disposed;
+        protected override void Dispose(bool disposing) { Disposed = true; base.Dispose(disposing); }
+    }
+
+    [Fact]
+    public async Task TheHttpClientIsReleasedWhenTheTestEnds()
+    {
+        var handler = new TrackedHandler();
+        var cfg = new LoadConfig { BaseUrl = "http://127.0.0.1:1", Phases = new() { new() { Name = "idle", DurationS = 1 } } };
+        var lt = new LoadTest(NewRec(), cfg, handler);
+        lt.Start();
+        await lt.Task!.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.True(handler.Disposed, "sockets and handler must be released at the end of the run");
+        lt.Cancel();   // a late Cancel on a finished test must stay harmless
+        Assert.Equal("done", lt.State);
+    }
+
     [Fact]
     public async Task CurrentRateFallsToZeroWhenALoadPhaseEnds()
     {

@@ -130,13 +130,15 @@ public static class RouterQos
         foreach (var (lim, m, dir, cur) in new[] { (ld, meas.Down, "down", r.LimitDown), (lu, meas.Up, "up", r.LimitUp) })
         {
             if (m is null or 0 || worstDelta < 30) continue;
-            var target = Math.Round(m.Value * 0.92, MidpointRounding.ToEven);
+            // two decimals below 10 Mbps (0.5 Mbps upstream gives 0.46, not 0), whole numbers above
+            double Fit(double v) => Math.Round(v, v < 10 ? 2 : 0, MidpointRounding.ToEven);
+            var target = Fit(m.Value * 0.92);
             if (lim is null || lim > 1.05 * m)
             {
                 var now = cur.HasValue ? $"{G(cur.Value)} {r.Unit}" : Loc.T("router.prop.none_set");
                 props.Add(new Proposal
                 {
-                    Change = Loc.T("router.prop.limit", Dir(dir), F0(target), F0(m.Value)),
+                    Change = Loc.T("router.prop.limit", Dir(dir), G(target), G(Fit(m.Value))),
                     Justification = Loc.T("router.prop.limit_why", F0(worstDelta), now),
                     Rollback = Loc.T("router.prop.limit_back", now),
                 });

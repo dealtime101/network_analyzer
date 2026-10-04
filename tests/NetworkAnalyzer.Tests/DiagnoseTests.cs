@@ -580,6 +580,18 @@ public class RouterTests
     static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
     [Fact]
+    public void ProposedLimitKeepsItsPrecisionOnSlowLines()
+    {
+        var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };
+        using var _ = Loc.Scope("en");
+        var slowUp = RouterQos.Propose(r, (null, 0.5), 200).Select(p => p.Change).First();
+        Assert.Contains("about 0.46 Mbps", slowUp);      // 92 % of 0.5, not "0"
+        Assert.Contains("0.5 Mbps)", slowUp);            // the measured value is not shown as "0" either
+        Assert.Contains("about 0.92 Mbps", RouterQos.Propose(r, (null, 1.0), 200).Select(p => p.Change).First());
+        Assert.Contains("about 276 Mbps", RouterQos.Propose(r, (300.0, null), 200).Select(p => p.Change).First());
+    }
+
+    [Fact]
     public void FrenchThroughputTakesTheMasculineDirection()
     {
         var r = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };   // measured 300 Mbps > limit

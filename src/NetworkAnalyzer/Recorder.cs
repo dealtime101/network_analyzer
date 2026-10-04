@@ -50,10 +50,8 @@ public sealed class Recorder
     public const double Interval = 1.0;
     public const double GapS = 8.0;      // abnormal delay between two measurements = sleep / freeze of the system
     const int LiveMax = 7200;
-    public static readonly (string Id, string Label, string Host)[] InternetTargets =
-    {
-        ("cloudflare", "Cloudflare (1.1.1.1)", "1.1.1.1"), ("google", "Google (8.8.8.8)", "8.8.8.8"), ("quad9", "Quad9 (9.9.9.9)", "9.9.9.9"),
-    };
+    /// <summary>The display name of a target is derived from its id and host (Target.Label), not stored here.</summary>
+    public static readonly (string Id, string Host)[] InternetTargets = { ("cloudflare", "1.1.1.1"), ("google", "8.8.8.8"), ("quad9", "9.9.9.9") };
     static readonly string[] HitNames = { "www.wikipedia.org", "www.microsoft.com", "www.cloudflare.com", "www.mozilla.org" };
 
     readonly SessionStore store;
@@ -109,7 +107,7 @@ public sealed class Recorder
             var scope = OperatingSystem.IsWindows() && a.Gw6.StartsWith("fe80", StringComparison.OrdinalIgnoreCase) && !a.Gw6.Contains('%') ? $"%{a.Index}" : "";
             t.Add(new Target { Id = "gateway", Host = a.Gw6 + scope, Role = "gateway", Family = 6 });
         }
-        foreach (var (id, label, host) in InternetTargets)
+        foreach (var (id, host) in InternetTargets)
             t.Add(new Target { Id = id, Host = host, Role = "internet", Family = 4, TcpPort = 443 });
         if (env.Ipv6Global)
             t.Add(new Target { Id = "cloudflare6", Host = "2606:4700:4700::1111", Role = "internet6", Family = 6, TcpPort = 443 });

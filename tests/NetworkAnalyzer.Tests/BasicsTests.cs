@@ -7,6 +7,21 @@ using Xunit;
 
 namespace NetworkAnalyzer.Tests;
 
+public class TargetLabelTests
+{
+    [Fact]
+    public void EveryBuiltTargetHasADisplayLabelDerivedFromItsIdentity()
+    {
+        var env = new EnvInfo { Ipv6Global = true, Active = new AdapterInfo { Gw4 = "192.168.0.1" } };
+        var targets = Recorder.BuildTargets(env, "game.example.net:27015");
+        Assert.Equal(6, targets.Count);
+        Assert.All(targets, t => Assert.NotEqual(t.Id, t.Label));
+        Assert.Equal("Cloudflare (1.1.1.1)", targets.Single(t => t.Id == "cloudflare").Label);
+        Assert.Contains("game.example.net", targets.Single(t => t.Id == "custom").Label);
+        Assert.False(string.IsNullOrWhiteSpace(targets.Single(t => t.Id == "gateway").Label));
+    }
+}
+
 public class StatsTests
 {
     static List<Sample> S(params double?[] vals) => vals.Select((v, i) => new Sample(i, v, v.HasValue, "")).ToList();

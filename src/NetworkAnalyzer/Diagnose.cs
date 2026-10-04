@@ -994,7 +994,7 @@ public static partial class Diagnose
 
     public static Analysis Analyze(SessionData data, AppConfig? cfg = null)
     {
-        cfg ??= new AppConfig();
+        cfg = ConfigFor(data, cfg ?? new AppConfig());  // the settings the session was recorded with take priority, whoever calls
         var cx = new Ctx(data);
         int gwN = cx.Gw?.Stats?.N ?? 0;
         int inetN = cx.Inet.Where(x => x.Stats != null).Select(x => x.Stats!.N).DefaultIfEmpty(0).Max();

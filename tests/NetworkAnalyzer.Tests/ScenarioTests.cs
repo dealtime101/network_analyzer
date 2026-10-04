@@ -41,6 +41,18 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void TheSettingsSavedWithASessionAreUsedWhenNoConfigIsGiven()
+    {
+        var d = Simulator.Make("saturation", 7);
+        Assert.DoesNotContain("saturation", ScenarioTests.Ids(Diagnose.Analyze(d, new AppConfig())));   // no known capacity: no saturation verdict
+        d.Meta.CfgSnapshot = new ConfigSnapshot { PlanDownMbps = 100, PlanUpMbps = 20 };               // the plan the session was recorded with
+        Assert.Equal("saturation", ScenarioTests.Ids(Diagnose.Analyze(d))[0]);                          // no config argument at all: the snapshot is used
+        Assert.Equal("saturation", ScenarioTests.Ids(Diagnose.Analyze(d, new AppConfig()))[0]);        // a live config without the plan does not override it
+        // and when a config IS given with a different plan, the session's own snapshot still has priority (as documented)
+        Assert.Equal("saturation", ScenarioTests.Ids(Diagnose.Analyze(d, new AppConfig { PlanDownMbps = 5000, PlanUpMbps = 5000 }))[0]);
+    }
+
+    [Fact]
     public void UncachedDnsMeasurementsAreEvaluatedEvenWithoutAnyCachedOne()
     {
         var d = Simulator.Make("dns", 7);

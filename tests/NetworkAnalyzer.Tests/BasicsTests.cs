@@ -173,6 +173,21 @@ public class TargetLabelTests
         Assert.Contains("game.example.net", targets.Single(t => t.Id == "custom").Label);
         Assert.False(string.IsNullOrWhiteSpace(targets.Single(t => t.Id == "gateway").Label));
     }
+
+    [Fact]
+    public void LabelsMadeOfAProductNameAndAnAddressAreTheSameInEveryLanguageWhileWordsAreTranslated()
+    {
+        // "Cloudflare IPv6 (address)" is a company name, a protocol name and an address: there is no word to translate, exactly as for
+        // "Cloudflare (1.1.1.1)", "Google (8.8.8.8)" and "Quad9 (9.9.9.9)". The gateway label is a word and is translated.
+        var env = new EnvInfo { Ipv6Global = true, Active = new AdapterInfo { Gw4 = "192.168.0.1" } };
+        var targets = Recorder.BuildTargets(env, "");
+        string[] ids = { "cloudflare", "google", "quad9", "cloudflare6" };
+        string Label(string lang, string id) { using (Loc.Scope(lang)) return targets.Single(t => t.Id == id).Label; }
+        foreach (var id in ids.Where(i => targets.Any(t => t.Id == i)))
+            Assert.Equal(Label("en", id), Label("fr", id));
+        Assert.Contains(targets, t => t.Id == "cloudflare6");
+        Assert.NotEqual(Label("en", "gateway"), Label("fr", "gateway"));
+    }
 }
 
 public class StatsTests

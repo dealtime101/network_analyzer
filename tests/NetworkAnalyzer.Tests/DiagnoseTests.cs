@@ -470,6 +470,30 @@ public class LocalizationTests
     }
 
     [Fact]
+    public async Task ScopesOnDifferentTasksNeverSeeEachOther()
+    {
+        // 400 tasks at once, alternating French scopes and the default: each one must always read its own language,
+        // which is what lets xUnit run test classes in parallel without a shared-state collection
+        var work = Enumerable.Range(0, 400).Select(i => Task.Run(async () =>
+        {
+            bool fr = i % 2 == 0;
+            IDisposable? scope = fr ? Loc.Scope("fr") : null;
+            try
+            {
+                for (int k = 0; k < 20; k++)
+                {
+                    await Task.Yield();
+                    if (Loc.Lang != (fr ? "fr" : "en") || Loc.T("phase.download") != (fr ? "Téléchargement" : "Download")) return false;
+                }
+                return true;
+            }
+            finally { scope?.Dispose(); }
+        })).ToList();
+        Assert.All(await Task.WhenAll(work), ok => Assert.True(ok));
+        Assert.Equal("en", Loc.Lang);   // and this test's own context was left untouched
+    }
+
+    [Fact]
     public void BothLanguagesNameTheSameInvalidFields()
     {
         // SaveConfig refuses a bad QoS TYPE, a bad unit or a bad SQM answer: both messages must say so

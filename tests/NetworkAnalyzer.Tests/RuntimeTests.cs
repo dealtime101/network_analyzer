@@ -270,9 +270,13 @@ public class LoadTestTests
         var lt = new LoadTest(NewRec(), Cfg(stub.Url, 100000, 100000));
         lt.Start();
         await lt.Task!.WaitAsync(TimeSpan.FromSeconds(40));
+        Assert.Equal("done", lt.State);                   // it ran to its end, it was not cancelled or failed
         var r = lt.Status().Results[1];
-        Assert.True(r.DurationS < 6);
+        Assert.InRange(r.DurationS!.Value, 3.5, 6.0);     // the phase lasts its 4 s (1 s of tolerance below, 2 s above): a phase cut short fails here
         Assert.False(r.VolumeCapReached);
+        Assert.True(r.Bytes > 0 && r.AvgMbps > 0, "nothing was transferred");
+        Assert.NotEqual(true, r.Cancelled);
+        Assert.True(r.Errors is null || r.Errors.Count == 0, string.Join(" | ", r.Errors ?? new()));
     }
 
     [Fact]

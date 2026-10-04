@@ -362,6 +362,22 @@ public class RequestNumberTests
     }
 }
 
+public class SessionListTests
+{
+    [Fact]
+    public void OneUnreadableSessionDoesNotHideTheOthers()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        int good = store.SaveComplete(Simulator.Make("healthy", 7, p => p.Minutes = 1));
+        int bad = store.SaveComplete(Simulator.Make("healthy", 8, p => p.Minutes = 1));
+        File.WriteAllText(Path.Combine(dir, "sessions", $"{bad}.jsonl"), "5\n");   // valid JSON, not a measurement line
+        var list = new App(dir).Sessions();
+        Assert.Equal(new[] { bad, good }, list.Select(s => s.Id).ToArray());
+        Assert.NotNull(list.Single(s => s.Id == good).Metrics);
+    }
+}
+
 public class LoadtestStartTests
 {
     static System.Text.Json.Nodes.JsonObject Body() => new() { ["confirm"] = true, ["phase_s"] = 5, ["cap_down_mb"] = 10, ["cap_up_mb"] = 10 };

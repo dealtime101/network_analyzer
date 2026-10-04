@@ -211,7 +211,11 @@ public sealed class App
         {
             bool running = Rec.Running && Rec.Sid == h.Id;
             var m = h.Meta.Metrics;
-            if (m is null && !running && h.Ended != null) m = PersistMetrics(h.Id);
+            if (m is null && !running && h.Ended != null)
+            {
+                try { m = PersistMetrics(h.Id); }
+                catch (Exception) { }  // one unreadable session must not hide all the others: it is listed without metrics
+            }
             res.Add(new SessionSummary { Id = h.Id, Started = h.Started, Ended = h.Ended, Label = h.Label, Link = h.Link, PlannedS = h.PlannedS, Running = running, Metrics = m, Loadtest = h.Meta.Loadtest != null });
         }
         return res;

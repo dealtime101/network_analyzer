@@ -532,6 +532,25 @@ public class ReportTests
     }
 
     [Fact]
+    public void TheTrafficChartAppearsWhenOnlyTheUploadWasMeasured()
+    {
+        var d = Simulator.Make("healthy", 7, p => p.Minutes = 2);
+        d.Series.Remove("net:down_bps");                      // only upload samples exist
+        var html = Report.Html(d, Diagnose.Analyze(d, new AppConfig()));
+        var from = html.IndexOf("<h3>Traffic of this computer", StringComparison.Ordinal);
+        Assert.True(from > 0, "the traffic chart is missing although upload samples exist");
+        Assert.Contains("<polyline", html[from..html.IndexOf("</svg>", from, StringComparison.Ordinal)]);
+        // and the mirror image, download only
+        var e = Simulator.Make("healthy", 7, p => p.Minutes = 2);
+        e.Series.Remove("net:up_bps");
+        Assert.Contains("<h3>Traffic of this computer", Report.Html(e, Diagnose.Analyze(e, new AppConfig())));
+        // with neither direction measured there is still no traffic chart
+        var none = Simulator.Make("healthy", 7, p => p.Minutes = 2);
+        none.Series.Remove("net:up_bps"); none.Series.Remove("net:down_bps");
+        Assert.DoesNotContain("<h3>Traffic of this computer", Report.Html(none, Diagnose.Analyze(none, new AppConfig())));
+    }
+
+    [Fact]
     public void EveryChartCarriesATextAlternativeWithItsFigures()
     {
         var series = new List<Report.ChartSeries>

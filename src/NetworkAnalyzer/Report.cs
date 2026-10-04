@@ -232,7 +232,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
             new() { Name = T("rep.s.down"), Color = "#0969da", Pts = d.S("net:down_bps").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value / 1e6)).ToList() },
             new() { Name = T("rep.s.up"), Color = "#bc4c00", Pts = d.S("net:up_bps").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value / 1e6)).ToList() },
         };
-        if (tr[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.traffic"))}</h3>").Append(SvgChart(tr, d.Started, end, marks, d.Phases, unit: "Mbps", title: T("rep.traffic"))).Append(Legend(tr));
+        if (tr.Any(s => s.Pts.Count > 0)) o.Append($"<h3>{E(T("rep.traffic"))}</h3>").Append(SvgChart(tr, d.Started, end, marks, d.Phases, unit: "Mbps", title: T("rep.traffic"))).Append(Legend(tr));
         var dns = new List<ChartSeries> { new() { Name = T("rep.s.dns"), Color = "#1a7f37", Pts = d.S("dns:sys_hit").Where(s => s.Ok && s.V.HasValue).Select(s => (s.T, s.V!.Value)).ToList(), Lost = d.S("dns:sys_hit").Where(s => !s.Ok).Select(s => s.T).ToList() } };
         if (dns[0].Pts.Count > 0 || dns[0].Lost.Count > 0) o.Append($"<h3>{E(T("rep.dns"))}</h3>").Append(SvgChart(dns, d.Started, end, marks, d.Phases, height: 120, title: T("rep.dns"))).Append(Legend(dns));
         var wf = new List<ChartSeries> { new() { Name = T("rep.s.wifi"), Color = "#8250df", Pts = d.S("wifi:signal").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value)).ToList() } };

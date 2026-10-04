@@ -30,6 +30,17 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void SessionWithDownloadTrafficOnlyStillAnalyses()
+    {
+        var d = Simulator.Make("background", 7);
+        d.Series.Remove("net:up_bps");
+        var a = Diagnose.Analyze(d, new AppConfig());
+        var text = Text(a);
+        Assert.Contains("PC traffic: ↓", text);
+        Assert.Contains("↑ — Mbps", text);
+    }
+
+    [Fact]
     public void WifiInstability()
     {
         var a = Run("wifi_unstable");

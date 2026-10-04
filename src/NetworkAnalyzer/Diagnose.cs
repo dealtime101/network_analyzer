@@ -293,6 +293,7 @@ public static partial class Diagnose
     static string F1(double x) => x.ToString("0.0", Inv);
     static string F2(double x) => x.ToString("0.00", Inv);
     static string G(double x) => x.ToString("0.######", Inv);
+    static string FmtF1(double? x) => x is null ? "—" : F1(x.Value);
     static string FmtMs(double? x) => x is null ? "—" : F0(x.Value) + " ms";
     static double? Mbps(double? bps) => bps is null ? null : bps / 1e6;
     static int Z(Dictionary<string, int> z, string k) => z.GetValueOrDefault(k);
@@ -396,8 +397,8 @@ public static partial class Diagnose
                 parts.Add(T("d.win.target", v.Label, FmtMs(s.Median), FmtMs(s.Max), F0(s.LossPct)) + (v.Bad ? " ⚠" : ""));
         }
         if (f.DnsHit != null) parts.Add(T("d.win.dns", FmtMs(f.DnsHit.Median), F0(f.DnsHit.LossPct)));
-        if (f.NetDownMed != null)
-            parts.Add(T("d.win.traffic", F1(f.NetDownMed.Value), F1(f.NetDownMax!.Value), F1(f.NetUpMed!.Value), F1(f.NetUpMax!.Value)));
+        if (f.NetDownMed != null || f.NetUpMed != null)
+            parts.Add(T("d.win.traffic", FmtF1(f.NetDownMed), FmtF1(f.NetDownMax), FmtF1(f.NetUpMed), FmtF1(f.NetUpMax)));
         if (f.WifiSignalMin != null) parts.Add(T("d.win.wifi", G(f.WifiSignalMin.Value)));
         return parts;
     }

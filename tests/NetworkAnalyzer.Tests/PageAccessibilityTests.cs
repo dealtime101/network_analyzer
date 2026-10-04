@@ -124,6 +124,20 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void RenamingASessionIsDoneWithAFocusableButton()
+    {
+        Assert.DoesNotContain("<span data-ren=", Page);                                  // a span cannot be reached with the keyboard
+        var cell = Regex.Match(Page, @"<button\b[^>]*\bdata-ren=[^>]*>").Value;
+        Assert.NotEmpty(cell);
+        Assert.Equal("button", Attr(cell, "type"));
+        Assert.NotNull(Attr(cell, "title"));
+        // styled like the text it replaces, with a visible keyboard focus
+        Assert.Matches(@"\.linklike\{[^}]*background:none", Page);
+        Assert.Matches(@"\.linklike:focus-visible\{[^}]*outline", Page);
+        Assert.Contains("class=\"linklike\"", cell);
+    }
+
+    [Fact]
     public void ScreenshotThumbnailsAreNamedAndDeletionNeedsConfirmation()
     {
         var thumbs = Regex.Match(Page, @"\$\('#r_shots'\)\.innerHTML = [^\n]*").Value;

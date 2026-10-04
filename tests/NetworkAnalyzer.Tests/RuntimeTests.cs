@@ -241,11 +241,14 @@ public class LoadTestTests
         var rec = NewRec();
         var lt = new LoadTest(rec, Cfg(stub.Url, 100000, 100000));
         lt.Start();
-        await Task.Delay(2500);
-        var t0 = DateTime.UtcNow;
+        // wait for the state we want to cancel in (the download phase is running), not for a fixed delay a slow machine could miss
+        var until = DateTime.UtcNow.AddSeconds(30);
+        while (lt.Status().Phase != "download" && DateTime.UtcNow < until) await Task.Delay(20);
+        Assert.Equal("download", lt.Status().Phase);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         lt.Cancel();
         await lt.Task!.WaitAsync(TimeSpan.FromSeconds(15));
-        Assert.True((DateTime.UtcNow - t0).TotalSeconds < 8);
+        Assert.True(sw.Elapsed.TotalSeconds < 8, $"cancelling took {sw.Elapsed.TotalSeconds:0.0} s");
         Assert.Equal("cancelled", lt.State);
         Assert.Contains(rec.Status().Phases, p => p.Meta.Cancelled == true);
         Assert.DoesNotContain(rec.Status().Phases, p => p.Name == "upload");

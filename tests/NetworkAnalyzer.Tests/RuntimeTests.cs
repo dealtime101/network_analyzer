@@ -489,6 +489,29 @@ public class RequestNumberTests
     }
 }
 
+public class StoreToleranceTests
+{
+    [Fact]
+    public void MalformedButValidJsonLinesAreSkippedNotFatal()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        var original = Simulator.Make("healthy", 7, p => p.Minutes = 1);
+        int id = store.SaveComplete(original);
+        var path = Path.Combine(dir, "sessions", $"{id}.jsonl");
+        var good = File.ReadAllLines(path).ToList();
+        var bad = new[] { "5", "[]", "[\"s\"]", "[\"s\", \"x\", 1, 2, 3, 4]", "{\"a\":1}", "[\"s\", 1.0, null, 2, 1, \"\"]", "[\"m\", 1.0]", "[\"p\", \"x\"]", "null", "\"text\"" };
+        // bad lines mixed in the middle and at both ends
+        var mixed = new List<string> { bad[0] };
+        for (int i = 0; i < good.Count; i++) { mixed.Add(good[i]); if (i % 50 == 0) mixed.Add(bad[(i / 50) % bad.Length]); }
+        mixed.AddRange(bad);
+        File.WriteAllLines(path, mixed);
+        var loaded = store.Load(id)!;
+        Assert.Equal(original.Series.Sum(kv => kv.Value.Count), loaded.Series.Sum(kv => kv.Value.Count));   // every good line is still there
+        Assert.Equal(original.Marks.Count, loaded.Marks.Count);
+    }
+}
+
 public class SessionListTests
 {
     [Fact]

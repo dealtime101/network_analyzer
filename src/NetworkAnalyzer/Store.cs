@@ -124,7 +124,9 @@ public sealed class SessionStore
                     case "tr": d.Traces.Add(new TraceRec { T = a[1].GetDouble(), Target = a[2].GetString()!, Data = Json.From<TraceResult>(a[3].GetRawText()) ?? new() }); break;
                 }
             }
-            catch (JsonException) { /* last line still being written */ }
+            // a line still being written (JsonException) or valid JSON of the wrong shape (too short, wrong type, not an array):
+            // skip that line, never lose the whole session over it
+            catch (Exception e) when (e is JsonException or InvalidOperationException or IndexOutOfRangeException or KeyNotFoundException or FormatException or OverflowException or ArgumentException) { }
         }
         foreach (var l in d.Series.Values) l.Sort((x, y) => x.T.CompareTo(y.T));
         d.Marks.Sort((x, y) => x.T.CompareTo(y.T));

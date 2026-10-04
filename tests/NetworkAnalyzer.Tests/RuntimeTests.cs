@@ -564,6 +564,23 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task AWifiSessionDoesNotStartWithAFakeSleepMark()
+    {
+        // the neighbour scan runs once, right after the first reading; its duration is not a system sleep
+        var rec = new Recorder(new SessionStore(Tmp.Dir()))
+        {
+            GapThresholdS = 0.6, WifiPollMs = 50,
+            WifiReader = () => Task.FromResult<WifiInfo?>(new WifiInfo { Connected = true, Signal = 80, Channel = 6, Bssid = "aa:bb" }),
+            NeighborReader = async _ => { await Task.Delay(900); return new WifiNeighbors { Total = 3 }; },
+        };
+        rec.Start(new EnvInfo { Active = new AdapterInfo { Kind = "wifi" } }, new List<Target>(), 1);
+        await Task.Delay(1800);
+        await rec.StopAsync();
+        Assert.DoesNotContain(rec.Status().Marks, m => m.Kind == "gap");
+        Assert.True(rec.LiveSince(0).ContainsKey("wifi:signal"));
+    }
+
+    [Fact]
     public async Task ALateMeasurementOfAStoppedSessionIsDropped()
     {
         var store = new SessionStore(Tmp.Dir());

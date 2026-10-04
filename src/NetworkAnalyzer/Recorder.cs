@@ -71,6 +71,12 @@ public sealed class Recorder
 
     public Recorder(SessionStore store) => this.store = store;
 
+    // Defaults are the real thing; tests replace them (no Wi-Fi hardware, short delays).
+    public double GapThresholdS { get; set; } = GapS;
+    public int WifiPollMs { get; set; } = 5000;
+    public Func<Task<WifiInfo?>> WifiReader { get; set; } = SysInfo.ReadWifiAsync;
+    public Func<int?, Task<WifiNeighbors?>> NeighborReader { get; set; } = SysInfo.ReadNeighborsAsync;
+
     public bool Running { get; private set; }
     public int? Sid { get; private set; }
     public double Started { get; private set; }
@@ -259,7 +265,7 @@ public sealed class Recorder
     // ------------------------------------------------------------------ measurement loops
     void TickGap(double last, CancellationToken ct)
     {
-        if (Clock.Now() - last > GapS)
+        if (Clock.Now() - last > GapThresholdS)
             MarkNow("gap", "", last, ct);
     }
 
@@ -419,7 +425,7 @@ public sealed class Recorder
             while (!ct.IsCancellationRequested)
             {
                 TickGap(last, ct);
-                var w = await SysInfo.ReadWifiAsync();
+                var w = await WifiReader();
                 last = Clock.Now();
                 if (w is null)
                 {
@@ -434,15 +440,16 @@ public sealed class Recorder
                     if (first)
                     {
                         SetMeta(m => m.Wifi = w);
-                        var n = await SysInfo.ReadNeighborsAsync(w.Channel);
+                        var n = await NeighborReader(w.Channel);
                         if (n != null) SetMeta(m => m.WifiNeighbors = n);
+                        last = Clock.Now();  // the scan takes seconds: it is work, not a system sleep
                     }
                     if (lastBssid != null && !string.IsNullOrEmpty(w.Bssid) && w.Bssid != lastBssid)
                         MarkNow("roam", "", null, ct);
                     if (!string.IsNullOrEmpty(w.Bssid)) lastBssid = w.Bssid;
                 }
                 first = false;
-                await Task.Delay(5000, ct);
+                await Task.Delay(WifiPollMs, ct);
             }
         }
         catch (OperationCanceledException) { }

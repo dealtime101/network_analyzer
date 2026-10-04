@@ -85,8 +85,19 @@ public static partial class SysInfo
     public static string PlatformName(bool? windows = null, bool? macOS = null)
         => (windows ?? OperatingSystem.IsWindows()) ? "win32" : (macOS ?? OperatingSystem.IsMacOS()) ? "darwin" : "linux";
 
+    /// <summary>A Windows VPN connection is an interface named after the connection whose description is the "WAN Miniport (IKEv2/SSTP/L2TP/PPTP)" driver.
+    /// Those drivers are also always listed idle (down, or with link-local addresses only): only one that is up with a usable address is a live VPN.
+    /// (Kind alone cannot tell, it sees neither the status nor the addresses, and files every miniport as plumbing.)</summary>
+    static bool IsLiveBuiltInVpn(AdapterInfo i)
+        => i.Kind == "virtual" && i.Description.StartsWith("WAN Miniport", StringComparison.OrdinalIgnoreCase) && IsUp(i)
+           && (i.Ipv4.Any(a => !a.StartsWith("169.254", StringComparison.Ordinal)) || i.Ipv6.Any(IsGlobalIpv6OrUniqueLocal));
+
+    static bool IsGlobalIpv6OrUniqueLocal(string a)
+        => IPAddress.TryParse(a.Split('%')[0], out var ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && !ip.IsIPv6LinkLocal && !IPAddress.IsLoopback(ip) && !ip.IsIPv6Multicast;
+
     public static EnvInfo Summarize(List<AdapterInfo> ifaces)
     {
+        foreach (var i in ifaces) if (IsLiveBuiltInVpn(i)) i.Kind = "vpn";
         var vpnUp =ifaces.Where(i => i.Kind == "vpn" && IsUp(i) && (i.Ipv4.Count > 0 || i.Ipv6.Count > 0)).ToList();
         var active = Candidates(ifaces).FirstOrDefault();
         var env = new EnvInfo { Interfaces = ifaces, Active = active, Vpn = new VpnInfo { Active = vpnUp.Count > 0, Adapters = vpnUp.Select(i => i.Name).ToList() } };

@@ -867,6 +867,31 @@ SSID 3 : Autre
     }
 
     [Fact]
+    public void ALiveBuiltInWindowsVpnIsReportedAsAVpnWhileIdleMiniportsAreNot()
+    {
+        // A Windows VPN connection is an interface named after the connection whose description is the "WAN Miniport (IKEv2)" driver, with an address.
+        // The idle miniports that are always present (down, or without a usable address) are not a VPN.
+        var env = SysInfo.Summarize(new List<AdapterInfo>
+        {
+            Ad("Ethernet", "Intel(R) I211 Gigabit Network Connection", "ethernet", "Up", "192.168.0.1", null, new[] { "192.168.0.50" }, metric: 0),
+            Ad("Work VPN", "WAN Miniport (IKEv2)", SysInfo.Kind("Work VPN", "WAN Miniport (IKEv2)", NetworkInterfaceType.Ppp), "Up", null, null, new[] { "10.8.0.6" }),
+            Ad("Local Area Connection* 3", "WAN Miniport (L2TP)", "virtual", "Down"),
+            Ad("Local Area Connection* 4", "WAN Miniport (PPTP)", "virtual", "Up", v4: new[] { "169.254.12.1" }, v6: new[] { "fe80::1" }),   // up but with link-local addresses only
+        });
+        Assert.True(env.Vpn.Active);                                                  // red before: the VPN was filed as virtual plumbing
+        Assert.Equal(new[] { "Work VPN" }, env.Vpn.Adapters);
+        Assert.Equal("Ethernet", env.Active!.Name);
+        // no VPN at all: the same machine without the live connection
+        var none = SysInfo.Summarize(new List<AdapterInfo>
+        {
+            Ad("Ethernet", "Intel(R) I211 Gigabit Network Connection", "ethernet", "Up", "192.168.0.1", null, new[] { "192.168.0.50" }, metric: 0),
+            Ad("Local Area Connection* 3", "WAN Miniport (L2TP)", "virtual", "Down"),
+            Ad("Local Area Connection* 4", "WAN Miniport (PPTP)", "virtual", "Up", v4: new[] { "169.254.12.1" }, v6: new[] { "fe80::1" }),
+        });
+        Assert.False(none.Vpn.Active);
+    }
+
+    [Fact]
     public void LiveTeredoTunnelIsNotReportedAsVpn()
     {
         var teredo = Ad("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", SysInfo.Kind("Teredo Tunneling Pseudo-Interface", "Microsoft Teredo Tunneling Adapter", NetworkInterfaceType.Tunnel), "Up", v6: new[] { "2001:0:1::2" });

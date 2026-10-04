@@ -580,6 +580,19 @@ public class RouterTests
     static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
     [Fact]
+    public void FrenchThroughputTakesTheMasculineDirection()
+    {
+        var r = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };   // measured 300 Mbps > limit
+        using (Loc.Scope("en")) Assert.Contains(Kinds(r), k => k.Txt.StartsWith("Measured download throughput"));
+        using (Loc.Scope("fr"))
+        {
+            var fr = Kinds(r).Select(k => k.Txt).ToList();
+            Assert.Contains(fr, t => t.StartsWith("Débit descendant mesuré"));
+            Assert.DoesNotContain(fr, t => t.Contains("Débit descendante") || t.Contains("Débit montante"));
+        }
+    }
+
+    [Fact]
     public void DirectionIsCapitalisedOnlyWhereItOpensTheSentence()
     {
         var r = new RouterConfig { QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };   // far below the 300 Mbps measured (QoS state unknown, so not the 'exceeds' branch)

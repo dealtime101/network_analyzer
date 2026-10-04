@@ -91,7 +91,7 @@ public static class RouterQos
             if ((ratio >= 800 && ratio <= 1200) || (ratio >= 0.0008 && ratio <= 0.0012))
                 Add("problem", Loc.T("router.limit_unit", Cap(d), G(l), G(ratio), src, F0(rf)));
             else if (m is > 0 && qos == true && m > 1.15 * l)
-                Add("problem", Loc.T("router.limit_exceeded", d, F0(m.Value), G(l)));
+                Add("problem", Loc.T("router.limit_exceeded", Loc.T("dir." + dir + ".m"), F0(m.Value), G(l)));
             else if (ratio >= 1.1)
                 Add(worstDelta >= 30 ? "warning" : "info", Loc.T("router.limit_noeffect", Cap(d), G(l), src, F0(rf)));
             else if (ratio < 0.5)
@@ -158,8 +158,10 @@ public static partial class Loc
 {
     static void RegisterRouter()
     {
-        Add("dir.down", "download", "descendante");
+        Add("dir.down", "download", "descendante");   // feminine: "limite descendante"
         Add("dir.up", "upload", "montante");
+        Add("dir.down.m", "download", "descendant");  // masculine: "débit descendant"
+        Add("dir.up.m", "upload", "montant");
         Add("router.src.measured", "measured throughput", "débit mesuré");
         Add("router.src.plan", "advertised speed", "débit annoncé");
         Add("router.doc_url", "https://www.tp-link.com/en/support/", "https://www.tp-link.com/fr/support/");

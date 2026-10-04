@@ -273,6 +273,21 @@ SSID 3 : Autre
     }
 
     [Fact]
+    public async Task ACommandThatTimesOutIsKilled()
+    {
+        if (!OperatingSystem.IsLinux()) return;   // uses /proc to see whether the child is still alive
+        var pidFile = Path.Combine(Path.GetTempPath(), "na-pid-" + Guid.NewGuid().ToString("N"));
+        var started = DateTime.UtcNow;
+        var output = await SysInfo.RunAsync("/bin/sh", $"-c \"echo $$ > {pidFile}; exec sleep 30\"", 700);
+        Assert.Equal("", output);
+        Assert.True((DateTime.UtcNow - started).TotalSeconds < 10);
+        var pid = int.Parse(File.ReadAllText(pidFile).Trim());
+        File.Delete(pidFile);
+        await Task.Delay(300);
+        Assert.False(Directory.Exists($"/proc/{pid}"), "the timed-out process is still running");
+    }
+
+    [Fact]
     public void RssiKeepsItsNegativeSign()
     {
         var w = SysInfo.ParseNetshInterfaces(NetshFr.Replace("    Signal ", "    RSSI                   : -57\n    Signal "))!;

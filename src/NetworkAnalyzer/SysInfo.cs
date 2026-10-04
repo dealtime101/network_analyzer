@@ -220,20 +220,28 @@ public static partial class SysInfo
         };
     }
 
-    static async Task<string> RunAsync(string exe, string args, int timeoutMs)
+    /// <summary>Runs a command and returns its output; "" when it cannot start or does not finish in time (it is then killed).</summary>
+    public static async Task<string> RunAsync(string exe, string args, int timeoutMs)
     {
+        Process? p = null;
         try
         {
             var enc = OperatingSystem.IsWindows() ? CodePagesEncodingProvider.Instance.GetEncoding((int)GetOEMCP()) : null;
             var psi = new ProcessStartInfo(exe, args) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true, StandardOutputEncoding = enc ?? Encoding.UTF8 };
-            using var p = Process.Start(psi);
+            p = Process.Start(psi);
             if (p is null) return "";
             using var cts = new CancellationTokenSource(timeoutMs);
             var outp = await p.StandardOutput.ReadToEndAsync(cts.Token);
             await p.WaitForExitAsync(cts.Token);
             return outp;
         }
-        catch (Exception e) when (e is OperationCanceledException or System.ComponentModel.Win32Exception or InvalidOperationException) { return ""; }
+        catch (Exception e) when (e is OperationCanceledException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // a timed-out command must not stay behind: repeated polls would pile up stuck processes
+            try { p?.Kill(entireProcessTree: true); } catch (Exception) { }
+            return "";
+        }
+        finally { p?.Dispose(); }
     }
 
     /// <summary>Current Wi-Fi details, or null when Windows does not expose them (no Wi-Fi, location permission refused…).</summary>

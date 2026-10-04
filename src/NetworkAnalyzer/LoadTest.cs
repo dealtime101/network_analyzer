@@ -155,6 +155,7 @@ public sealed class LoadTest
                 rec.BeginPhase(p.Name, new PhaseMeta { Direction = p.Direction });
                 var extra = p.Direction != null ? await Saturate(p.Direction, p.DurationS) : await Idle(p.DurationS);
                 if (cancel.IsCancellationRequested) extra.Cancelled = true;
+                current = 0;  // the load has stopped: the next phase must not show its last rate
                 rec.EndPhase(extra);
                 extra.Name = p.Name;
                 lock (gate) results.Add(extra);

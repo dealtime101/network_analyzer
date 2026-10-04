@@ -119,6 +119,25 @@ public class LoadTestTests
     }
 
     [Fact]
+    public async Task CurrentRateFallsToZeroWhenALoadPhaseEnds()
+    {
+        await using var stub = await StubServer.StartAsync();
+        var lt = new LoadTest(NewRec(), Cfg(stub.Url, 100000, 100000));
+        lt.Start();
+        double? seen = null;
+        var until = DateTime.UtcNow.AddSeconds(25);
+        while (DateTime.UtcNow < until && seen is null)
+        {
+            var s = lt.Status();
+            if (s.Phase == "recovery1") seen = s.CurrentMbps;
+            await Task.Delay(50);
+        }
+        lt.Cancel();
+        await lt.Task!.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.Equal(0.0, seen);   // the recovery phase must not show the throughput of the load that just ended
+    }
+
+    [Fact]
     public async Task ARefusedUploadIsReportedNotCountedAsASuccess()
     {
         await using var stub = await StubServer.StartAsync();

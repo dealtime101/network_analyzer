@@ -401,6 +401,14 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void NeighbourCountIsWrittenForOneNetworkToo()
+    {
+        var (en, fr) = Loc.Raw("lan.ev.neighbors");
+        Assert.Contains("network(s)", en);
+        Assert.Contains("réseau(x) voisin(s)", fr);
+    }
+
+    [Fact]
     public void BusyThresholdInTextComesFromTheEngine()
     {
         var (en, fr) = Loc.Raw("bg.ev.hot");

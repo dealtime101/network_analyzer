@@ -283,6 +283,35 @@ public class ReportTests
         return Report.Html(d, Diagnose.Analyze(d, cfg ?? new AppConfig()), cfg);
     }
 
+    /// <summary>Everything a page would LOAD from outside itself: src/srcset/poster attributes, a stylesheet or preload link,
+    /// CSS url() and @import, whether the address is http, https or protocol-relative (//host). data: URIs and #fragments are inside the document.
+    /// Plain navigation links (a href) are not loads and are not reported.</summary>
+    internal static List<string> ExternalLoads(string html)
+    {
+        var found = new List<string>();
+        bool Outside(string v) { v = v.Trim().Trim('\'', '"'); return v.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || v.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || v.StartsWith("//"); }
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(html, @"\b(?:src|srcset|poster)\s*=\s*(""[^""]*""|'[^']*')", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            if (Outside(m.Groups[1].Value)) found.Add(m.Value);
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(html, @"<link\b[^>]*\bhref\s*=\s*(""[^""]*""|'[^']*')", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            if (Outside(m.Groups[1].Value)) found.Add(m.Value);
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(html, @"url\(\s*([^)]*)\)", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            if (Outside(m.Groups[1].Value)) found.Add(m.Value);
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(html, @"@import\s+(?:url\()?\s*(""[^""]*""|'[^']*')", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            if (Outside(m.Groups[1].Value)) found.Add(m.Value);
+        return found;
+    }
+
+    [Fact]
+    public void TheDetectorOfExternalLoadsReallyDetects()
+    {
+        Assert.NotEmpty(ExternalLoads("<script src=\"https://cdn.example.com/x.js\"></script>"));
+        Assert.NotEmpty(ExternalLoads("<script src='//cdn.example.com/x.js'></script>"));
+        Assert.NotEmpty(ExternalLoads("<link rel=\"stylesheet\" href=\"https://fonts.example.com/f.css\">"));
+        Assert.NotEmpty(ExternalLoads("<img src=\"http://tracker.example.com/p.gif\">"));
+        Assert.NotEmpty(ExternalLoads("<style>@import url('https://x.example.com/a.css'); body{background:url(https://x.example.com/b.png)}</style>"));
+        Assert.Empty(ExternalLoads("<img src=\"data:image/png;base64,AAAA\"><a href=\"https://www.tp-link.com/support/\">docs</a><svg xmlns=\"http://www.w3.org/2000/svg\"></svg>"));
+    }
+
     [Fact]
     public void SectionsAndNoCertainty()
     {
@@ -291,8 +320,16 @@ public class ReportTests
             var html = Html(scn);
             foreach (var s in new[] { "Network diagnosis report", "Incident timeline", "<svg", "Measurements", "Environment and limits", "not confirmed causes" })
                 Assert.True(html.Contains(s), $"{scn}: {s}");
-            Assert.DoesNotContain("http://", html.Replace("http://www.w3.org", ""));  // no external resource
+            Assert.Empty(ExternalLoads(html));   // the report is private and works offline: nothing is fetched from outside
         }
+    }
+
+    [Fact]
+    public void TheWebPageLoadsNothingFromOutsideEither()
+    {
+        var page = System.Text.Encoding.UTF8.GetString(Api.IndexBytes);
+        Assert.True(page.Length > 10_000);
+        Assert.Empty(ExternalLoads(page));
     }
 
     [Fact]

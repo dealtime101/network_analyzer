@@ -490,6 +490,33 @@ public class RequestNumberTests
     }
 }
 
+public class DurableFileTests
+{
+    [Fact]
+    public void WritesReplacesAndLeavesNoTemporaryFile()
+    {
+        var dir = Tmp.Dir();
+        var path = Path.Combine(dir, "a.json");
+        DurableFile.WriteAllText(path, "{\"v\":1}");
+        DurableFile.WriteAllText(path, "{\"v\":2,\"é\":\"ü\"}");
+        Assert.Equal("{\"v\":2,\"é\":\"ü\"}", File.ReadAllText(path));
+        Assert.Equal(new[] { "a.json" }, Directory.GetFiles(dir).Select(Path.GetFileName).ToArray());
+        Assert.Equal(new byte[] { (byte)'{' }, File.ReadAllBytes(path)[..1]);   // UTF-8 without a BOM
+    }
+
+    [Fact]
+    public void ConfigAndSessionHeadersGoThroughIt()
+    {
+        var dir = Tmp.Dir();
+        new ConfigStore(dir).Save(new AppConfig { CustomTarget = "x.example.net" });
+        var store = new SessionStore(dir);
+        int id = store.Create(new SessionHeader { Started = Simulator.T0, Meta = new SessionMeta() });
+        store.SaveHeader(store.LoadHeader(id)!);
+        Assert.Empty(Directory.GetFiles(dir, "*.tmp", SearchOption.AllDirectories));
+        Assert.Equal("x.example.net", new ConfigStore(dir).Load().CustomTarget);
+    }
+}
+
 public class ConfigStoreTests
 {
     [Fact]

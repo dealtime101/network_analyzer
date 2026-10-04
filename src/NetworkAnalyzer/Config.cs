@@ -48,6 +48,23 @@ public sealed class AppConfig
     public RouterConfig? Router { get; set; }
 }
 
+/// <summary>Write-then-rename that survives a power cut: the data is forced to disk BEFORE the rename makes it the real file,
+/// so the file is either the old content or the new one, never an empty or truncated one.</summary>
+public static class DurableFile
+{
+    public static void WriteAllText(string path, string text)
+    {
+        var tmp = path + ".tmp";
+        using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            var bytes = new UTF8Encoding(false).GetBytes(text);
+            fs.Write(bytes, 0, bytes.Length);
+            fs.Flush(flushToDisk: true);
+        }
+        File.Move(tmp, path, true);
+    }
+}
+
 public sealed class ConfigStore
 {
     readonly string path;
@@ -87,12 +104,7 @@ public sealed class ConfigStore
 
     public void Save(AppConfig c)
     {
-        lock (gate)
-        {
-            var tmp = path + ".tmp";
-            File.WriteAllText(tmp, Json.To(c), new UTF8Encoding(false));
-            File.Move(tmp, path, true);
-        }
+        lock (gate) DurableFile.WriteAllText(path, Json.To(c));
     }
 
     public AppConfig Update(Action<AppConfig> change)

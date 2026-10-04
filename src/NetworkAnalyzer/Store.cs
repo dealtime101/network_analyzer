@@ -76,9 +76,7 @@ public sealed class SessionStore
 
     public void SaveHeader(SessionHeader h)
     {
-        var tmp = MetaPath(h.Id) + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(h, Json.Storage), new UTF8Encoding(false));
-        File.Move(tmp, MetaPath(h.Id), true);
+        DurableFile.WriteAllText(MetaPath(h.Id), JsonSerializer.Serialize(h, Json.Storage));
     }
 
     public SessionHeader? LoadHeader(int id)

@@ -141,6 +141,7 @@ public static class RouterQos
             // two decimals below 10 Mbps (0.5 Mbps upstream gives 0.46, not 0), whole numbers above
             double Fit(double v) => Math.Round(v, v < 10 ? 2 : 0, MidpointRounding.ToEven);
             var target = Fit(m.Value * 0.92);
+            if (target <= 0) continue;   // a line this slow has no sensible limit to propose, and "0" may block it or switch the limit off
             if (lim is null || lim >= NoEffectRatio * m)
             {
                 var now = cur.HasValue ? $"{G(cur.Value)} {r.Unit ?? "Mbps"}" : Loc.T("router.prop.none_set");

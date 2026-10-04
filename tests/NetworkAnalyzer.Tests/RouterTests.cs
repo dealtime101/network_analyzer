@@ -82,6 +82,17 @@ public class RouterTests
     }
 
     [Fact]
+    public void ALimitIsNeverProposedAsZero()
+    {
+        var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };
+        using var _ = Loc.Scope("en");
+        // 0.004 Mbps rounds to 0.00 at two decimals: a "0 Mbps" limit may block the line or switch the limit off
+        var tiny = RouterQos.Propose(r, (null, 0.004), 200).Select(p => p.Change);
+        Assert.DoesNotContain(tiny, c => c.Contains("about 0 Mbps") || c.Contains("about 0.00"));
+        Assert.Contains(RouterQos.Propose(r, (null, 0.5), 200), p => p.Change.Contains("about 0.46 Mbps"));
+    }
+
+    [Fact]
     public void FrenchThroughputTakesTheMasculineDirection()
     {
         var r = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = 50, Unit = "Mbps" };   // measured 300 Mbps > limit

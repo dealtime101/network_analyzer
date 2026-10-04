@@ -149,6 +149,11 @@ public class LocalizationTests
         Assert.DoesNotContain("reserved for this purpose", en);
         Assert.Contains("documentation", en);
         Assert.Contains("documentation", fr);
+        // and the method's own limit is stated: random names are not a guaranteed cache-free lookup
+        Assert.Contains("does not guarantee a lookup without any cache", en);
+        Assert.Contains("ne garantit pas une résolution sans aucun cache", fr);
+        Assert.Contains("negative answers", en);
+        Assert.Contains("réponses négatives", fr);
     }
 
     [Fact]

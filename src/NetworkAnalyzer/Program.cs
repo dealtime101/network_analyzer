@@ -4,18 +4,11 @@ using System.Text.Json;
 using NetworkAnalyzer;
 
 // Network Analyzer — local web interface on 127.0.0.1 only (English by default, French on demand in the page).
-int port = 8765;
-bool openBrowser = true;
-for (int i = 0; i < args.Length; i++)
-{
-    if (args[i] == "--port" && i + 1 < args.Length && int.TryParse(args[++i], out var p)) port = p;
-    else if (args[i] == "--no-browser") openBrowser = false;
-    else if (args[i] is "--help" or "-h" or "/?")
-    {
-        Console.WriteLine("NetworkAnalyzer [--port 8765] [--no-browser]\nLocal network analyzer: interface on http://127.0.0.1:<port> (reachable from this computer only).");
-        return 0;
-    }
-}
+var options = Launcher.ParseArgs(args);
+if (options.Help) { Console.WriteLine(Launcher.Usage); return 0; }
+if (options.Error != null) { Console.Error.WriteLine($"{options.Error}\n{Launcher.Usage}"); return 2; }
+int port = options.Port;
+bool openBrowser = options.OpenBrowser;
 try { Console.OutputEncoding = Encoding.UTF8; } catch (IOException) { }
 
 static void Open(string url)

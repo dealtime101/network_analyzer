@@ -10,6 +10,34 @@ namespace NetworkAnalyzer.Tests;
 public class LauncherTests
 {
     [Fact]
+    public void DefaultsAndValidOptions()
+    {
+        var d = Launcher.ParseArgs(Array.Empty<string>());
+        Assert.Equal((8765, true, false, null), (d.Port, d.OpenBrowser, d.Help, d.Error));
+        var o = Launcher.ParseArgs(new[] { "--port", "9000", "--no-browser" });
+        Assert.Equal((9000, false, null), (o.Port, o.OpenBrowser, o.Error));
+        Assert.True(Launcher.ParseArgs(new[] { "--help" }).Help);
+        Assert.True(Launcher.ParseArgs(new[] { "-h" }).Help);
+        Assert.Equal(65535, Launcher.ParseArgs(new[] { "--port", "65535" }).Port);
+    }
+
+    [Theory]
+    [InlineData("--port", "0")] [InlineData("--port", "-1")] [InlineData("--port", "70000")] [InlineData("--port", "abc")] [InlineData("--port", "")]
+    public void AnInvalidPortIsAnErrorNotSilentlyIgnored(string flag, string value)
+    {
+        var o = Launcher.ParseArgs(new[] { flag, value });
+        Assert.NotNull(o.Error);
+        Assert.Contains("--port", o.Error);
+    }
+
+    [Fact]
+    public void AMissingPortValueAndUnknownOptionsAreErrors()
+    {
+        Assert.Contains("--port", Launcher.ParseArgs(new[] { "--port" }).Error);
+        Assert.Contains("--bogus", Launcher.ParseArgs(new[] { "--bogus" }).Error);
+    }
+
+    [Fact]
     public void EveryKnownPlatformHasABrowserCommand()
     {
         var win = Launcher.BrowserCommand("http://127.0.0.1:8765", windows: true, macOS: false, linux: false)!;

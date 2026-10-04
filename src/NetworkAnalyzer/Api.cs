@@ -43,7 +43,7 @@ public static class Api
     public static async Task<(WebApplication Web, int Port)> StartAsync(App app, int port, int tries = 20)
     {
         Exception? last = null;
-        for (int p = port; p < port + tries; p++)
+        for (int p = port; p < port + tries && p <= 65535; p++)  // never past the last valid port
         {
             var builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();

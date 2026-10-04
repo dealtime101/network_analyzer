@@ -117,31 +117,39 @@ public sealed class Recorder
     }
 
     // ------------------------------------------------------------------ writing
-    public void Emit(string series, double? value, bool ok, string info = "", double? t = null)
+    /// <summary>`ct` is the token of the task that measured: once its session is stopped it is cancelled, and a
+    /// measurement that finishes late is dropped instead of landing in a closed writer or in the next session.</summary>
+    public void Emit(string series, double? value, bool ok, string info = "", double? t = null, CancellationToken ct = default)
     {
         var tt = t ?? Clock.Now();
+        SessionWriter? w;
         lock (gate)
         {
+            if (ct.IsCancellationRequested) return;
             if (!live.TryGetValue(series, out var l)) live[series] = l = new List<Sample>();
             l.Add(new Sample(tt, value, ok, info));
             if (l.Count > LiveMax) l.RemoveRange(0, l.Count - LiveMax);
+            w = writer;
         }
-        writer?.Sample(tt, series, value, ok, info);
+        w?.Sample(tt, series, value, ok, info);
     }
 
-    public void MarkNow(string kind, string note = "", double? t = null)
+    public void MarkNow(string kind, string note = "", double? t = null, CancellationToken ct = default)
     {
         var tt = t ?? Clock.Now();
+        SessionWriter? w;
         lock (gate)
         {
+            if (ct.IsCancellationRequested) return;
             if (kind == "gap")  // several tasks notice the same sleep
             {
                 if (tt - lastGap < 3) return;
                 lastGap = tt;
             }
             marks.Add(new Mark { T = tt, Kind = kind, Note = note });
+            w = writer;
         }
-        writer?.Mark(tt, kind, note);
+        w?.Mark(tt, kind, note);
     }
 
     public void SetMeta(Action<SessionMeta> change)
@@ -249,10 +257,10 @@ public sealed class Recorder
     }
 
     // ------------------------------------------------------------------ measurement loops
-    void TickGap(double last)
+    void TickGap(double last, CancellationToken ct)
     {
         if (Clock.Now() - last > GapS)
-            MarkNow("gap", "", last);
+            MarkNow("gap", "", last, ct);
     }
 
     async Task PingLoop(Target tg, CancellationToken ct)
@@ -271,7 +279,7 @@ public sealed class Recorder
             lock (gate) targetState[tg.Id] = state;
             while (!ct.IsCancellationRequested)
             {
-                TickGap(last);
+                TickGap(last, ct);
                 var t = Clock.Now();
                 ProbeResult r;
                 if (mode == "icmp")
@@ -291,9 +299,9 @@ public sealed class Recorder
                     if (r.Ok)
                     {
                         decided = true;
-                        foreach (var (ft, fi) in pending) Emit(name, null, false, fi, ft);
+                        foreach (var (ft, fi) in pending) Emit(name, null, false, fi, ft, ct);
                         pending.Clear();
-                        Emit(name, r.Ms, true, r.Info, t);
+                        Emit(name, r.Ms, true, r.Info, t, ct);
                     }
                     else
                     {
@@ -307,7 +315,7 @@ public sealed class Recorder
                                 lock (gate) { state.Mode = "tcp"; state.Port = port; }
                             }
                             else lock (gate) state.NoResponse = true;
-                            foreach (var (ft, _) in pending) Emit(name, null, false, "icmp_no_reply", ft);
+                            foreach (var (ft, _) in pending) Emit(name, null, false, "icmp_no_reply", ft, ct);
                             pending.Clear();
                         }
                     }
@@ -315,7 +323,7 @@ public sealed class Recorder
                 else
                 {
                     if (r.Ok) lock (gate) state.NoResponse = false;
-                    Emit(name, r.Ms, r.Ok, r.Info, t);
+                    Emit(name, r.Ms, r.Ok, r.Info, t, ct);
                 }
                 next += Interval;
                 double wait = next - sw.Elapsed.TotalSeconds;
@@ -335,20 +343,20 @@ public sealed class Recorder
             double last = Clock.Now();
             while (!ct.IsCancellationRequested)
             {
-                TickGap(last);
+                TickGap(last, ct);
                 var t0 = Clock.Now();
                 var r = await Probes.DnsQueryAsync(server, HitNames[i % HitNames.Length]);
-                Emit("dns:sys_hit", r.Ms, r.Ok, r.Info, t0);
+                Emit("dns:sys_hit", r.Ms, r.Ok, r.Info, t0, ct);
                 if (i % 3 == 0)  // cold resolution: random name under example.com (reserved for documentation, RFC 2606)
                 {
                     var t1 = Clock.Now();
                     r = await Probes.DnsQueryAsync(server, $"na{Random.Shared.NextInt64():x}.example.com", acceptNxdomain: true);
-                    Emit("dns:sys_miss", r.Ms, r.Ok, r.Info, t1);
+                    Emit("dns:sys_miss", r.Ms, r.Ok, r.Info, t1, ct);
                     if (reference != null)
                     {
                         var t2 = Clock.Now();
                         r = await Probes.DnsQueryAsync(reference, $"na{Random.Shared.NextInt64():x}.example.com", acceptNxdomain: true);
-                        Emit("dns:ref_miss", r.Ms, r.Ok, r.Info, t2);
+                        Emit("dns:ref_miss", r.Ms, r.Ok, r.Info, t2, ct);
                     }
                 }
                 i++;
@@ -391,8 +399,8 @@ public sealed class Recorder
                 if (dt > GapS) { prev = cur; pt = now; continue; }  // sleep: the delta would cover the pause
                 if (cur.Rx >= prev.Rx && cur.Tx >= prev.Tx && dt > 0)
                 {
-                    Emit("net:down_bps", (cur.Rx - prev.Rx) * 8 / dt, true, "", now);
-                    Emit("net:up_bps", (cur.Tx - prev.Tx) * 8 / dt, true, "", now);
+                    Emit("net:down_bps", (cur.Rx - prev.Rx) * 8 / dt, true, "", now, ct);
+                    Emit("net:up_bps", (cur.Tx - prev.Tx) * 8 / dt, true, "", now, ct);
                 }
                 prev = cur; pt = now;
             }
@@ -410,7 +418,7 @@ public sealed class Recorder
             double last = Clock.Now();
             while (!ct.IsCancellationRequested)
             {
-                TickGap(last);
+                TickGap(last, ct);
                 var w = await SysInfo.ReadWifiAsync();
                 last = Clock.Now();
                 if (w is null)
@@ -420,9 +428,9 @@ public sealed class Recorder
                 else
                 {
                     var info = System.Text.Json.JsonSerializer.Serialize(new { channel = w.Channel, band = w.Band, bssid = w.Bssid, radio = w.Radio });
-                    Emit("wifi:signal", w.Signal, true, info);
-                    if (w.RxRate.HasValue) Emit("wifi:rx", w.RxRate, true);
-                    if (w.TxRate.HasValue) Emit("wifi:tx", w.TxRate, true);
+                    Emit("wifi:signal", w.Signal, true, info, null, ct);
+                    if (w.RxRate.HasValue) Emit("wifi:rx", w.RxRate, true, "", null, ct);
+                    if (w.TxRate.HasValue) Emit("wifi:tx", w.TxRate, true, "", null, ct);
                     if (first)
                     {
                         SetMeta(m => m.Wifi = w);
@@ -430,7 +438,7 @@ public sealed class Recorder
                         if (n != null) SetMeta(m => m.WifiNeighbors = n);
                     }
                     if (lastBssid != null && !string.IsNullOrEmpty(w.Bssid) && w.Bssid != lastBssid)
-                        MarkNow("roam");
+                        MarkNow("roam", "", null, ct);
                     if (!string.IsNullOrEmpty(w.Bssid)) lastBssid = w.Bssid;
                 }
                 first = false;

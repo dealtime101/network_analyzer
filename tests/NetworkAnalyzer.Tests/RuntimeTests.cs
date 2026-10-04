@@ -564,6 +564,23 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task ALateMeasurementOfAStoppedSessionIsDropped()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store);
+        rec.Start(new EnvInfo(), new List<Target>(), 1);
+        using var old = new CancellationTokenSource();
+        old.Cancel();                                       // the token of a task that outlived its session
+        rec.Emit("ping:late", 12.0, true, "", null, old.Token);
+        rec.MarkNow("gap", "", 50.0, old.Token);
+        rec.Emit("ping:fresh", 1.0, true);
+        Assert.False(rec.LiveSince(0).ContainsKey("ping:late"));
+        Assert.True(rec.LiveSince(0).ContainsKey("ping:fresh"));
+        Assert.Empty(rec.Status().Marks);
+        await rec.StopAsync();
+    }
+
+    [Fact]
     public async Task AFailedTraceNeverPreventsTheSessionFromBeingFinalised()
     {
         var store = new SessionStore(Tmp.Dir());

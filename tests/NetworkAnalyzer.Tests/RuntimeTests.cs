@@ -209,6 +209,15 @@ public class ReportTests
     }
 
     [Fact]
+    public void CsvMarkKindIsQuotedAsAWholeField()
+    {
+        var d = Simulator.Make("healthy");
+        d.Marks.Add(new Mark { T = Simulator.T0 + 5, Kind = "a,\"b\"", Note = "n" });
+        var row = Report.ExportCsv(d).Split('\n').Single(l => l.Contains("mark:a"));
+        Assert.Contains(",\"mark:a,\"\"b\"\"\",,,n", row);
+    }
+
+    [Fact]
     public void QosTypeIsShownInTheReaderLanguageNotAsACode()
     {
         var d = Simulator.Make("healthy");

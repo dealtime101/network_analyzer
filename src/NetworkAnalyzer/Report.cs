@@ -39,7 +39,7 @@ public static class Report
             sb.Append(d.Id).Append(',').Append(Ts(s.T, "yyyy-MM-dd HH:mm:ss")).Append(',').Append(s.T.ToString("F3", Inv)).Append(',').Append(Csv(name)).Append(',')
               .Append(s.V.HasValue ? s.V.Value.ToString("F3", Inv) : "").Append(',').Append(s.Ok ? 1 : 0).Append(',').Append(Csv(s.Info)).Append('\n');
         foreach (var m in d.Marks)
-            sb.Append(d.Id).Append(',').Append(Ts(m.T, "yyyy-MM-dd HH:mm:ss")).Append(',').Append(m.T.ToString("F3", Inv)).Append(",mark:").Append(Csv(m.Kind)).Append(",,,").Append(Csv(m.Note)).Append('\n');
+            sb.Append(d.Id).Append(',').Append(Ts(m.T, "yyyy-MM-dd HH:mm:ss")).Append(',').Append(m.T.ToString("F3", Inv)).Append(',').Append(Csv("mark:" + m.Kind)).Append(",,,").Append(Csv(m.Note)).Append('\n');
         return sb.ToString();
     }
 

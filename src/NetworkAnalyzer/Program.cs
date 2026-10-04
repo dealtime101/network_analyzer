@@ -33,7 +33,8 @@ try
 {
     using var http = new HttpClient { Timeout = TimeSpan.FromMilliseconds(800) };
     var json = await http.GetStringAsync($"http://127.0.0.1:{port}/api/identity");
-    if (JsonDocument.Parse(json).RootElement.TryGetProperty("app", out var a) && a.GetString() == "NetworkAnalyzer")
+    using var identity = JsonDocument.Parse(json);
+    if (identity.RootElement.TryGetProperty("app", out var a) && a.GetString() == "NetworkAnalyzer")
     {
         Console.WriteLine($"Network Analyzer is already running: http://127.0.0.1:{port}");
         if (openBrowser) Open($"http://127.0.0.1:{port}");

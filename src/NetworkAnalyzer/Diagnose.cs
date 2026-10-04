@@ -778,7 +778,7 @@ public static partial class Diagnose
         }
         h.Score = Math.Min(h.Score, 8.0);
         if (rcfg is null) h.Limits.Add(T("rq.limit_noconfig"));
-        h.Actions = RouterQos.Propose(rcfg, meas, worst).Select(p => p.Change).ToList();
+        h.Actions = RouterQos.Propose(rcfg, meas, worst, cfg).Select(p => p.Change).ToList();
         if (h.Actions.Count == 0) h.Actions.Add(T("rq.action.default"));
         return h;
     }

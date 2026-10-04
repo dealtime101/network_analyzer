@@ -132,24 +132,27 @@ public static class RouterQos
     }
 
     /// <summary>PROPOSED changes (never applied) with justification and rollback.</summary>
-    public static List<Proposal> Propose(RouterConfig? r, (double? Down, double? Up) meas, double worstDelta)
+    public static List<Proposal> Propose(RouterConfig? r, (double? Down, double? Up) meas, double worstDelta, AppConfig? cfg = null)
     {
         var props = new List<Proposal>();
         if (r is null) return props;
         var (ld, lu) = Limits(r);
-        foreach (var (lim, m, dir, cur) in new[] { (ld, meas.Down, "down", r.LimitDown), (lu, meas.Up, "up", r.LimitUp) })
+        foreach (var (lim, m, dir, cur, plan) in new[] { (ld, meas.Down, "down", r.LimitDown, cfg?.PlanDownMbps), (lu, meas.Up, "up", r.LimitUp, cfg?.PlanUpMbps) })
         {
-            if (m is null or 0 || worstDelta < 30) continue;
+            // the same reference as Check: the measured speed, else the advertised plan
+            bool measured = m is > 0;
+            double? refv = measured ? m : plan;
+            if (refv is null or 0 || worstDelta < 30) continue;
             // two decimals below 10 Mbps (0.5 Mbps upstream gives 0.46, not 0), whole numbers above
             double Fit(double v) => Math.Round(v, v < 10 ? 2 : 0, MidpointRounding.ToEven);
-            var target = Fit(m.Value * 0.92);
+            var target = Fit(refv.Value * 0.92);
             if (target <= 0) continue;   // a line this slow has no sensible limit to propose, and "0" may block it or switch the limit off
-            if (lim is null || lim >= NoEffectRatio * m)
+            if (lim is null || lim >= NoEffectRatio * refv)
             {
                 var now = cur.HasValue ? $"{G(cur.Value)} {r.Unit ?? "Mbps"}" : Loc.T("router.prop.none_set");
                 props.Add(new Proposal
                 {
-                    Change = Loc.T("router.prop.limit", Dir(dir), G(target), G(Fit(m.Value))),
+                    Change = Loc.T(measured ? "router.prop.limit" : "router.prop.limit_plan", Dir(dir), G(target), G(Fit(refv.Value))),
                     Justification = Loc.T("router.prop.limit_why", F0(worstDelta), now),
                     Rollback = Loc.T("router.prop.limit_back", now),
                 });
@@ -166,7 +169,7 @@ public static class RouterQos
 
     public static RouterAnalysis Analysis(RouterConfig? r, (double? Down, double? Up) meas, AppConfig cfg, double worstDelta) => new()
     {
-        Findings = Check(r, meas, cfg, worstDelta), Proposals = Propose(r, meas, worstDelta), Protocol = Loc.List("router.protocol", ProtocolSteps),
+        Findings = Check(r, meas, cfg, worstDelta), Proposals = Propose(r, meas, worstDelta, cfg), Protocol = Loc.List("router.protocol", ProtocolSteps),
         DocUrl = Loc.T("router.doc_url"), Reminder = Loc.T("router.reminder"),
     };
 }
@@ -202,6 +205,7 @@ public static partial class Loc
         Add("router.sqm_unknown", "SQM on your model: unknown. Check the official documentation (model + hardware version + firmware) before assuming it.", "Présence de SQM sur votre modèle : inconnue. À vérifier dans la documentation officielle (modèle + version matérielle + firmware) avant de la supposer.");
         Add("router.prop.none_set", "no limit entered", "aucune limite saisie");
         Add("router.prop.limit", "Set the {0} limit to about {1} Mbps (≈ 92% of the measured sustained throughput, {2} Mbps).", "Régler la limite {0} à environ {1} Mbps (≈ 92 % du débit soutenu mesuré, {2} Mbps).");
+        Add("router.prop.limit_plan", "Set the {0} limit to about {1} Mbps (≈ 92% of the advertised plan speed, {2} Mbps; nothing was measured yet: run the saturation test to refine it).", "Régler la limite {0} à environ {1} Mbps (≈ 92 % du débit annoncé, {2} Mbps ; rien n'a encore été mesuré : lancez le test de saturation pour l'affiner).");
         Add("router.prop.limit_why", "Latency rises by {0} ms under load; a limit just under the real throughput may move the queue from the modem to the router, if the router shapes and manages its queue (not every router does, and a deep queue keeps latency high). Run the same test again after the change to check. Current value: {1}.", "La latence monte de {0} ms sous charge ; une limite juste sous le débit réel peut déplacer la file d'attente du modem vers le routeur, si celui-ci met en forme et gère sa file (ce n'est pas le cas de tous, et une file profonde garde la latence élevée). Relancez le même test après le changement pour le vérifier. Valeur actuelle : {1}.");
         Add("router.prop.limit_back", "Restore the current value ({0}) or disable the limit, save, then rerun the test.", "Remettre la valeur actuelle ({0}) ou désactiver la limite, enregistrer, puis refaire le test.");
         Add("router.prop.sqm", "Check in your model's official documentation whether queue management (SQM / Smart Queue) exists; enable it only if documented.", "Vérifier dans la documentation officielle de votre modèle si une gestion de file (SQM / Smart Queue) existe ; ne l'activer que si elle est documentée.");

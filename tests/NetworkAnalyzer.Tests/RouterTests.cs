@@ -115,6 +115,27 @@ public class RouterTests
     }
 
     [Fact]
+    public void WithNoMeasuredSpeedTheAdvertisedPlanIsTheReferenceForTheProposalToo()
+    {
+        var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };
+        var plan = new AppConfig { PlanDownMbps = 500, PlanUpMbps = 50 };
+        using var _ = Loc.Scope("en");
+        // Check already falls back to the plan; Propose used to say nothing in that case
+        var p = RouterQos.Propose(r, (null, null), 120, plan).Select(x => x.Change).ToList();
+        Assert.Contains(p, c => c.Contains("download limit to about 460 Mbps") && c.Contains("advertised") && c.Contains("500"));   // red before: no proposal
+        Assert.Contains(p, c => c.Contains("upload limit to about 46 Mbps") && c.Contains("advertised"));
+        Assert.DoesNotContain(p, c => c.Contains("measured sustained"));        // and it does not claim a measurement it does not have
+        // a measured speed still wins over the plan
+        var m = RouterQos.Propose(r, (300.0, null), 120, plan).Select(x => x.Change).ToList();
+        Assert.Contains(m, c => c.Contains("about 276 Mbps") && c.Contains("measured sustained"));
+        // no plan and no measurement: nothing to base a limit on
+        Assert.DoesNotContain(RouterQos.Propose(r, (null, null), 120, new AppConfig()), x => x.Change.Contains("limit to about"));
+        // low latency: no proposal whatever the reference
+        Assert.DoesNotContain(RouterQos.Propose(r, (null, null), 10, plan), x => x.Change.Contains("limit to about"));
+        using (Loc.Scope("fr")) Assert.Contains(RouterQos.Propose(r, (null, null), 120, plan).Select(x => x.Change), c => c.Contains("annoncé") && c.Contains("460"));
+    }
+
+    [Fact]
     public void ALimitIsNeverProposedAsZero()
     {
         var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };

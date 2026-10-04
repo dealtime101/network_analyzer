@@ -96,8 +96,26 @@ public static class Report
                 int k = (int)((t - t0) / span * cols);
                 buckets[k] = Math.Max(buckets.GetValueOrDefault(k), v);
             }
-            var pts = string.Join(" ", buckets.Select(kv => $"{N1(X(t0 + kv.Key / (double)cols * span))},{N1(Y(kv.Value))}"));
-            o.Append($"<polyline fill=\"none\" stroke=\"{s.Color}\" stroke-width=\"1.2\" points=\"{pts}\"/>");
+            // One polyline per run of measurements: a hole (a pause, or a stretch with only failures) is not crossed by a line
+            // that would suggest a continuous measured evolution. "Hole" = more than 4 usual sampling steps (the series' own
+            // median spacing: a second or two of jitter is not a hole) and more than 2 chart columns.
+            var times = s.Pts.Select(p => p.T).OrderBy(x => x).ToList();
+            var steps = times.Zip(times.Skip(1), (a, b) => b - a).Where(x => x > 0).ToList();
+            double holeS = Math.Max(4 * (Stats.Median(steps) ?? 1.0), 2 * span / cols);
+            var run = new List<(double T, double V)>();
+            void Flush()
+            {
+                if (run.Count == 1) o.Append($"<circle cx=\"{N1(X(run[0].T))}\" cy=\"{N1(Y(run[0].V))}\" r=\"1.6\" fill=\"{s.Color}\"/>");
+                else if (run.Count > 1) o.Append($"<polyline fill=\"none\" stroke=\"{s.Color}\" stroke-width=\"1.2\" points=\"{string.Join(" ", run.Select(p => $"{N1(X(p.T))},{N1(Y(p.V))}"))}\"/>");
+                run.Clear();
+            }
+            foreach (var kv in buckets)
+            {
+                double tk = t0 + kv.Key / (double)cols * span;
+                if (run.Count > 0 && tk - run[^1].T > holeS) Flush();
+                run.Add((tk, kv.Value));
+            }
+            Flush();
             // one tick per chart column: a long session keeps the losses of its end too
             foreach (var k in s.Lost.Select(t => (int)((t - t0) / span * cols)).Distinct().Order())
                 o.Append($"<line x1=\"{N1(X(t0 + k / (double)cols * span))}\" x2=\"{N1(X(t0 + k / (double)cols * span))}\" y1=\"{H - B - 6}\" y2=\"{H - B}\" stroke=\"{s.Color}\" stroke-width=\"1.5\"/>");

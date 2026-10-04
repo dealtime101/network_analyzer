@@ -532,6 +532,24 @@ public class ReportTests
     }
 
     [Fact]
+    public void ACurveIsNotDrawnAcrossAHoleInTheMeasurements()
+    {
+        int Lines(string svg) => System.Text.RegularExpressions.Regex.Matches(svg, "<polyline").Count;
+        List<(double, double)> Run(int a, int b) => Enumerable.Range(a, b - a).Select(i => ((double)i, 10.0 + i % 3)).ToList();
+        string Chart(List<(double, double)> pts) => Report.SvgChart(new() { new Report.ChartSeries { Name = "x", Pts = pts } }, 0, 300);
+        Assert.Equal(1, Lines(Chart(Run(0, 300))));                                          // continuous: one curve
+        var holed = Run(0, 100).Concat(Run(200, 300)).ToList();                              // 100 s with nothing (a pause, or only failures)
+        Assert.Equal(2, Lines(Chart(holed)));                                                // two curves, no line across the hole
+        Assert.Equal(3, Lines(Chart(Run(0, 50).Concat(Run(100, 150)).Concat(Run(250, 300)).ToList())));
+        // a small irregularity is not a hole: a missing second or two stays one curve
+        Assert.Equal(1, Lines(Chart(Run(0, 100).Concat(Run(102, 300)).ToList())));
+        // a series sampled slowly by design (every 5 s) is not cut into pieces
+        Assert.Equal(1, Lines(Chart(Enumerable.Range(0, 60).Select(i => ((double)i * 5, 20.0)).ToList())));
+        // an isolated point left alone between two holes is still shown
+        Assert.Contains("<circle", Chart(Run(0, 50).Concat(new List<(double, double)> { (150, 12) }).Concat(Run(250, 300)).ToList()));
+    }
+
+    [Fact]
     public void LossesThatOnlyHappenAtTheEndOfALongSessionAreNotHidden()
     {
         // an hour of clean measurements, then a burst of 600 failures in the last ten minutes: the old cut-off kept the FIRST 400 in time order
@@ -562,7 +580,8 @@ public class ReportTests
     public void ChartSurvivesEmptyAndSingleSeries()
     {
         Assert.Contains("No data for this chart", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));
-        Assert.Contains("<polyline", Report.SvgChart(new() { new Report.ChartSeries { Name = "a", Pts = new() { (1, 5.0) }, Lost = new() { 2.0 } } }, 0, 10));
+        var lone = Report.SvgChart(new() { new Report.ChartSeries { Name = "a", Pts = new() { (1, 5.0) }, Lost = new() { 2.0 } } }, 0, 10);
+        Assert.True(lone.Contains("<polyline") || lone.Contains("<circle"), "a single point must still be drawn (as a dot: a one-point line shows nothing)");
     }
 }
 

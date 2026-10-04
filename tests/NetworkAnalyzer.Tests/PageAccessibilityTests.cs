@@ -124,6 +124,18 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void ADeletedSessionDisappearsFromTheComparisonSelections()
+    {
+        var load = Regex.Match(Page, @"async function loadHist\(\)\s*\{[\s\S]*?\n\}").Value;
+        Assert.NotEmpty(load);
+        // every time the list is read, selected ids that are no longer in it are dropped (whoever deleted them, wherever)
+        Assert.Matches(@"for \(const g of \['a', 'b'\]\) for \(const id of \[\.\.\.hsel\[g\]\]\) if \(!alive\.has\(id\)\) hsel\[g\]\.delete\(id\);", load);
+        Assert.Contains("const alive = new Set(list.map(s => s.id))", load);
+        Assert.True(load.IndexOf("hsel[g].delete", StringComparison.Ordinal) < load.IndexOf("$('#htab').innerHTML", StringComparison.Ordinal),
+            "the selections must be cleaned before the rows are drawn from them");
+    }
+
+    [Fact]
     public void ChartsAreRedrawnOnlyWhileTheyCanBeSeen()
     {
         var render = Regex.Match(Page, @"function renderLive\(d\)\s*\{[\s\S]*?\n\}").Value;

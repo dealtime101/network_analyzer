@@ -635,6 +635,9 @@ $('#r_file').onchange = guard(async () => {
 let hsel = {a: new Set(), b: new Set()};
 async function loadHist() {
   const list = await api('/api/sessions');
+  // a deleted session must not stay selected for the comparison (its id would still be sent to /api/compare)
+  const alive = new Set(list.map(s => s.id));
+  for (const g of ['a', 'b']) for (const id of [...hsel[g]]) if (!alive.has(id)) hsel[g].delete(id);
   $('#htab').innerHTML = `<tr><th>A</th><th>B</th><th>#</th><th>${t('hist.th.date')}</th><th>${t('hist.th.label')}</th><th>${t('hist.th.link')}</th><th class="n">${t('hist.th.duration')}</th><th class="n">${t('hist.th.incidents')}</th><th class="n">${t('hist.th.gw')}</th><th class="n">${t('hist.th.inet')}</th><th class="n">${t('hist.th.loss')}</th><th class="n">${t('hist.th.dup')}</th><th class="n">${t('hist.th.ddown')}</th><th class="n">${t('hist.th.speed')}</th><th></th></tr>` +
     list.map(s => { const m = s.metrics || {}; return `<tr><td><input type="checkbox" data-g="a" aria-label="${esc(t('hist.in_group', s.id, 'A'))}" value="${s.id}" ${hsel.a.has(s.id) ? 'checked' : ''}></td><td><input type="checkbox" data-g="b" aria-label="${esc(t('hist.in_group', s.id, 'B'))}" value="${s.id}" ${hsel.b.has(s.id) ? 'checked' : ''}></td>
       <td>${s.id}</td><td>${dt(s.started)}</td><td><button type="button" class="linklike" data-ren="${s.id}" title="${esc(t('hist.rename'))}">${esc(s.label || '—')}</button></td><td>${esc(s.link || '')}</td><td class="n">${s.ended ? fmt((s.ended - s.started) / 60) + ' min' : t('hist.running')}</td><td class="n">${m.incidents ?? '—'}</td>

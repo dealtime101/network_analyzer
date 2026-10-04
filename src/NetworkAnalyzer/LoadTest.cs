@@ -205,10 +205,10 @@ public sealed class LoadTest
             all.Add(bps);
             if (now >= WarmupS) rates.Add(bps);
         }
+        double elapsed = sw.Elapsed.TotalSeconds;  // read before waiting for the workers: their shutdown is not part of the phase
+        long total = Interlocked.Read(ref bytes);
         phaseCts.Cancel();  // streams stop by themselves: deadline, volume cap or cancellation
         try { await Task.WhenAll(workers).WaitAsync(TimeSpan.FromSeconds(6)); } catch (Exception e) when (e is TimeoutException or OperationCanceledException) { }
-        double elapsed = sw.Elapsed.TotalSeconds;
-        long total = Interlocked.Read(ref bytes);
         var src = rates.Count > 0 ? rates : all;
         var res = new PhaseMeta
         {

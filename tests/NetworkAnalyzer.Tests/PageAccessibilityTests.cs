@@ -19,6 +19,69 @@ public class PageAccessibilityTests
         return m.Success ? (m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value) : null;
     }
 
+    // ---- colour contrast (WCAG 2: 4.5:1 for normal text)
+    static Dictionary<string, string> Theme(bool dark)
+    {
+        var vars = new Dictionary<string, string>();
+        void Read(string block) { foreach (Match m in Regex.Matches(block, @"--([a-z-]+):\s*(#[0-9a-fA-F]{3,6})")) vars[m.Groups[1].Value] = m.Groups[2].Value; }
+        Read(Regex.Match(Page, @"(?<!\{):root\{([^}]*)\}").Groups[1].Value);   // the light theme (the first :root, outside the media query)
+        if (dark) Read(Regex.Match(Page, @"prefers-color-scheme:dark\)\{:root\{([^}]*)\}").Groups[1].Value);
+        return vars;
+    }
+
+    static double Luminance(string hex)
+    {
+        hex = hex.TrimStart('#'); if (hex.Length == 3) hex = string.Concat(hex.Select(c => $"{c}{c}"));
+        double Ch(int i) { var v = Convert.ToInt32(hex.Substring(i, 2), 16) / 255.0; return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4); }
+        return 0.2126 * Ch(0) + 0.7152 * Ch(2) + 0.0722 * Ch(4);
+    }
+
+    static double Contrast(string a, string b) { var (x, y) = (Luminance(a), Luminance(b)); return (Math.Max(x, y) + 0.05) / (Math.Min(x, y) + 0.05); }
+
+    static string Resolve(string value, Dictionary<string, string> theme)
+    {
+        value = value.Trim();
+        var v = Regex.Match(value, @"^var\(--([a-z-]+)\)$");
+        return v.Success ? theme.GetValueOrDefault(v.Groups[1].Value, "#000000") : value;
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void TextOnColouredBackgroundsReachesTheWcagContrast(bool dark)
+    {
+        var theme = Theme(dark);
+        Assert.True(theme.Count >= 8, "the theme variables were not read");
+        var low = new List<string>();
+        int checkedPairs = 0;
+        // every rule that sets a background and a text colour together (components), plus the page text on the page and card backgrounds
+        foreach (Match rule in Regex.Matches(Page, @"([^{}@]+)\{([^{}]*\bbackground:[^{};]*;[^{}]*\bcolor:[^{};]*)[^{}]*\}"))
+        {
+            var body = rule.Groups[2].Value;
+            var bg = Regex.Match(body, @"\bbackground:\s*(var\(--[a-z-]+\)|#[0-9a-fA-F]{3,6})");
+            var fg = Regex.Match(body, @"(?<![-a-z])color:\s*(var\(--[a-z-]+\)|#[0-9a-fA-F]{3,6})");
+            if (!bg.Success || !fg.Success) continue;
+            var (b, f) = (Resolve(bg.Groups[1].Value, theme), Resolve(fg.Groups[1].Value, theme));
+            if (!b.StartsWith('#') || !f.StartsWith('#')) continue;
+            checkedPairs++;
+            if (Contrast(b, f) < 4.5) low.Add($"{rule.Groups[1].Value.Trim()}: {f} on {b} = {Contrast(b, f):0.0}:1");
+        }
+        foreach (var (fgVar, bgVar) in new[] { ("fg", "bg"), ("fg", "card"), ("muted", "bg"), ("muted", "card") })
+        {
+            checkedPairs++;
+            if (Contrast(theme[fgVar], theme[bgVar]) < 4.5) low.Add($"--{fgVar} on --{bgVar} = {Contrast(theme[fgVar], theme[bgVar]):0.0}:1");
+        }
+        Assert.True(checkedPairs >= 12, $"only {checkedPairs} colour pairs were found: the rule pattern no longer sees the page");
+        Assert.Empty(low);
+    }
+
+    [Fact]
+    public void TheContrastMathIsRight()
+    {
+        Assert.Equal(21.0, Contrast("#000", "#fff"), 1);
+        Assert.Equal(1.0, Contrast("#777", "#777"), 3);
+        Assert.InRange(Contrast("#fff", "#58a6ff"), 2.3, 2.8);   // the reported case: white on the dark-theme accent
+    }
+
     [Fact]
     public void TheParserSeesTheFormControls()
     {

@@ -269,6 +269,15 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void ThePathZoneTextAgreesInFrench()
+    {
+        // "les autres destinations et la passerelle" is feminine: "saines", not "sains"
+        var fr = Loc.Raw("d.zone.path").Fr;
+        Assert.Contains("sont saines", fr);
+        Assert.DoesNotContain("sont sains", fr);
+    }
+
+    [Fact]
     public void ComparisonVerdictsAreCodesWithATranslatedText()
     {
         using (Loc.Scope("fr"))

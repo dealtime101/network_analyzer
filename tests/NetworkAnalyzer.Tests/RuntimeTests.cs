@@ -543,6 +543,19 @@ public class RecorderTests
     }
 
     [Fact]
+    public void CustomTargetAcceptsABracketedIpv6WithAPort()
+    {
+        var t = Recorder.ParseCustom("[2001:db8::1]:8443")!;
+        Assert.Equal("2001:db8::1", t.Host);
+        Assert.Equal(8443, t.TcpPort);
+        Assert.Equal(443, Recorder.ParseCustom("[2001:db8::1]")!.TcpPort);
+        Assert.Equal("2001:db8::1", Recorder.ParseCustom("[2001:db8::1]")!.Host);
+        Assert.Throws<ArgumentException>(() => Recorder.ParseCustom("[2001:db8::1"));
+        Assert.Throws<ArgumentException>(() => Recorder.ParseCustom("[2001:db8::1]:99999"));
+        Assert.Throws<ArgumentException>(() => Recorder.ParseCustom("[2001:db8::1]x"));
+    }
+
+    [Fact]
     public void GatewayOverrideAndIpv6GatewayScope()
     {
         var t = Recorder.BuildTargets(new EnvInfo { Active = new AdapterInfo { Gw4 = "10.0.0.1" } }, "", "192.168.1.254");

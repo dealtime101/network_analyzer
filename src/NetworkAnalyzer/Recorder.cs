@@ -93,7 +93,16 @@ public sealed class Recorder
         if (text.Length == 0) return null;
         string host = text;
         int port = 443;
-        if (text.Count(c => c == ':') == 1)
+        if (text.StartsWith('['))  // [ipv6] or [ipv6]:port
+        {
+            int close = text.IndexOf(']');
+            if (close < 0) throw new ArgumentException(Loc.T("err.invalid_host", text));
+            host = text[1..close];
+            var rest = text[(close + 1)..];
+            if (rest.Length > 0 && (rest[0] != ':' || !int.TryParse(rest[1..], out port) || port is < 1 or > 65535))
+                throw new ArgumentException(Loc.T("err.invalid_port", rest.TrimStart(':')));
+        }
+        else if (text.Count(c => c == ':') == 1)
         {
             var parts = text.Split(':');
             host = parts[0];

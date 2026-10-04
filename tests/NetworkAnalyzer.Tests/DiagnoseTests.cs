@@ -580,6 +580,16 @@ public class RouterTests
     static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
     [Fact]
+    public void CurrentValueShownInTheProposalAlwaysHasItsUnit()
+    {
+        using var _ = Loc.Scope("en");
+        var r = new RouterConfig { QosType = "bandwidth_limit", LimitDown = 900, Unit = null! };   // a saved file may hold a null unit; ToMbps reads it as Mbps
+        var p = RouterQos.Propose(r, (300.0, null), 120).First();
+        Assert.Contains("900 Mbps", p.Justification);
+        Assert.Contains("900 Mbps", p.Rollback);
+    }
+
+    [Fact]
     public void SqmProposalMatchesTheQosTypeAndTheModel()
     {
         using var _ = Loc.Scope("en");

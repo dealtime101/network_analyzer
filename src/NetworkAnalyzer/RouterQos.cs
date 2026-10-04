@@ -138,7 +138,7 @@ public static class RouterQos
             var target = Fit(m.Value * 0.92);
             if (lim is null || lim >= NoEffectRatio * m)
             {
-                var now = cur.HasValue ? $"{G(cur.Value)} {r.Unit}" : Loc.T("router.prop.none_set");
+                var now = cur.HasValue ? $"{G(cur.Value)} {r.Unit ?? "Mbps"}" : Loc.T("router.prop.none_set");
                 props.Add(new Proposal
                 {
                     Change = Loc.T("router.prop.limit", Dir(dir), G(target), G(Fit(m.Value))),

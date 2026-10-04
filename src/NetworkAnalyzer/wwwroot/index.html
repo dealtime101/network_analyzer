@@ -47,7 +47,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     <button role="tab" id="tabbtn-hist" aria-controls="tab-hist" data-tab="hist" aria-selected="false" tabindex="-1" data-i18n="nav.hist"></button>
     <button role="tab" id="tabbtn-help" aria-controls="tab-help" data-tab="help" aria-selected="false" tabindex="-1" data-i18n="nav.help"></button>
   </nav>
-  <div class="right"><div id="langs" role="group" aria-label="Language"><button data-lang="en">EN</button><button data-lang="fr">FR</button></div><span id="pill"></span></div>
+  <div class="right"><div id="langs" role="group" data-i18n-aria="lang.label"><button data-lang="en" lang="en" title="English" aria-pressed="true">EN</button><button data-lang="fr" lang="fr" title="Français" aria-pressed="false">FR</button></div><span id="pill" role="status" aria-live="polite"></span></div>
 </header>
 <main>
 
@@ -176,7 +176,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
 // ---------------------------------------------------------------- translations (English is the default and the fallback)
 const I18N = {
 en: {
- 'app.title': 'Network Analyzer', 'nav.live': 'Monitoring', 'nav.sat': 'Saturation test', 'nav.diag': 'Diagnosis', 'nav.router': 'Router & QoS', 'nav.hist': 'History', 'nav.help': 'Help & protocol',
+ 'app.title': 'Network Analyzer', 'lang.label': 'Language', 'nav.live': 'Monitoring', 'nav.sat': 'Saturation test', 'nav.diag': 'Diagnosis', 'nav.router': 'Router & QoS', 'nav.hist': 'History', 'nav.help': 'Help & protocol',
  'pill.stopped': 'Stopped', 'pill.running': 'Monitoring in progress', 'pill.down': 'Server unreachable',
  'live.start_h': 'Start a monitoring session', 'live.label': 'Label (optional, e.g. "before QoS", "Ethernet")', 'live.link': 'Connection used', 'link.auto': 'Automatic detection', 'link.wifi': 'Wi-Fi', 'link.ethernet': 'Ethernet (cable)',
  'live.custom': 'Custom destination (game server…): <code>host</code> or <code>host:port</code>', 'live.custom_ph': 'e.g. 203.0.113.10 or game.example.net:27015',
@@ -258,7 +258,7 @@ en: {
  'help.v3': 'No administrator rights are needed: pings use the Windows ICMP API (no raw socket), DNS is queried with a plain UDP request, traffic comes from the interface counters. Per-program attribution would need them (ETW/driver capture) — deliberately not used.'
 },
 fr: {
- 'app.title': 'Analyseur réseau', 'nav.live': 'Surveillance', 'nav.sat': 'Test de saturation', 'nav.diag': 'Diagnostic', 'nav.router': 'Routeur & QoS', 'nav.hist': 'Historique', 'nav.help': 'Aide & protocole',
+ 'app.title': 'Analyseur réseau', 'lang.label': 'Langue', 'nav.live': 'Surveillance', 'nav.sat': 'Test de saturation', 'nav.diag': 'Diagnostic', 'nav.router': 'Routeur & QoS', 'nav.hist': 'Historique', 'nav.help': 'Aide & protocole',
  'pill.stopped': 'Arrêtée', 'pill.running': 'Surveillance en cours', 'pill.down': 'Serveur injoignable',
  'live.start_h': 'Lancer une surveillance', 'live.label': 'Libellé (facultatif, ex. « avant QoS », « Ethernet »)', 'live.link': 'Connexion utilisée', 'link.auto': 'Détection automatique', 'link.wifi': 'Wi-Fi', 'link.ethernet': 'Ethernet (câble)',
  'live.custom': 'Destination personnalisée (serveur de jeu…) : <code>hôte</code> ou <code>hôte:port</code>', 'live.custom_ph': 'ex. 203.0.113.10 ou jeu.example.net:27015',
@@ -371,7 +371,7 @@ function applyI18n() {
   $$('[data-i18n-html]').forEach(e => e.innerHTML = t(e.dataset.i18nHtml));
   $$('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
   $$('[data-i18n-aria]').forEach(e => e.setAttribute('aria-label', t(e.dataset.i18nAria)));
-  $$('#langs button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
+  $$('#langs button').forEach(b => { b.classList.toggle('on', b.dataset.lang === LANG); b.setAttribute('aria-pressed', b.dataset.lang === LANG); });
   if (live.datadir) $('#datadir').textContent = live.datadir;
 }
 function setLang(l) {

@@ -106,6 +106,24 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void TheLanguageSwitchExposesItsStateAndItsNameIsTranslated()
+    {
+        var group = Regex.Match(Markup, @"<div\b[^>]*\bid=""langs""[^>]*>").Value;
+        Assert.Equal("group", Attr(group, "role"));
+        Assert.Null(Attr(group, "aria-label"));                                  // not a fixed English word...
+        Assert.Equal("lang.label", Attr(group, "data-i18n-aria"));                 // ...but a translated name
+        var buttons = Regex.Matches(Markup, @"<button\b[^>]*\bdata-lang=""[a-z]{2}""[^>]*>", RegexOptions.IgnoreCase).Select(m => m.Value).ToList();
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal(new[] { "English", "Français" }, buttons.Select(b => Attr(b, "title")).ToArray());        // each language named in itself
+        Assert.Equal(new[] { "en", "fr" }, buttons.Select(b => Attr(b, "lang")).ToArray());                    // so it is read with the right voice
+        Assert.All(buttons, b => Assert.NotNull(Attr(b, "aria-pressed")));                                      // state is not only a CSS class
+        Assert.Contains("aria-pressed", Regex.Match(Page, @"function applyI18n\(\)\s*\{[\s\S]*?\n\}").Value);   // and it follows the choice
+        var pill = Regex.Match(Markup, @"<span\b[^>]*\bid=""pill""[^>]*>").Value;
+        Assert.Equal("polite", Attr(pill, "aria-live"));                                                         // the monitoring status changes are announced
+        Assert.Equal("status", Attr(pill, "role"));
+    }
+
+    [Fact]
     public void ToastMessagesAreAnnouncedToScreenReaders()
     {
         var toast = Regex.Match(Markup, @"<div\b[^>]*\bid=""toast""[^>]*>").Value;

@@ -362,6 +362,29 @@ public class RequestNumberTests
     }
 }
 
+public class LoadtestStartTests
+{
+    static System.Text.Json.Nodes.JsonObject Body() => new() { ["confirm"] = true, ["phase_s"] = 5, ["cap_down_mb"] = 10, ["cap_up_mb"] = 10 };
+
+    [Fact]
+    public async Task ASecondStartWaitsForTheFirstAndIsThenRefused()
+    {
+        var app = new App(Tmp.Dir());
+        Task<LoadEstimate>? second = null;
+        app.AfterLoadtestCheck = () =>
+        {
+            app.AfterLoadtestCheck = null;
+            second = Task.Run(() => app.StartLoadtest(Body()));   // a simultaneous request, in the middle of the first one
+            Thread.Sleep(400);
+            Assert.False(second.IsCompleted, "the second start ran in parallel instead of waiting");
+        };
+        app.StartLoadtest(Body());
+        var refused = await Assert.ThrowsAsync<ApiException>(() => second!);
+        Assert.Equal(409, refused.Code);
+        await app.StopSessionAsync();
+    }
+}
+
 public class ConfigInputTests
 {
     [Theory]

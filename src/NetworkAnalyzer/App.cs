@@ -170,15 +170,22 @@ public sealed class App
         var est = LoadTest.Estimate(lc, live.PlanDownMbps, live.PlanUpMbps);
         if (!(body["confirm"] is JsonValue cv && cv.TryGetValue<bool>(out var ok) && ok))
             throw new ApiException(Loc.T("err.confirm_required"), 412, new() { ["estimate"] = est });
-        if (Load is { State: "running" }) throw new ApiException(Loc.T("err.test_running"), 409);
-        if (!Rec.Running)
-            StartSession(new JsonObject { ["minutes"] = est.DurationS / 60.0 + 1, ["link"] = Str(body, "link") ?? "auto", ["label"] = Str(body, "label") ?? Loc.T("label.saturation_test") }, Loc.T("label.saturation_test"));
-        else if (Rec.Status().RemainingS < est.DurationS + 5)
-            throw new ApiException(Loc.T("err.session_too_short", est.DurationS), 409);
-        Load = new LoadTest(Rec, lc);
-        Load.Start();
-        return est;
+        lock (gate)  // check, session start and Load assignment are one step: two simultaneous requests cannot both start a test
+        {
+            if (Load is { State: "running" }) throw new ApiException(Loc.T("err.test_running"), 409);
+            AfterLoadtestCheck?.Invoke();
+            if (!Rec.Running)
+                StartSession(new JsonObject { ["minutes"] = est.DurationS / 60.0 + 1, ["link"] = Str(body, "link") ?? "auto", ["label"] = Str(body, "label") ?? Loc.T("label.saturation_test") }, Loc.T("label.saturation_test"));
+            else if (Rec.Status().RemainingS < est.DurationS + 5)
+                throw new ApiException(Loc.T("err.session_too_short", est.DurationS), 409);
+            Load = new LoadTest(Rec, lc);
+            Load.Start();
+            return est;
+        }
     }
+
+    /// <summary>Test seam: called under the lock, right after the "already running" check.</summary>
+    public Action? AfterLoadtestCheck { get; set; }
 
     // ------------------------------------------------------------------ analyses
     public AppConfig CfgFor(SessionData d) => Diagnose.ConfigFor(d, Config.Load());

@@ -489,6 +489,34 @@ public class RequestNumberTests
     }
 }
 
+public class WriterFailureTests
+{
+    [Fact]
+    public async Task ADiskWriteFailureIsReportedAndStopsTheBuffering()
+    {
+        // the folder does not exist: opening the file fails inside the writer's background task
+        var w = new SessionWriter(Path.Combine(Tmp.Dir(), "no", "such", "folder", "1.jsonl"));
+        w.Sample(1, "ping:x", 1.0, true, "");
+        var until = DateTime.UtcNow.AddSeconds(5);
+        while (w.Failure is null && DateTime.UtcNow < until) await Task.Delay(20);
+        Assert.IsAssignableFrom<IOException>(w.Failure);
+        Assert.False(w.IsAccepting, "after a failure nothing more is queued: memory must not grow without limit");
+        for (int i = 0; i < 1000; i++) w.Sample(i, "ping:x", 1.0, true, "");   // harmless
+        await w.CompleteAsync();   // and finishing does not throw
+    }
+
+    [Fact]
+    public async Task AHealthyWriterStaysHealthy()
+    {
+        var path = Path.Combine(Tmp.Dir(), "1.jsonl");
+        var w = new SessionWriter(path);
+        w.Sample(1, "ping:x", 1.0, true, "");
+        await w.CompleteAsync();
+        Assert.Null(w.Failure);
+        Assert.Single(File.ReadAllLines(path));
+    }
+}
+
 public class StoreToleranceTests
 {
     [Fact]

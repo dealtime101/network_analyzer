@@ -164,17 +164,32 @@ public sealed class SessionWriter
     {
         pump = Task.Run(async () =>
         {
-            await using var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
-            await using var w = new StreamWriter(fs, new UTF8Encoding(false));
-            var reader = ch.Reader;
-            while (await reader.WaitToReadAsync())
+            try
             {
-                await Task.Delay(400);
-                while (reader.TryRead(out var line)) await w.WriteLineAsync(line);
-                await w.FlushAsync();
+                await using var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
+                await using var w = new StreamWriter(fs, new UTF8Encoding(false));
+                var reader = ch.Reader;
+                while (await reader.WaitToReadAsync())
+                {
+                    await Task.Delay(400);
+                    while (reader.TryRead(out var line)) await w.WriteLineAsync(line);
+                    await w.FlushAsync();
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // disk full, file locked, folder gone: say so, and stop accepting lines so the queue cannot grow without limit
+                Failure = e;
+                ch.Writer.TryComplete(e);
             }
         });
     }
+
+    /// <summary>Set when writing to disk failed; the measurements taken after that are no longer being saved.</summary>
+    public Exception? Failure { get; private set; }
+
+    /// <summary>False once the writer stopped (finished or failed).</summary>
+    public bool IsAccepting => Failure is null && !ch.Reader.Completion.IsCompleted;
 
     public void Sample(double t, string series, double? v, bool ok, string info) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "s", Math.Round(t, 3), series, v.HasValue ? Math.Round(v.Value, 3) : null, ok ? 1 : 0, info }));
     public void Mark(double t, string kind, string note) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "m", t, kind, note }));

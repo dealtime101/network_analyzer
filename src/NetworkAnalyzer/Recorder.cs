@@ -535,7 +535,8 @@ public sealed class Recorder
             {
                 Running = Running, Sid = Sid, Started = Started, PlannedS = PlannedS,
                 RemainingS = Running ? Math.Max(0, Started + PlannedS - Clock.Now()) : 0,
-                Notes = notes.Select(c => Loc.T("note." + c)).ToList(), Phase = curPhase?.Name,
+                // a failed disk write is shown to the user as it happens, not only discovered when the session is read back
+                Notes = notes.Concat(writer?.Failure != null ? new[] { "write_failed" } : Array.Empty<string>()).Select(c => Loc.T("note." + c)).ToList(), Phase = curPhase?.Name,
                 Marks = marks.TakeLast(50).ToList(), Phases = phases.TakeLast(20).ToList(),
             };
     }

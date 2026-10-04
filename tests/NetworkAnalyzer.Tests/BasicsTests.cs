@@ -90,6 +90,15 @@ public class LauncherTests
 public class SimulatorIsolationTests
 {
     [Fact]
+    public void EveryListedScenarioBuildsAndAnUnknownOneIsRefused()
+    {
+        Assert.Equal(11, Simulator.Scenarios.Length);   // the ones the suite has always run
+        Assert.Equal(Simulator.Scenarios.Length, Simulator.Scenarios.Distinct().Count());
+        foreach (var scn in Simulator.Scenarios) Assert.NotEmpty(Simulator.Make(scn, 7, p => p.Minutes = 1).Series);
+        Assert.Throws<ArgumentException>(() => Simulator.Make("no_such_scenario"));
+    }
+
+    [Fact]
     public void ChangingTheSimulatedTargetsInOneTestCannotLeakIntoAnother()
     {
         var mine = Simulator.Targets;

@@ -47,24 +47,26 @@ public static class Simulator
         new() { Id = "custom", Host = "game.example.net", Role = "custom" },
     };
 
-    public static readonly string[] Scenarios =
-        { "healthy", "wifi_unstable", "bufferbloat", "isp", "isp_single_path", "custom_only", "dns", "background", "saturation", "wired_router", "icmp_blocked" };
-
-    static SimParams Scenario(string scn) => scn switch
+    // The single place scenarios are defined: add one here and it exists for Make AND is run by every test over Scenarios.
+    static readonly Dictionary<string, Func<SimParams>> Definitions = new()
     {
-        "healthy" => new() { Marks = { 400 } },
-        "wifi_unstable" => new() { Signal = 38, Events = { new("gw_loss", 200, 235), new("gw_loss", 520, 560) }, Marks = { 215 }, Roam = { 205 }, Neighbors = new WifiNeighbors { Total = 12, SameChannelStrong = 4 } },
-        "bufferbloat" => new() { Load = new LoadSim(), Link = "ethernet" },
-        "isp" => new() { Events = { new("inet_all", 300, 360), new("inet_all", 620, 660) }, Marks = { 320 }, Link = "ethernet" },
-        "isp_single_path" => new() { Events = { new("inet_one", 300, 360, "google"), new("inet_one", 620, 660, "google") }, Marks = { 320 }, Link = "ethernet" },
-        "custom_only" => new() { Events = { new("custom_only", 300, 350), new("custom_only", 600, 640) }, Marks = { 320 }, Link = "ethernet" },
-        "dns" => new() { DnsHit = 190.0, DnsMiss = 800.0, RefMiss = 60.0, Link = "ethernet", Marks = { 300 } },
-        "background" => new() { Events = { new("bg_traffic", 250, 290, Mbps: 45.0), new("bg_traffic", 520, 560, Mbps: 45.0) }, Marks = { 270 }, Link = "ethernet" },
-        "saturation" => new() { Events = { new("bg_traffic", 250, 300, Mbps: 92.0), new("bg_traffic", 560, 610, Mbps: 92.0) }, Marks = { 270 }, Link = "ethernet" },
-        "wired_router" => new() { Events = { new("gw_loss", 200, 240), new("gw_loss", 500, 540) }, Marks = { 220 }, Link = "ethernet" },
-        "icmp_blocked" => new() { Link = "ethernet", IcmpBlocked = { "custom" } },
-        _ => throw new ArgumentException(scn),
+        ["healthy"] = () => new() { Marks = { 400 } },
+        ["wifi_unstable"] = () => new() { Signal = 38, Events = { new("gw_loss", 200, 235), new("gw_loss", 520, 560) }, Marks = { 215 }, Roam = { 205 }, Neighbors = new WifiNeighbors { Total = 12, SameChannelStrong = 4 } },
+        ["bufferbloat"] = () => new() { Load = new LoadSim(), Link = "ethernet" },
+        ["isp"] = () => new() { Events = { new("inet_all", 300, 360), new("inet_all", 620, 660) }, Marks = { 320 }, Link = "ethernet" },
+        ["isp_single_path"] = () => new() { Events = { new("inet_one", 300, 360, "google"), new("inet_one", 620, 660, "google") }, Marks = { 320 }, Link = "ethernet" },
+        ["custom_only"] = () => new() { Events = { new("custom_only", 300, 350), new("custom_only", 600, 640) }, Marks = { 320 }, Link = "ethernet" },
+        ["dns"] = () => new() { DnsHit = 190.0, DnsMiss = 800.0, RefMiss = 60.0, Link = "ethernet", Marks = { 300 } },
+        ["background"] = () => new() { Events = { new("bg_traffic", 250, 290, Mbps: 45.0), new("bg_traffic", 520, 560, Mbps: 45.0) }, Marks = { 270 }, Link = "ethernet" },
+        ["saturation"] = () => new() { Events = { new("bg_traffic", 250, 300, Mbps: 92.0), new("bg_traffic", 560, 610, Mbps: 92.0) }, Marks = { 270 }, Link = "ethernet" },
+        ["wired_router"] = () => new() { Events = { new("gw_loss", 200, 240), new("gw_loss", 500, 540) }, Marks = { 220 }, Link = "ethernet" },
+        ["icmp_blocked"] = () => new() { Link = "ethernet", IcmpBlocked = { "custom" } },
     };
+
+    /// <summary>The scenario names, taken from the definitions (never a second list to keep in step).</summary>
+    public static readonly string[] Scenarios = Definitions.Keys.ToArray();
+
+    static SimParams Scenario(string scn) => Definitions.TryGetValue(scn, out var make) ? make() : throw new ArgumentException(scn);
 
     static readonly (string Name, int A, int B)[] PhaseSchedule = { ("idle", 30, 40), ("download", 60, 75), ("recovery1", 80, 90), ("upload", 100, 115), ("recovery2", 120, 130) };
 

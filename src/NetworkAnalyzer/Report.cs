@@ -58,7 +58,7 @@ public static class Report
     }
 
     /// <summary>Curve = maximum per column (spikes stay visible).</summary>
-    public static string SvgChart(List<ChartSeries> series, double t0, double t1, IEnumerable<Mark>? marks = null, IEnumerable<Phase>? phases = null, int height = 170, string unit = "ms", double? clip = null)
+    public static string SvgChart(List<ChartSeries> series, double t0, double t1, IEnumerable<Mark>? marks = null, IEnumerable<Phase>? phases = null, int height = 170, string unit = "ms", double? clip = null, string title = "")
     {
         const int W = 860, L = 46, B = 18, cols = 430;
         int H = height;
@@ -69,7 +69,9 @@ public static class Report
         double X(double t) => L + (t - t0) / span * (W - L - 6);
         double Y(double v) => 4 + (1 - Math.Min(v, ymax) / ymax) * (H - B - 4);
         string N1(double x) => x.ToString("0.0", Inv);
-        var o = new StringBuilder($"<svg viewBox=\"0 0 {W} {H}\" role=\"img\" class=\"chart\">");
+        // accessible name: what the chart shows, then the curves it holds
+        var name = E((title.Length > 0 ? title + ": " : "") + string.Join(", ", series.Select(s => s.Name)) + " (" + unit + ")");
+        var o = new StringBuilder($"<svg viewBox=\"0 0 {W} {H}\" role=\"img\" class=\"chart\" aria-label=\"{name}\"><title>{name}</title>");
         foreach (var p in phases ?? Enumerable.Empty<Phase>())
             o.Append($"<rect x=\"{N1(X(p.T0))}\" y=\"4\" width=\"{N1(Math.Max(1, X(p.T1) - X(p.T0)))}\" height=\"{H - B - 4}\" fill=\"#8884\" /><text x=\"{N1(X(p.T0) + 2)}\" y=\"14\" font-size=\"9\" fill=\"#666\">{E(p.Name)}</text>");
         for (int i = 0; i < 5; i++)
@@ -189,17 +191,17 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
         var vals = ls.SelectMany(s => s.Pts.Select(p => p.V)).OrderBy(x => x).ToList();
         double? cap = vals.Count > 0 ? Math.Max(100.0, Stats.Percentile(vals, 99.5)!.Value * 1.5) : null;
         var marks = d.Marks.Where(m => m.Kind == "lag").ToList();
-        o.Append($"<h3>{E(T("rep.latency"))}</h3>").Append(SvgChart(ls, d.Started, end, marks, d.Phases, clip: cap)).Append(Legend(ls));
+        o.Append($"<h3>{E(T("rep.latency"))}</h3>").Append(SvgChart(ls, d.Started, end, marks, d.Phases, clip: cap, title: T("rep.latency"))).Append(Legend(ls));
         var tr = new List<ChartSeries>
         {
             new() { Name = T("rep.s.down"), Color = "#0969da", Pts = d.S("net:down_bps").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value / 1e6)).ToList() },
             new() { Name = T("rep.s.up"), Color = "#bc4c00", Pts = d.S("net:up_bps").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value / 1e6)).ToList() },
         };
-        if (tr[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.traffic"))}</h3>").Append(SvgChart(tr, d.Started, end, marks, d.Phases, unit: "Mbps")).Append(Legend(tr));
+        if (tr[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.traffic"))}</h3>").Append(SvgChart(tr, d.Started, end, marks, d.Phases, unit: "Mbps", title: T("rep.traffic"))).Append(Legend(tr));
         var dns = new List<ChartSeries> { new() { Name = T("rep.s.dns"), Color = "#1a7f37", Pts = d.S("dns:sys_hit").Where(s => s.Ok && s.V.HasValue).Select(s => (s.T, s.V!.Value)).ToList(), Lost = d.S("dns:sys_hit").Where(s => !s.Ok).Select(s => s.T).ToList() } };
-        if (dns[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.dns"))}</h3>").Append(SvgChart(dns, d.Started, end, marks, d.Phases, height: 120)).Append(Legend(dns));
+        if (dns[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.dns"))}</h3>").Append(SvgChart(dns, d.Started, end, marks, d.Phases, height: 120, title: T("rep.dns"))).Append(Legend(dns));
         var wf = new List<ChartSeries> { new() { Name = T("rep.s.wifi"), Color = "#8250df", Pts = d.S("wifi:signal").Where(s => s.V.HasValue).Select(s => (s.T, s.V!.Value)).ToList() } };
-        if (wf[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.s.wifi"))}</h3>").Append(SvgChart(wf, d.Started, end, marks, d.Phases, height: 110, unit: "%")).Append(Legend(wf));
+        if (wf[0].Pts.Count > 0) o.Append($"<h3>{E(T("rep.s.wifi"))}</h3>").Append(SvgChart(wf, d.Started, end, marks, d.Phases, height: 110, unit: "%", title: T("rep.s.wifi"))).Append(Legend(wf));
 
         o.Append($"<h2>{E(T("rep.h.measures"))}</h2><table><tr><th>{E(T("rep.th.target"))}</th><th>{E(T("rep.th.state"))}</th><th>{E(T("rep.th.requests"))}</th><th>{E(T("rep.th.loss"))}</th><th>{E(T("rep.th.median"))}</th><th>p95 ms</th><th>{E(T("rep.th.max"))}</th><th>{E(T("rep.th.jitter"))}</th><th>Min ms</th></tr>");
         foreach (var t in a.Stats.Targets) o.Append(StatRow($"{t.Label} — {t.Host}", t.StateText, t.Stats));

@@ -197,6 +197,18 @@ public class ReportTests
     }
 
     [Fact]
+    public void EveryReportChartHasAnAccessibleName()
+    {
+        var d = Simulator.Make("wifi_unstable");
+        var html = Report.Html(d, Diagnose.Analyze(d, new AppConfig()));
+        var charts = System.Text.RegularExpressions.Regex.Matches(html, "<svg [^>]*>");
+        Assert.True(charts.Count >= 3);
+        foreach (System.Text.RegularExpressions.Match m in charts)
+            Assert.Matches("aria-label=\"[^\"]{5,}\"", m.Value);
+        Assert.Contains("<title>", html);
+    }
+
+    [Fact]
     public void ChartSurvivesEmptyAndSingleSeries()
     {
         Assert.Contains("No data for this chart", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));

@@ -238,8 +238,12 @@ public class ProbeTests
     public async Task PingLoopback()
     {
         var r = await Probes.PingAsync(IPAddress.Loopback, 1000);
-        if (!r.Ok) return;  // ICMP can be unavailable in a sandbox: the status mapping is tested above
-        Assert.True(r.Ms is >= 0 and < 500);
+        if (r.Ok) { Assert.True(r.Ms is >= 0 and < 500); return; }
+        // The loopback always answers: a timeout or "unreachable" there is a bug in the ping path, never an environment problem.
+        // Only an explicit "ICMP cannot be used here" outcome (sandbox without raw/ping sockets) may excuse a failure.
+        Assert.True(r.Info == "ping_unavailable" || (r.Info?.StartsWith("error:") ?? false), $"loopback ping failed with '{r.Info}': that is not an unavailable-ICMP outcome");
+        Assert.NotEqual("timeout", r.Info);
+        Assert.NotEqual("unreachable", r.Info);
     }
 
     // ---- DNS

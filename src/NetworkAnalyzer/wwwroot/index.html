@@ -654,7 +654,7 @@ async function loadHist() {
 }
 $('#cmp').onclick = guard(async () => {
   const r = await api('/api/compare', {a: [...hsel.a], b: [...hsel.b]});
-  $('#cmpres').innerHTML = r.rows.length ? `<h3>${esc(t('cmp.res_h', r.n_a, r.n_b))}</h3><table><tr><th>${t('cmp.th.metric')}</th><th class="n">A</th><th class="n">B</th><th class="n">${t('cmp.th.gap')}</th><th class="n">${t('cmp.th.var')}</th><th>${t('cmp.th.verdict')}</th></tr>` +
+  $('#cmpres').innerHTML = r.rows.length ? `<h3>${esc(t('cmp.res_h', r.n_b, r.n_a))}</h3><table><tr><th>${t('cmp.th.metric')}</th><th class="n">A</th><th class="n">B</th><th class="n">${t('cmp.th.gap')}</th><th class="n">${t('cmp.th.var')}</th><th>${t('cmp.th.verdict')}</th></tr>` +
     r.rows.map(x => `<tr><td>${esc(x.metric)}</td><td class="n">${fmt(x.a, 1)}</td><td class="n">${fmt(x.b, 1)}</td><td class="n">${x.delta > 0 ? '+' : ''}${fmt(x.delta, 1)}</td><td class="n">${fmt(x.variability, 1)}</td><td class="${x.verdict === 'improvement' ? 'sev-ok' : x.verdict === 'degradation' ? 'sev-problem' : ''}">${esc(x.verdict_text)}</td></tr>`).join('') + `</table><p class="small muted">${t('cmp.note')}</p>` : `<p class="warn">${t('cmp.empty')}</p>`;
 });
 

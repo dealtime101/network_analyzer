@@ -392,6 +392,16 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void TheComparisonTitleGivesEachGroupItsOwnSessionCount()
+    {
+        // "B compared with A ({0} session(s) versus {1})": the first number belongs to B, the second to A, in both languages
+        Assert.Contains("'cmp.res_h': 'B compared with A ({0} session(s) versus {1})'", Page);
+        Assert.Contains("'cmp.res_h': 'B par rapport à A ({0} session(s) contre {1})'", Page);
+        Assert.Contains("t('cmp.res_h', r.n_b, r.n_a)", Page);          // red before: r.n_a first, so B showed A's count
+        Assert.DoesNotContain("t('cmp.res_h', r.n_a, r.n_b)", Page);
+    }
+
+    [Fact]
     public void TheIncidentNoteHasAPermanentVisibleLabel()
     {
         // a placeholder disappears as soon as the user types: the field also needs a label that stays

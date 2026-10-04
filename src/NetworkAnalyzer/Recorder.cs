@@ -439,19 +439,30 @@ public sealed class Recorder
     }
 
     // ------------------------------------------------------------------ on-demand path diagnosis
-    public void TraceAsync(IEnumerable<string> hosts)
+    /// <summary>Starts the traces for the running session only (false when none runs). The token and the writer are
+    /// those of that session: a trace that outlives it can neither reuse a cancelled token nor write into the next session.</summary>
+    public bool TraceAsync(IEnumerable<string> hosts)
     {
         var hs = hosts.ToList();
-        var ct = cts?.Token ?? CancellationToken.None;
-        var task = Task.Run(async () =>
+        lock (gate)
         {
-            foreach (var h in hs)
+            if (!Running || cts is null || writer is null) return false;
+            var ct = cts.Token;
+            var w = writer;
+            traceTasks.Add(Task.Run(async () =>
             {
-                var res = await Probes.TracerouteAsync(h, 20, ct);
-                writer?.Trace(Clock.Now(), h, res);
-            }
-        });
-        lock (gate) traceTasks.Add(task);
+                try
+                {
+                    foreach (var h in hs)
+                    {
+                        var res = await Probes.TracerouteAsync(h, 20, ct);
+                        w.Trace(Clock.Now(), h, res);
+                    }
+                }
+                catch (OperationCanceledException) { }  // session stopped during the trace
+            }));
+            return true;
+        }
     }
 
     // ------------------------------------------------------------------ reading for the UI

@@ -552,6 +552,18 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task TraceIsRefusedWithoutARunningSessionAndAcceptedDuringOne()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store);
+        Assert.False(rec.TraceAsync(new[] { "127.0.0.1" }));   // never started: no token, no writer
+        rec.Start(new EnvInfo(), new List<Target>(), 1);
+        Assert.True(rec.TraceAsync(new[] { "127.0.0.1" }));
+        await rec.StopAsync();
+        Assert.False(rec.TraceAsync(new[] { "127.0.0.1" }));   // stopped: the old token is cancelled, the writer closed
+    }
+
+    [Fact]
     public async Task GapMarksAreDeduplicated()
     {
         var store = new SessionStore(Tmp.Dir());

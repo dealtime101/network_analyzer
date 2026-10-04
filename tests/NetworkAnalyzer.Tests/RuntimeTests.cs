@@ -209,6 +209,21 @@ public class ReportTests
     }
 
     [Fact]
+    public void TimelineShowsTheDateOnlyWhenTheSessionSpansSeveralDays()
+    {
+        var d = Simulator.Make("healthy");
+        var a = Diagnose.Analyze(d, new AppConfig());
+        var timeCell = new System.Text.RegularExpressions.Regex(@"<tr><td>((\d{4}-\d\d-\d\d )?\d\d:\d\d:\d\d)</td><td>");
+        var oneDay = timeCell.Matches(Report.Html(d, a));
+        Assert.NotEmpty(oneDay);
+        Assert.All(oneDay, m => Assert.False(m.Groups[2].Success));
+        d.Ended = d.Started + 2 * 86400;
+        var severalDays = timeCell.Matches(Report.Html(d, a));
+        Assert.NotEmpty(severalDays);
+        Assert.All(severalDays, m => Assert.True(m.Groups[2].Success));
+    }
+
+    [Fact]
     public void CsvMarkKindIsQuotedAsAWholeField()
     {
         var d = Simulator.Make("healthy");

@@ -180,11 +180,12 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
         if (a.Timeline.Count > 0)
         {
             o.Append($"<table><tr><th>{E(T("rep.th.time"))}</th><th>{E(T("rep.th.type"))}</th><th>{E(T("rep.th.zone"))}</th><th>{E(T("rep.th.details"))}</th></tr>");
+            var timeFmt = Ts(d.Started, "yyyy-MM-dd") != Ts(d.EndOrLast, "yyyy-MM-dd") ? "yyyy-MM-dd HH:mm:ss" : "HH:mm:ss";  // a session over midnight needs the date
             foreach (var i in a.Timeline)
             {
                 var det = string.Concat(i.Details.Select(x => $"<div>{E(x)}</div>")) + (i.Note.Length > 0 ? $"<div class='muted'>{E(i.Note)}</div>" : "");
                 var zone = E(i.Zone != null ? T("rep.zone." + i.Zone) : "") + (i.ZoneText.Length > 0 ? $"<div class='muted'>{E(i.ZoneText)}</div>" : "");
-                o.Append($"<tr><td>{Ts(i.T)}</td><td>{E(T("rep.type." + i.Type))}</td><td>{zone}</td><td>{det}</td></tr>");
+                o.Append($"<tr><td>{Ts(i.T, timeFmt)}</td><td>{E(T("rep.type." + i.Type))}</td><td>{zone}</td><td>{det}</td></tr>");
             }
             o.Append("</table>");
         }

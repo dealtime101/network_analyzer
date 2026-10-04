@@ -43,7 +43,8 @@ public sealed class RecorderStatus
 
 /// <summary>
 /// One monitoring session = several measurement tasks running at the same time + one writer.
-/// Traffic generated in normal monitoring: ~1 ping/s per target (≈ 100 bytes) + 1 DNS query / 5 s = a few KB/s.
+/// Traffic generated in normal monitoring: ~1 ping/s per target (≈ 100 bytes) + 1 DNS query / 5 s
+/// + every 15 s two "cold" queries (the system resolver and the 1.1.1.1 reference) = a few KB/s.
 /// </summary>
 public sealed class Recorder
 {

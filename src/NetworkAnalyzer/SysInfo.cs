@@ -146,13 +146,20 @@ public static partial class SysInfo
     [GeneratedRegex(@"-?\d+(?:[.,]\d+)?")]  // optional minus: an RSSI is negative (-60 dBm)
     private static partial Regex NumRx();
 
-    public static string? BandFromChannel(int? ch) => ch switch
+    /// <summary>The channel number alone is ambiguous: 6 GHz channels also start at 1 and overlap the 5 GHz numbers.
+    /// The radio type tells whether 6 GHz is possible at all (802.11ax / be).</summary>
+    public static string? BandFromChannel(int? ch, string? radio = null)
     {
-        null => null,
-        >= 1 and <= 14 => "2.4 GHz",
-        >= 36 and <= 177 => "5 GHz / 6 GHz",
-        _ => null,
-    };
+        bool can6 = radio != null && (radio.Contains("802.11ax", StringComparison.OrdinalIgnoreCase) || radio.Contains("802.11be", StringComparison.OrdinalIgnoreCase));
+        return ch switch
+        {
+            null => null,
+            >= 1 and <= 14 => can6 ? "2.4 GHz / 6 GHz" : "2.4 GHz",
+            >= 36 and <= 177 => "5 GHz / 6 GHz",
+            >= 178 and <= 233 => "6 GHz",
+            _ => null,
+        };
+    }
 
     /// <summary>`netsh wlan show interfaces` (fr/en) → first connected adapter, or null.</summary>
     public static WifiInfo? ParseNetshInterfaces(string text)
@@ -179,7 +186,7 @@ public static partial class SysInfo
             else if (k.StartsWith("debit de transmission") || k.StartsWith("transmit rate")) cur.TxRate = Num(v);
         }
         var b = blocks.FirstOrDefault(x => x.Connected && x.Signal.HasValue);
-        if (b != null) b.Band ??= BandFromChannel(b.Channel);
+        if (b != null) b.Band ??= BandFromChannel(b.Channel, b.Radio);
         return b;
     }
 

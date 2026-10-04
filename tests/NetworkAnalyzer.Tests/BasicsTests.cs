@@ -324,6 +324,21 @@ SSID 3 : Autre
     {
         Assert.Equal("2.4 GHz", SysInfo.BandFromChannel(6));
         Assert.Null(SysInfo.BandFromChannel(null));
+        // 6 GHz channels start at 1 too: only a radio that can use 6 GHz (802.11ax / be) makes the low channels ambiguous
+        Assert.Equal("2.4 GHz", SysInfo.BandFromChannel(1, "802.11n"));
+        Assert.Equal("2.4 GHz", SysInfo.BandFromChannel(11, "802.11ac"));
+        Assert.Equal("2.4 GHz / 6 GHz", SysInfo.BandFromChannel(1, "802.11ax"));
+        Assert.Equal("2.4 GHz / 6 GHz", SysInfo.BandFromChannel(9, "802.11be"));
+        Assert.Equal("6 GHz", SysInfo.BandFromChannel(193));
+        Assert.Equal("6 GHz", SysInfo.BandFromChannel(233));
+        Assert.Null(SysInfo.BandFromChannel(234));
+    }
+
+    [Fact]
+    public void ParsedBandUsesTheRadioTypeToResolveLowChannels()
+    {
+        var w = SysInfo.ParseNetshInterfaces(NetshFr.Replace("Canal                  : 36", "Canal                  : 5"))!;
+        Assert.Equal("2.4 GHz / 6 GHz", w.Band);   // an 802.11ax radio on channel 5: 2.4 GHz or Wi-Fi 6E
     }
 
     [Fact]

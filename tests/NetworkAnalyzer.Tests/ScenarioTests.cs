@@ -113,6 +113,27 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void ALoadDirectionRecordedInSeveralPhasesIsAnalysedAsAWhole()
+    {
+        var whole = Simulator.Make("bufferbloat");
+        var wholeDown = Diagnose.Analyze(whole, new AppConfig()).Bufferbloat!.Directions["down"];
+        Assert.True(wholeDown.Valid);
+
+        // the same data, but the download recorded as two phases: a first one too short to measure (4 s, 3 s of warm-up: 2 samples),
+        // then the rest. The old analysis looked at the first window only and called the whole direction unusable.
+        var split = Simulator.Make("bufferbloat");
+        var dl = split.Phases.Single(p => p.Name == "download");
+        split.Phases.Remove(dl);
+        split.Phases.Add(new Phase { Name = "download", T0 = dl.T0, T1 = dl.T0 + 4 });
+        split.Phases.Add(new Phase { Name = "download", T0 = dl.T0 + 4, T1 = dl.T1 });
+        split.Phases = split.Phases.OrderBy(p => p.T0).ToList();
+        var splitDown = Diagnose.Analyze(split, new AppConfig()).Bufferbloat!.Directions["down"];
+        Assert.True(splitDown.Valid, "the later phase has plenty of data: the direction must not be dismissed because of the first one");
+        Assert.InRange(splitDown.Delta!.Value, wholeDown.Delta!.Value * 0.5, wholeDown.Delta.Value * 1.5);   // and it says the same thing
+        Assert.InRange(splitDown.Mbps!.Value, 250, 350);
+    }
+
+    [Fact]
     public void BufferbloatOnWifiIsDowngradedAndQualified()
     {
         double eth = Run("bufferbloat").Hypotheses[0].Score;

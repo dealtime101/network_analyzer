@@ -491,13 +491,15 @@ public static partial class Diagnose
         foreach (var (name, wins) in new[] { ("download", down), ("upload", up) })
         {
             if (wins.Count == 0) continue;
-            double t0 = wins[0].A + Th.BloatWarmupS, t1 = wins[0].B;
+            // every phase of this direction counts, each trimmed of its own warm-up (the app records one per direction,
+            // but a session may hold several: the first must not decide for all the others)
+            var loaded = wins.Select(w => (A: w.A + Th.BloatWarmupS, B: w.B)).ToList();
             var row = new BloatRow();
             foreach (var (tid, x) in cx.T)
             {
                 if (x.State == "no_response" || x.Tg.Role is not ("gateway" or "internet")) continue;
                 var idleS = idle.Count > 0 ? idle.SelectMany(w => Stats.Window(x.Raw, w.A, w.B)).ToList() : x.Calm;
-                var loadS = Stats.Window(x.Raw, t0, t1);
+                var loadS = loaded.SelectMany(w => Stats.Window(x.Raw, w.A, w.B)).ToList();
                 var si = Stats.Rtt(idleS);
                 var sl = Stats.Rtt(loadS);
                 if (!(si != null && sl != null && si.Median != null && sl.Median != null && sl.N >= 3)) continue;
@@ -515,7 +517,7 @@ public static partial class Diagnose
                 row.Grade = Grade(row.Delta!.Value);
             }
             if (gw.Count > 0) row.GwDelta = gw[0].Delta;
-            var v2 = Stats.Values(Stats.Window(d.S(name == "download" ? "load:down_bps" : "load:up_bps"), t0, t1));
+            var v2 = Stats.Values(loaded.SelectMany(w => Stats.Window(d.S(name == "download" ? "load:down_bps" : "load:up_bps"), w.A, w.B)));
             row.Mbps = v2.Count > 0 ? Mbps(Stats.Median(v2)) : null;
             row.Valid = inet.Count > 0 && row.Mbps != null && row.Mbps >= Th.BloatMinMbps;
             res.Directions[name == "download" ? "down" : "up"] = row;

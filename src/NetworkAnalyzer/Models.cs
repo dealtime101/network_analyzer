@@ -209,6 +209,8 @@ public sealed class SessionData
     public List<Mark> Marks { get; set; } = new();
     public List<Phase> Phases { get; set; } = new();
     public List<TraceRec> Traces { get; set; } = new();
+    /// <summary>Lines of the data file that could not be read (wrong shape, or broken JSON that is not the last line, which may still be being written).</summary>
+    public int SkippedLines { get; set; }
 
     public IReadOnlyList<Sample> S(string name) => Series.TryGetValue(name, out var l) ? l : Array.Empty<Sample>();
     [JsonIgnore] public List<Target> Targets => Meta.Targets;   // derived: it is stored once, in Meta

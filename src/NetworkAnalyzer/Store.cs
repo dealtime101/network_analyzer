@@ -118,9 +118,11 @@ public sealed class SessionStore
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var sr = new StreamReader(fs, Encoding.UTF8);
         string? line;
+        bool brokenJson = false;   // the previous line did not parse: damage if more follows, a line still being written if it was the last
         while ((line = sr.ReadLine()) != null)
         {
             if (line.Length == 0) continue;
+            if (brokenJson) { d.SkippedLines++; brokenJson = false; }
             try
             {
                 using var doc = JsonDocument.Parse(line);
@@ -142,7 +144,8 @@ public sealed class SessionStore
             }
             // a line still being written (JsonException) or valid JSON of the wrong shape (too short, wrong type, not an array):
             // skip that line, never lose the whole session over it
-            catch (Exception e) when (e is JsonException or InvalidOperationException or IndexOutOfRangeException or KeyNotFoundException or FormatException or OverflowException or ArgumentException) { }
+            catch (JsonException) { brokenJson = true; }
+            catch (Exception e) when (e is InvalidOperationException or IndexOutOfRangeException or KeyNotFoundException or FormatException or OverflowException or ArgumentException) { d.SkippedLines++; }
         }
         foreach (var l in d.Series.Values) l.Sort((x, y) => x.T.CompareTo(y.T));
         d.Marks.Sort((x, y) => x.T.CompareTo(y.T));

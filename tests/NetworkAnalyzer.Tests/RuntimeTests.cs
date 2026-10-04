@@ -1065,6 +1065,22 @@ public class StoreToleranceTests
         var loaded = store.Load(id)!;
         Assert.Equal(original.Series.Sum(kv => kv.Value.Count), loaded.Series.Sum(kv => kv.Value.Count));   // every good line is still there
         Assert.Equal(original.Marks.Count, loaded.Marks.Count);
+        // ...but not silently: the count is kept and the analysis says that figures come from the readable rest
+        Assert.Equal(mixed.Count - good.Count, loaded.SkippedLines);
+        using (Loc.Scope("en")) Assert.Contains(Diagnose.Analyze(loaded).GeneralLimits, l => l.Contains($"{loaded.SkippedLines} line") && l.Contains("skipped"));
+        using (Loc.Scope("fr")) Assert.Contains(Diagnose.Analyze(loaded).GeneralLimits, l => l.Contains($"{loaded.SkippedLines} ligne") && l.Contains("ignorée"));
+    }
+
+    [Fact]
+    public void ALineStillBeingWrittenIsNotReportedAsDamage()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        int id = store.SaveComplete(Simulator.Make("healthy", 7, p => p.Minutes = 1));
+        File.AppendAllText(Path.Combine(dir, "sessions", $"{id}.jsonl"), "[\"s\", 12.5, \"ping:gat");   // the writer has not finished this line
+        var loaded = store.Load(id)!;
+        Assert.Equal(0, loaded.SkippedLines);
+        Assert.DoesNotContain(Diagnose.Analyze(loaded).GeneralLimits, l => l.Contains("skipped"));
     }
 }
 

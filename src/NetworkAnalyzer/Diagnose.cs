@@ -995,6 +995,7 @@ public static partial class Diagnose
     static List<string> GeneralLimits(Ctx cx)
     {
         var l = Loc.List("d.general", 3);
+        if (cx.D.SkippedLines > 0) l.Add(T("d.general.lines_skipped", cx.D.SkippedLines));
         if (cx.EpisodesDropped > 0) l.Add(T("d.general.episodes_capped", Th.MaxEpisodes + cx.EpisodesDropped, Th.MaxEpisodes));
         return l;
     }

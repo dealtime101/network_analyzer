@@ -365,6 +365,17 @@ public class RequestNumberTests
 public class ConfigInputTests
 {
     [Theory]
+    [InlineData("{\"custom_target\": \"new.example.net\", \"minutes\": \"abc\"}")]
+    [InlineData("{\"custom_target\": \"new.example.net\", \"link\": \"satellite\"}")]
+    public void ARefusedStartLeavesTheSavedSettingsAlone(string json)
+    {
+        var app = new App(Tmp.Dir());
+        var before = app.Config.Load().CustomTarget;
+        Assert.Throws<ApiException>(() => app.StartSession((System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(json)!));
+        Assert.Equal(before, app.Config.Load().CustomTarget);
+    }
+
+    [Theory]
     [InlineData("{\"custom_target\": 5}")] [InlineData("{\"gateway_override\": true}")] [InlineData("{\"custom_target\": {\"a\": 1}}")]
     public void ANonTextAddressIsABadRequestNotAServerError(string json) =>
         Assert.Throws<ApiException>(() => new App(Tmp.Dir()).SaveConfig((System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(json)!));

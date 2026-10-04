@@ -91,7 +91,6 @@ public sealed class App
             var custom = Str(body, "custom_target")?.Trim() ?? cfg.CustomTarget;
             try { Recorder.ParseCustom(custom); }
             catch (ArgumentException e) { throw new ApiException(e.Message); }
-            if (custom != cfg.CustomTarget) cfg = Config.Update(c => c.CustomTarget = custom);
             double minutes;
             try { minutes = Math.Min(180.0, Math.Max(1.0, Num(body["minutes"]) ?? minutesDefault)); }
             catch (ApiException) { throw new ApiException(Loc.T("err.invalid_duration")); }
@@ -105,6 +104,7 @@ public sealed class App
             var label = Str(body, "label");
             label = string.IsNullOrEmpty(label) ? labelDefault : label;
             if (label.Length > 80) label = label[..80];
+            if (custom != cfg.CustomTarget) Config.Update(c => c.CustomTarget = custom);  // only once everything else is accepted
             Load = null;
             return Rec.Start(e2, targets, minutes, label, link, snap);
         }

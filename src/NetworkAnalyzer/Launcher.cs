@@ -7,6 +7,21 @@ public static class Launcher
 {
     public const string Usage = "NetworkAnalyzer [--port 8765] [--no-browser]\nLocal network analyzer: interface on http://127.0.0.1:<port> (reachable from this computer only).";
 
+    /// <summary>Is this the answer of a Network Analyzer's /api/identity? Whatever else is listening on the port
+    /// (any JSON, not JSON at all) just gives false: it must never stop the start-up.</summary>
+    public static bool IsNetworkAnalyzer(string answer)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(answer);
+            return doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("app", out var a)
+                && a.ValueKind == System.Text.Json.JsonValueKind.String
+                && a.GetString() == "NetworkAnalyzer";
+        }
+        catch (System.Text.Json.JsonException) { return false; }
+    }
+
     public sealed record Options(int Port, bool OpenBrowser, bool Help, string? Error);
 
     /// <summary>Command line → options. Anything wrong is reported in Error (never silently ignored).</summary>

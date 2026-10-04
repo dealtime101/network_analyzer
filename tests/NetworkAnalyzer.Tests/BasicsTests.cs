@@ -9,6 +9,14 @@ namespace NetworkAnalyzer.Tests;
 
 public class LauncherTests
 {
+    [Theory]
+    [InlineData("{\"app\":\"NetworkAnalyzer\",\"version\":\"1.1.0\"}", true)]
+    [InlineData("{\"app\":\"SomethingElse\"}", false)]
+    [InlineData("{\"app\":5}", false)] [InlineData("{\"app\":null}", false)] [InlineData("{\"app\":{\"x\":1}}", false)] [InlineData("{}", false)]
+    [InlineData("[1,2]", false)] [InlineData("\"NetworkAnalyzer\"", false)] [InlineData("5", false)]
+    [InlineData("<html>not json</html>", false)] [InlineData("", false)]
+    public void ForeignAnswersOnThePortNeverCrashTheIdentityCheck(string answer, bool ours) => Assert.Equal(ours, Launcher.IsNetworkAnalyzer(answer));
+
     [Fact]
     public void DefaultsAndValidOptions()
     {

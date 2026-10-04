@@ -41,6 +41,22 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void UncachedDnsMeasurementsAreEvaluatedEvenWithoutAnyCachedOne()
+    {
+        var d = Simulator.Make("dns", 7);
+        d.Series.Remove("dns:sys_hit");                                 // only the uncached and the reference series remain
+        var a = Diagnose.Analyze(d, new AppConfig());
+        var dns = a.Hypotheses.SingleOrDefault(h => h.Id == "dns");
+        Assert.NotNull(dns);                                            // used to be dismissed as soon as the cached series was missing
+        Assert.Contains(dns!.Evidence, e => e.Contains("uncached") || e.Contains("cold") || e.Contains("800"));
+        Assert.Contains(dns.Limits, l => l.Contains("cached"));         // and it says that the cached series was not available
+        // with no DNS series at all there is still nothing to evaluate
+        var none = Simulator.Make("dns", 7);
+        foreach (var k in new[] { "dns:sys_hit", "dns:sys_miss", "dns:ref_miss" }) none.Series.Remove(k);
+        Assert.DoesNotContain("dns", ScenarioTests.Ids(Diagnose.Analyze(none, new AppConfig())));
+    }
+
+    [Fact]
     public void SlowOrFailingUncachedDnsQueriesAreLocatedAsDnsEvenWhenCachedOnesAreFast()
     {
         TargetFacts T(string role) => new() { Role = role, Label = role, Bad = false, Stats = new RttStats { N = 20 } };

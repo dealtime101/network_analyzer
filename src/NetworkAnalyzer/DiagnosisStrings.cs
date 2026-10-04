@@ -123,6 +123,7 @@ public static partial class Loc
         Add("dnsr.limit2", "The \"cold\" test uses random names under example.com (a domain reserved for documentation, RFC 2606; the random names do not exist, so the expected answer is NXDOMAIN).", "Le test « à froid » utilise des noms aléatoires sous example.com (domaine réservé à la documentation, RFC 2606 ; ces noms n'existent pas, la réponse attendue est NXDOMAIN).");
         Add("dnsr.next", "Change the PC's DNS (e.g. 1.1.1.1 or 9.9.9.9), run another session and compare resolution times.", "Changer le DNS du PC (ex. 1.1.1.1 ou 9.9.9.9), refaire une session et comparer les temps de résolution.");
         Add("dnsr.limit_none", "No DNS measurement available.", "Aucune mesure DNS disponible.");
+        Add("dnsr.limit_nohit", "No cached lookup was measured: only the uncached ones could be evaluated.", "Aucune résolution en cache n'a été mesurée : seules celles sans cache ont pu être évaluées.");
         Add("dnsr.ev.fail", "Resolution failures: {0}% ({1} of {2})on the configured DNS.", "Échecs de résolution : {0} % ({1} sur {2}) sur le DNS configuré.");
         Add("dnsr.ev.slow", "Slow resolution (common names): median {0}.", "Résolution lente (noms courants) : médiane {0}.");
         Add("dnsr.ev.peaks", "Resolution spikes: p95 {0}, max {1}.", "Pics de résolution : p95 {0}, max {1}.");

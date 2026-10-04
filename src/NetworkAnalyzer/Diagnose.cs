@@ -838,22 +838,24 @@ public static partial class Diagnose
         var hit = Stats.Rtt(cx.Series("dns:sys_hit"));
         var miss = Stats.Rtt(cx.Series("dns:sys_miss"));
         var rf = Stats.Rtt(cx.Series("dns:ref_miss"));
-        if (hit is null)
+        // each series is judged on its own: the absence of the cached one must not hide slow uncached lookups
+        if (hit is null && miss is null && rf is null)
         {
             h.Limits.Add(T("dnsr.limit_none"));
             return h;
         }
-        if (hit.LossPct >= Th.DnsFailPct)
+        if (hit is null) h.Limits.Add(T("dnsr.limit_nohit"));
+        if (hit != null && hit.LossPct >= Th.DnsFailPct)
         {
             h.Score += 4;
             h.Evidence.Add(T("dnsr.ev.fail", F1(hit.LossPct), hit.Lost, hit.N));
         }
-        if (hit.Median != null && hit.Median >= Th.DnsMedMs)
+        if (hit?.Median != null && hit.Median >= Th.DnsMedMs)
         {
             h.Score += 3;
             h.Evidence.Add(T("dnsr.ev.slow", FmtMs(hit.Median)));
         }
-        if (hit.P95 != null && hit.P95 >= Th.DnsP95Ms)
+        if (hit?.P95 != null && hit.P95 >= Th.DnsP95Ms)
         {
             h.Score += 2;
             h.Evidence.Add(T("dnsr.ev.peaks", FmtMs(hit.P95), FmtMs(hit.Max)));
@@ -868,7 +870,7 @@ public static partial class Diagnose
             h.Score += 2;
             h.Evidence.Add(T("dnsr.ev.ref", FmtMs(rf.Median), FmtMs(miss.Median)));
         }
-        if (h.Score == 0) h.Counter.Add(T("dnsr.counter.fast", FmtMs(hit.Median), F1(hit.LossPct)));
+        if (h.Score == 0 && hit != null) h.Counter.Add(T("dnsr.counter.fast", FmtMs(hit.Median), F1(hit.LossPct)));
         h.Actions = new() { T("dnsr.action") };
         return h;
     }

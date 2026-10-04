@@ -209,6 +209,16 @@ public class ReportTests
     }
 
     [Fact]
+    public void LateLossesAreDrawnToo()
+    {
+        var lost = Enumerable.Range(0, 600).Select(i => i + 0.5).ToList();   // a loss every second for 10 minutes
+        var svg = Report.SvgChart(new() { new Report.ChartSeries { Name = "a", Pts = new() { (1, 5.0) }, Lost = lost } }, 0, 600);
+        var ticks = System.Text.RegularExpressions.Regex.Matches(svg, "stroke-width=\"1.5\"");
+        Assert.Equal(430, ticks.Count);   // one tick per chart column, from the first to the last
+        Assert.Contains("x1=\"85" , svg);  // the right-hand end (x ≈ 854) is reached: the old cut-off stopped near x = 600
+    }
+
+    [Fact]
     public void YAxisLabelsKeepTheirDecimalsOnSmallScales()
     {
         string Chart(double v) => Report.SvgChart(new() { new Report.ChartSeries { Name = "a", Pts = new() { (1, v), (2, v / 2) } } }, 0, 10, unit: "Mbps");

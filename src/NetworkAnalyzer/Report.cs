@@ -94,8 +94,9 @@ public static class Report
             }
             var pts = string.Join(" ", buckets.Select(kv => $"{N1(X(t0 + kv.Key / (double)cols * span))},{N1(Y(kv.Value))}"));
             o.Append($"<polyline fill=\"none\" stroke=\"{s.Color}\" stroke-width=\"1.2\" points=\"{pts}\"/>");
-            foreach (var t in s.Lost.Take(400))
-                o.Append($"<line x1=\"{N1(X(t))}\" x2=\"{N1(X(t))}\" y1=\"{H - B - 6}\" y2=\"{H - B}\" stroke=\"{s.Color}\" stroke-width=\"1.5\"/>");
+            // one tick per chart column: a long session keeps the losses of its end too
+            foreach (var k in s.Lost.Select(t => (int)((t - t0) / span * cols)).Distinct().Order())
+                o.Append($"<line x1=\"{N1(X(t0 + k / (double)cols * span))}\" x2=\"{N1(X(t0 + k / (double)cols * span))}\" y1=\"{H - B - 6}\" y2=\"{H - B}\" stroke=\"{s.Color}\" stroke-width=\"1.5\"/>");
         }
         foreach (var m in marks ?? Enumerable.Empty<Mark>())
             o.Append($"<line x1=\"{N1(X(m.T))}\" x2=\"{N1(X(m.T))}\" y1=\"4\" y2=\"{H - B}\" stroke=\"#cf222e\" stroke-dasharray=\"3 3\"/>");

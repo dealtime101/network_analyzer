@@ -409,6 +409,23 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void EveryChartOnThePageHasATextEquivalentWithItsFigures()
+    {
+        // a canvas is a picture: its name says what it is, a description gives the numbers (median, maximum, failed probes per series)
+        var chart = Regex.Match(Page, @"function chart\(canvas, o\) \{[\s\S]*?\n\}\n").Value;
+        Assert.NotEmpty(chart);
+        Assert.Contains("describeChart(canvas, o)", chart);                              // red before: nothing
+        var describe = Regex.Match(Page, @"function describeChart\(canvas, o\) \{[\s\S]*?\n\}\n").Value;
+        Assert.NotEmpty(describe);
+        Assert.Contains("aria-describedby", describe);                                    // tied to the canvas
+        Assert.Contains("chart.desc", describe);                                          // translated
+        Assert.Contains("lost", describe);                                                // failed probes are part of it
+        Assert.Matches(@"\.sr-only\{[^}]*position:absolute", Page);                      // readable by assistive technology, not seen
+        foreach (var key in new[] { "chart.desc_range", "chart.desc", "chart.desc_loss", "chart.desc_marks" })
+            Assert.True(Regex.Matches(Page, $@"'{Regex.Escape(key)}'\s*:").Count >= 2, $"{key} must exist in both dictionaries");
+    }
+
+    [Fact]
     public void TheComparisonTitleGivesEachGroupItsOwnSessionCount()
     {
         // "B compared with A ({0} session(s) versus {1})": the first number belongs to B, the second to A, in both languages

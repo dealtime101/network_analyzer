@@ -25,6 +25,7 @@ button.lag{font-size:22px;padding:16px 28px;background:var(--danger);color:var(-
 button:disabled{opacity:.5;cursor:not-allowed}button.on{outline:2px solid var(--accent)}
 input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}label{display:block;font-size:13px;color:var(--muted);margin:8px 0 2px}
 textarea{width:100%;min-height:60px}.muted{color:var(--muted)}.small{font-size:13px}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .warn{background:var(--warnbg);border:1px solid var(--warn);border-radius:6px;padding:8px 12px;margin:8px 0}.err{color:var(--danger)}
 table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .badge{display:inline-block;border-radius:10px;padding:0 9px;font-size:12px;color:var(--on-muted);background:var(--muted)}.b-low{background:#9a6700}.b-medium{background:#bc4c00}.b-high{background:#cf222e}
@@ -192,7 +193,8 @@ en: {
  'cards.h': 'Live measurements', 'cards.sub': '(last 60 seconds)', 'cards.none': 'No monitoring in progress.', 'cards.noicmp': 'does not answer ICMP', 'cards.waiting': 'Waiting for measurements…',
  'm.median': 'median ms', 'm.p95': 'p95 ms', 'm.max': 'max ms', 'm.loss': 'loss %', 'm.jitter': 'jitter ms',
  'chart.latency': 'Latency (ms)', 'chart.latency_note': 'One curve per target; vertical red lines: "I\'m lagging now"; small ticks at the bottom: lost requests. The scale is capped for readability (higher spikes touch the top of the chart).',
- 'chart.traffic': 'Traffic of this computer (Mbps)', 'chart.dns': 'DNS resolution (ms)', 'chart.wifi': 'Wi-Fi (signal %, link rate Mbps)', 'chart.wifi_sig': 'Wi-Fi signal (%)', 'chart.wifi_rate': 'Wi-Fi link rate (Mbps)',
+ 'chart.traffic': 'Traffic of this computer (Mbps)', 'chart.dns': 'DNS resolution (ms)', 'chart.wifi': 'Wi-Fi (signal %, link rate Mbps)', 'chart.desc_range': 'From {0} to {1}.', 'chart.desc': '{0}: median {1}, maximum {2}, failed probes: {3}.', 'chart.desc_loss': '{0}: no successful measurement, failed probes: {1}.', 'chart.desc_marks': 'Lag marks: {0}.',
+ 'chart.wifi_sig': 'Wi-Fi signal (%)', 'chart.wifi_rate': 'Wi-Fi link rate (Mbps)',
  'chart.wifi_note': 'The <b>link</b> rate is the radio speed negotiated with the access point, not your Internet speed. No interference data is invented: only the Wi-Fi neighbours visible on the same channel are counted.',
  'chart.traffic_note': 'PC traffic: network interface totals. Per-program attribution is not offered: without administrator rights or a capture, no reliable method exists. To identify a program, use Task Manager (Network column) or Resource Monitor.',
  's.pc_down': '↓ PC', 's.pc_up': '↑ PC', 's.test_down': '↓ test', 's.test_up': '↑ test', 's.dns_hit': 'System DNS (common name)', 's.dns_miss': 'System DNS (cold)', 's.dns_ref': '1.1.1.1 (cold, reference)', 's.sig': 'Signal %', 's.tx': 'Link transmit Mbps', 's.rx': 'Link receive Mbps', 'chart.nodata': 'No data',
@@ -276,7 +278,8 @@ fr: {
  'cards.h': 'Mesures en direct', 'cards.sub': '(60 dernières secondes)', 'cards.none': 'Aucune surveillance en cours.', 'cards.noicmp': "ne répond pas à l'ICMP", 'cards.waiting': 'En attente de mesures…',
  'm.median': 'médiane ms', 'm.p95': 'p95 ms', 'm.max': 'max ms', 'm.loss': 'perte %', 'm.jitter': 'gigue ms',
  'chart.latency': 'Latence (ms)', 'chart.latency_note': "Courbe par cible ; traits rouges verticaux : « Je lag maintenant » ; petits traits en bas : requêtes perdues. L'échelle est plafonnée pour garder la lisibilité (les pics plus hauts touchent le haut du graphique).",
- 'chart.traffic': 'Trafic de cet ordinateur (Mbps)', 'chart.dns': 'Résolution DNS (ms)', 'chart.wifi': 'Wi-Fi (signal %, débit de liaison Mbps)', 'chart.wifi_sig': 'Signal Wi-Fi (%)', 'chart.wifi_rate': 'Débit de liaison Wi-Fi (Mbps)',
+ 'chart.traffic': 'Trafic de cet ordinateur (Mbps)', 'chart.dns': 'Résolution DNS (ms)', 'chart.wifi': 'Wi-Fi (signal %, débit de liaison Mbps)', 'chart.desc_range': 'De {0} à {1}.', 'chart.desc': '{0} : médiane {1}, maximum {2}, sondes échouées : {3}.', 'chart.desc_loss': '{0} : aucune mesure réussie, sondes échouées : {1}.', 'chart.desc_marks': 'Repères de lag : {0}.',
+ 'chart.wifi_sig': 'Signal Wi-Fi (%)', 'chart.wifi_rate': 'Débit de liaison Wi-Fi (Mbps)',
  'chart.wifi_note': "Le débit de <b>liaison</b> est la vitesse radio négociée avec la borne, pas votre débit Internet. Aucune donnée d'interférence n'est inventée : seuls les voisins Wi-Fi visibles sur le même canal sont comptés.",
  'chart.traffic_note': "Trafic du PC : totaux de l'interface réseau. L'attribution par programme n'est pas proposée : sans droits administrateur ni capture, aucune méthode fiable n'existe. Pour identifier un programme, utilisez le Gestionnaire des tâches (colonne Réseau) ou le Moniteur de ressources.",
  's.pc_down': '↓ PC', 's.pc_up': '↑ PC', 's.test_down': '↓ test', 's.test_up': '↑ test', 's.dns_hit': 'DNS système (nom courant)', 's.dns_miss': 'DNS système (à froid)', 's.dns_ref': '1.1.1.1 (à froid, référence)', 's.sig': 'Signal %', 's.tx': 'Liaison émission Mbps', 's.rx': 'Liaison réception Mbps', 'chart.nodata': 'Aucune donnée',
@@ -445,6 +448,23 @@ function chart(canvas, o) {
     g.strokeStyle = s.color; g.lineWidth = 2; (s.lost || []).forEach(x => { g.beginPath(); g.moveTo(X(x), h - B - 7); g.lineTo(X(x), h - B); g.stroke(); });
   });
   (o.marks || []).forEach(m => { g.strokeStyle = danger; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(m.t), T); g.lineTo(X(m.t), h - B); g.stroke(); g.setLineDash([]); });
+  describeChart(canvas, o);
+}
+// the figures of a chart as text, for whoever cannot see the picture: period, then per series the median, the maximum and the failed probes
+function describeChart(canvas, o) {
+  if (!canvas.id) return;
+  const id = canvas.id + '_desc';
+  let el = document.getElementById(id);
+  if (!el) { el = document.createElement('p'); el.id = id; el.className = 'sr-only'; canvas.insertAdjacentElement('afterend', el); canvas.setAttribute('aria-describedby', id); }
+  const med = a => { const s = [...a].sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+  const parts = [t('chart.desc_range', hm(o.t0), hm(o.t1))];
+  o.series.forEach(s => {
+    const v = s.pts.map(p => p[1]), lost = (s.lost || []).length;
+    if (v.length) parts.push(t('chart.desc', s.name, fmt(med(v), 1), fmt(v.reduce((m, x) => x > m ? x : m, -Infinity), 1), lost));
+    else if (lost) parts.push(t('chart.desc_loss', s.name, lost));
+  });
+  if ((o.marks || []).length) parts.push(t('chart.desc_marks', o.marks.length));
+  el.textContent = parts.join(' ');
 }
 function legend(el, series) { $(el).innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join(''); }
 function pingSeries(map, targets) {

@@ -404,7 +404,7 @@ public class LocalizationTests
     public void FrenchTextHasNoKnownAgreementMistakes()
     {
         // wording mistakes found in review: add the faulty phrase here when one is fixed
-        var faulty = new[] { "destinations et la passerelle sont sains" };
+        var faulty = new[] { "destinations et la passerelle sont sains", "les autres et la passerelle restent sains" };
         foreach (var k in Loc.Keys)
         {
             var fr = Loc.Raw(k).Fr;

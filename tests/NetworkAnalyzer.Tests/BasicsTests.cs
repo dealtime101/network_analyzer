@@ -87,6 +87,21 @@ public class LauncherTests
     }
 }
 
+public class SimulatorIsolationTests
+{
+    [Fact]
+    public void ChangingTheSimulatedTargetsInOneTestCannotLeakIntoAnother()
+    {
+        var mine = Simulator.Targets;
+        mine[0].Host = "10.99.99.99";
+        mine[0].Role = "mutated";
+        Assert.Equal("192.168.0.1", Simulator.Targets[0].Host);   // a later reader gets the original
+        Assert.Equal("gateway", Simulator.Targets[0].Role);
+        Assert.NotSame(Simulator.Targets[0], Simulator.Targets[0]);
+        Assert.Equal("192.168.0.1", Simulator.Make("healthy").Meta.Targets[0].Host);
+    }
+}
+
 public class TcpProbeTests
 {
     [Fact]

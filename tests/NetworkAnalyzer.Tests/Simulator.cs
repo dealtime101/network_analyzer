@@ -37,7 +37,8 @@ public static class Simulator
 {
     public const double T0 = 1_760_000_000.0;
 
-    public static readonly List<Target> Targets = new()
+    /// <summary>The simulated targets. A fresh list of fresh objects on every call: a test that changes one cannot affect another test.</summary>
+    public static IReadOnlyList<Target> Targets => new List<Target>
     {
         new() { Id = "gateway", Host = "192.168.0.1", Role = "gateway" },
         new() { Id = "cloudflare", Host = "1.1.1.1", Role = "internet" },

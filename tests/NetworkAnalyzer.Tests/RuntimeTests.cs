@@ -519,7 +519,7 @@ public class StoreTests
     {
         var dir = Tmp.Dir();
         var store = new SessionStore(dir);
-        int id = store.Create(new SessionHeader { Started = 1000, Meta = new SessionMeta { Targets = Simulator.Targets } });
+        int id = store.Create(new SessionHeader { Started = 1000, Meta = new SessionMeta { Targets = Simulator.Targets.ToList() } });
         var w = store.OpenWriter(id);
         w.Sample(1001, "ping:gateway", 1.5, true, "");
         w.Mark(1002, "lag", "x");

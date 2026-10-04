@@ -209,6 +209,15 @@ public class ReportTests
     }
 
     [Fact]
+    public void YAxisLabelsKeepTheirDecimalsOnSmallScales()
+    {
+        string Chart(double v) => Report.SvgChart(new() { new Report.ChartSeries { Name = "a", Pts = new() { (1, v), (2, v / 2) } } }, 0, 10, unit: "Mbps");
+        Assert.Contains(">0.43<", Chart(0.4));   // top label of a 0.43 scale, not "0"
+        Assert.Contains(">1.6<", Chart(1.5));    // 1.62 scale: one decimal
+        Assert.Contains(">108<", Chart(100));    // large scale: integers
+    }
+
+    [Fact]
     public void ChartSurvivesEmptyAndSingleSeries()
     {
         Assert.Contains("No data for this chart", Report.SvgChart(new() { new Report.ChartSeries { Name = "a" } }, 0, 10));

@@ -77,7 +77,7 @@ public static class Report
         for (int i = 0; i < 5; i++)
         {
             double y = 4 + i * (H - B - 4) / 4.0;
-            o.Append($"<line x1=\"{L}\" x2=\"{W - 6}\" y1=\"{N1(y)}\" y2=\"{N1(y)}\" stroke=\"#ddd\"/><text x=\"{L - 4}\" y=\"{N1(y + 3)}\" font-size=\"9\" text-anchor=\"end\" fill=\"#666\">{(ymax * (1 - i / 4.0)).ToString("0", Inv)}</text>");
+            o.Append($"<line x1=\"{L}\" x2=\"{W - 6}\" y1=\"{N1(y)}\" y2=\"{N1(y)}\" stroke=\"#ddd\"/><text x=\"{L - 4}\" y=\"{N1(y + 3)}\" font-size=\"9\" text-anchor=\"end\" fill=\"#666\">{(ymax * (1 - i / 4.0)).ToString(ymax < 1 ? "0.00" : ymax < 10 ? "0.0" : "0", Inv)}</text>");
         }
         for (int i = 0; i <= 6; i++)
         {

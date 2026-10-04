@@ -118,6 +118,7 @@ public static class Api
         else if (method != "GET") { await Write(ctx, 405, new { error = Loc.T("err.method") }); return; }
         try
         {
+            app.BeforeRoute?.Invoke(path);
             var res = await Route(app, method, path, q, body);
             if (res is Raw r) await Write(ctx, 200, r.Body, r.ContentType, r.Headers);
             else await Write(ctx, 200, res);
@@ -130,6 +131,7 @@ public static class Api
         }
         catch (Exception e)  // a request error must never stop the server
         {
+            app.LogError(method, path, e);   // ...but it leaves a trace for whoever has to find the cause
             await Write(ctx, 500, new { error = $"{e.GetType().Name}: {e.Message}" });
         }
     }

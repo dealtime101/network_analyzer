@@ -47,6 +47,29 @@ public sealed class App
     static readonly Regex UrlRx = new(@"^https?://[A-Za-z0-9.\-:]+$", RegexOptions.Compiled);
     const int MaxShot = 5_000_000;
 
+    /// <summary>Test seam: called with the request path just before routing.</summary>
+    public Action<string>? BeforeRoute { get; set; }
+
+    const long MaxErrorLog = 1_000_000;
+    readonly object errLock = new();
+
+    /// <summary>Appends an unexpected request error (time, method, path without query, full exception) to server_errors.log in the data folder.
+    /// No body, no query string. At about 1 MB the file becomes server_errors.log.1 (one old copy). Logging never throws.</summary>
+    public void LogError(string method, string path, Exception e)
+    {
+        try
+        {
+            lock (errLock)
+            {
+                var file = Path.Combine(Store.DataDir, "server_errors.log");
+                Directory.CreateDirectory(Store.DataDir);
+                if (File.Exists(file) && new FileInfo(file).Length > MaxErrorLog) File.Move(file, file + ".1", true);
+                File.AppendAllText(file, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {method} {path}{Environment.NewLine}{e}{Environment.NewLine}{Environment.NewLine}");
+            }
+        }
+        catch (Exception x) when (x is IOException or UnauthorizedAccessException) { }   // a full disk must not turn one error into two
+    }
+
     public SessionStore Store { get; }
     public ConfigStore Config { get; }
     public Recorder Rec { get; }

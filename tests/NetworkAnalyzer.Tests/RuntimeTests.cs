@@ -1191,6 +1191,32 @@ public class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AnUnexpectedServerErrorLeavesATraceWithTheRequestButNotItsBody()
+    {
+        app.BeforeRoute = path => { if (path == "/api/config") throw new InvalidOperationException("boom-from-the-test"); };
+        var resp = await http.PostAsync("/api/config?secret=1", new StringContent("{\"password\":\"hunter2\"}", System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(500, (int)resp.StatusCode);
+        var log = Path.Combine(dir, "server_errors.log");
+        Assert.True(File.Exists(log), "no server-side trace of the error");   // red before: nothing was written
+        var text = File.ReadAllText(log);
+        Assert.Contains("POST /api/config", text);
+        Assert.Contains("InvalidOperationException", text);
+        Assert.Contains("boom-from-the-test", text);
+        Assert.Contains("   at ", text);                      // the stack, not only the message
+        Assert.DoesNotContain("hunter2", text);              // no request body
+        Assert.DoesNotContain("secret=1", text);             // no query string
+    }
+
+    [Fact]
+    public void TheServerErrorLogDoesNotGrowWithoutLimit()
+    {
+        var log = Path.Combine(dir, "server_errors.log");
+        for (int i = 0; i < 40; i++) app.LogError("GET", "/x", new InvalidOperationException(new string('e', 50_000)));
+        Assert.True(new FileInfo(log).Length < 1_200_000, "the log keeps growing");
+        Assert.True(File.Exists(log + ".1"), "the previous log is kept once");
+    }
+
+    [Fact]
     public async Task ABodyWithoutContentLengthStopsBeingReadAtTheLimit()
     {
         var body = new EndlessBody();

@@ -72,7 +72,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     <div class="card" style="text-align:center">
       <h2 data-i18n="lag.h"></h2>
       <button class="lag" id="lag" data-i18n="lag.btn"></button>
-      <div style="margin-top:8px"><input id="lagnote" data-i18n-ph="lag.note_ph" maxlength="200" style="width:90%"></div>
+      <div style="margin-top:8px"><input id="lagnote" data-i18n-ph="lag.note_ph" data-i18n-aria="lag.note_ph" maxlength="200" style="width:90%"></div>
       <p class="small muted" data-i18n="lag.blurb"></p>
       <ul id="marks" class="small" style="text-align:left"></ul>
       <button class="btn" id="seediag" style="display:none" data-i18n="lag.see"></button>
@@ -136,7 +136,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
         <label for="r_sqm" data-i18n="r.sqm"></label><select id="r_sqm"><option value="unknown" data-i18n="r.sqm.unknown"></option><option value="yes" data-i18n="r.sqm.yes"></option><option value="no" data-i18n="opt.no"></option></select></div>
       <div><label for="r_ld" data-i18n="r.ld"></label><input id="r_ld" type="number" min="0" step="any" style="width:100%"><label for="r_lu" data-i18n="r.lu"></label><input id="r_lu" type="number" min="0" step="any" style="width:100%">
         <label for="r_unit" data-i18n="r.unit"></label><select id="r_unit"><option>Mbps</option><option>Kbps</option><option>Gbps</option></select></div>
-      <div><label for="p_down" data-i18n="r.plan"></label><div class="row"><input id="p_down" type="number" min="0" step="any" style="width:48%"><input id="p_up" type="number" min="0" step="any" style="width:48%"></div>
+      <div><label for="p_down" data-i18n="r.plan"></label><div class="row"><input id="p_down" data-i18n-aria="r.plan_dl" type="number" min="0" step="any" style="width:48%"><input id="p_up" data-i18n-aria="r.plan_ul" type="number" min="0" step="any" style="width:48%"></div>
         <label for="g_over" data-i18n="r.gw"></label><input id="g_over" style="width:100%" placeholder="192.168.0.1"></div>
     </div>
     <label for="r_prio" data-i18n-html="r.prio"></label><textarea id="r_prio"></textarea>
@@ -145,7 +145,7 @@ ul{margin:.2em 0 .5em 1.2em;padding:0}#toast{position:fixed;bottom:18px;left:50%
     <div class="row" style="margin-top:8px"><button class="btn primary" id="r_save" data-i18n="r.save"></button><span id="r_msg" class="muted"></span></div>
     <h3 data-i18n="r.shots"></h3>
     <p class="small muted" data-i18n="r.shots_note"></p>
-    <input type="file" id="r_file" accept="image/png,image/jpeg,image/webp" multiple><div id="r_shots"></div>
+    <input type="file" id="r_file" data-i18n-aria="r.shots" accept="image/png,image/jpeg,image/webp" multiple><div id="r_shots"></div>
   </div>
   <div class="card"><h2 data-i18n="r.analysis_h"></h2><div id="r_analysis" class="small">…</div></div>
   <div class="card"><h2 data-i18n="r.protocol_h"></h2><ol id="r_proto" class="small"></ol></div>
@@ -226,7 +226,7 @@ en: {
  'router.p': 'The application <b>does not connect to your router</b>, asks for no password and changes no setting. TP-Link does not document an automatable interface common to all models: read the values in your router\'s admin page (often "Advanced › QoS") or attach screenshots. First give the exact model, the hardware version and the firmware (label under the router and status page): the official documentation (<a href="https://www.tp-link.com/en/support/" target="_blank" rel="noopener noreferrer">tp-link.com/en/support</a>) then says whether your model offers prioritisation, rate limits or queue management (SQM). Do not assume SQM exists.',
  'r.model': 'Exact model', 'r.model_ph': 'e.g. Archer AX55', 'r.hw': 'Hardware version', 'r.hw_ph': 'e.g. 1.0', 'r.fw': 'Firmware', 'r.fw_ph': 'e.g. 1.1.4 Build …', 'r.qos': 'QoS enabled?', 'r.type': 'QoS type',
  'r.type.priority': 'Device / application prioritisation', 'r.type.limit': 'Upload/download rate limit', 'r.type.sqm': 'Queue management (SQM / Smart Queue)', 'r.sqm': 'SQM available on this model?', 'r.sqm.unknown': 'Unknown (check the documentation)', 'r.sqm.yes': 'Yes (documented)',
- 'r.ld': 'Download limit', 'r.lu': 'Upload limit', 'r.unit': 'Unit entered in the router', 'r.plan': 'Advertised speed (Mbps): download / upload', 'r.gw': 'Gateway (if not detected automatically)',
+ 'r.ld': 'Download limit', 'r.lu': 'Upload limit', 'r.unit': 'Unit entered in the router', 'r.plan': 'Advertised speed (Mbps): download / upload', 'r.plan_dl': 'Advertised download speed (Mbps)', 'r.plan_ul': 'Advertised upload speed (Mbps)', 'r.gw': 'Gateway (if not detected automatically)',
  'r.prio': 'Prioritised devices — one line per device: <code>Name | priority | duration</code> (e.g. <code>Gaming-PC | high | 4 hours</code> or <code>always</code>)', 'r.rules': 'Bandwidth rules — one line per rule: <code>Name | download | upload</code> (in the chosen unit)', 'r.notes': 'Notes',
  'r.save': 'Save and analyse', 'r.saved': 'Saved.', 'r.shots': 'Router QoS page screenshots (optional)', 'r.shots_note': 'Stored locally and added to the report. Avoid or hide any screenshot showing a password, a Wi-Fi key or a token.',
  'r.analysis_h': 'Analysis', 'r.measures_from': 'Measured speeds taken from session #{0}: ↓ {1} Mbps, ↑ {2} Mbps.', 'r.no_test': 'No saturation test recorded: limits can only be compared with the advertised speed. Run the saturation test.',
@@ -308,7 +308,7 @@ fr: {
  'router.p': "L'application <b>ne se connecte pas à votre routeur</b>, ne demande aucun mot de passe et ne modifie aucun réglage. TP-Link ne documente pas d'interface automatisable commune à tous les modèles : relevez les valeurs dans la page d'administration de votre routeur (souvent « Avancé › QoS ») ou joignez des captures d'écran. Indiquez d'abord le modèle exact, la version matérielle et le firmware (étiquette sous le routeur et page d'état) : la documentation officielle (<a href=\"https://www.tp-link.com/fr/support/\" target=\"_blank\" rel=\"noopener noreferrer\">tp-link.com/fr/support</a>) dit alors si votre modèle propose de la priorisation, des limites de débit ou une gestion de file (SQM). Ne supposez pas que SQM existe.",
  'r.model': 'Modèle exact', 'r.model_ph': 'ex. Archer AX55', 'r.hw': 'Version matérielle', 'r.hw_ph': 'ex. 1.0', 'r.fw': 'Firmware', 'r.fw_ph': 'ex. 1.1.4 Build …', 'r.qos': 'QoS activée ?', 'r.type': 'Type de QoS',
  'r.type.priority': "Priorisation d'appareils / d'applications", 'r.type.limit': 'Limite de débit montant/descendant', 'r.type.sqm': 'Gestion de file (SQM / Smart Queue)', 'r.sqm': 'SQM disponible sur ce modèle ?', 'r.sqm.unknown': 'Inconnu (à vérifier dans la doc)', 'r.sqm.yes': 'Oui (documenté)',
- 'r.ld': 'Limite descendante', 'r.lu': 'Limite montante', 'r.unit': 'Unité saisie dans le routeur', 'r.plan': 'Débit annoncé par le fournisseur (Mbps) : descendant / montant', 'r.gw': "Passerelle (si non détectée automatiquement)",
+ 'r.ld': 'Limite descendante', 'r.lu': 'Limite montante', 'r.unit': 'Unité saisie dans le routeur', 'r.plan': 'Débit annoncé par le fournisseur (Mbps) : descendant / montant', 'r.plan_dl': 'Débit descendant annoncé (Mbps)', 'r.plan_ul': 'Débit montant annoncé (Mbps)', 'r.gw': "Passerelle (si non détectée automatiquement)",
  'r.prio': 'Appareils prioritaires — une ligne par appareil : <code>Nom | priorité | durée</code> (ex. <code>PC-Jeu | haute | 4 heures</code> ou <code>toujours</code>)', 'r.rules': "Règles de bande passante — une ligne par règle : <code>Nom | descendant | montant</code> (dans l'unité choisie)", 'r.notes': 'Notes',
  'r.save': 'Enregistrer et analyser', 'r.saved': 'Enregistré.', 'r.shots': "Captures d'écran des pages QoS (facultatif)", 'r.shots_note': "Stockées localement et ajoutées au rapport. Masquez ou évitez toute capture montrant un mot de passe, une clé Wi-Fi ou un jeton.",
  'r.analysis_h': 'Analyse', 'r.measures_from': 'Débits mesurés pris dans la session #{0} : ↓ {1} Mbps, ↑ {2} Mbps.', 'r.no_test': "Aucun test de saturation enregistré : les limites ne peuvent être comparées qu'au débit annoncé. Lancez le test de saturation.",
@@ -370,6 +370,7 @@ function applyI18n() {
   $$('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
   $$('[data-i18n-html]').forEach(e => e.innerHTML = t(e.dataset.i18nHtml));
   $$('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
+  $$('[data-i18n-aria]').forEach(e => e.setAttribute('aria-label', t(e.dataset.i18nAria)));
   $$('#langs button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
   if (live.datadir) $('#datadir').textContent = live.datadir;
 }

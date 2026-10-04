@@ -9,7 +9,7 @@ namespace NetworkAnalyzer.Tests;
 
 public class ShutdownTests
 {
-    static async Task<(Microsoft.AspNetCore.Builder.WebApplication Web, int Port)> Server() => await Api.StartAsync(new App(Tmp.Dir()), 19500 + Random.Shared.Next(400));
+    static async Task<(Microsoft.AspNetCore.Builder.WebApplication Web, int Port)> Server() => await Api.StartAsync(new App(Tmp.Dir()), 0);
 
     [Fact]
     public async Task TheSessionIsStoppedAndTheHostReleasedWhenTheHostShutsDown()

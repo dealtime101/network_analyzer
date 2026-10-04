@@ -54,7 +54,12 @@ public static class Api
             try
             {
                 await web.StartAsync();
-                return (web, p);
+                if (p != 0) return (web, p);
+                // port 0: the system picked a free one; read it back, and let that address in
+                var bound = new Uri(web.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>().Features
+                    .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()!.Addresses.First()).Port;
+                foreach (var host in new[] { "127.0.0.1", "localhost", "[::1]" }) allowed.Add($"{host}:{bound}");
+                return (web, bound);
             }
             catch (IOException e) { last = e; await web.DisposeAsync(); }
         }

@@ -528,16 +528,52 @@ public class SessionDataShapeTests
     }
 }
 
+public class DynamicPortTests
+{
+    [Fact]
+    public async Task PortZeroLetsTheSystemPickAFreePortAndTheServerAnswersOnIt()
+    {
+        var (web, port) = await Api.StartAsync(new App(Tmp.Dir()), 0);
+        try
+        {
+            Assert.InRange(port, 1024, 65535);
+            using var http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}") };
+            var identity = await http.GetStringAsync("/api/identity");   // the Host header 127.0.0.1:<port> is accepted
+            Assert.True(Launcher.IsNetworkAnalyzer(identity));
+        }
+        finally { await web.StopAsync(); await web.DisposeAsync(); }
+    }
+
+    [Fact]
+    public async Task TwoServersStartedTogetherNeverShareAPort()
+    {
+        var starts = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => Api.StartAsync(new App(Tmp.Dir()), 0)));
+        try { Assert.Equal(6, starts.Select(s => s.Port).Distinct().Count()); }
+        finally { foreach (var (web, _) in starts) { await web.StopAsync(); await web.DisposeAsync(); } }
+    }
+}
+
 public class StartupMessageTests
 {
     [Fact]
     public async Task NoFreePortSaysSoInTheReadersLanguage()
     {
-        int p = 19000 + Random.Shared.Next(500);
+        int p = 0;
         var taken = new List<System.Net.Sockets.TcpListener>();
         try
         {
-            for (int i = 0; i < 2; i++) { var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, p + i); l.Start(); taken.Add(l); }
+            // two ADJACENT free ports, found by asking the system rather than guessing a range
+            for (int attempt = 0; attempt < 50 && taken.Count < 2; attempt++)
+            {
+                foreach (var l in taken) l.Stop();
+                taken.Clear();
+                var first = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0); first.Start();
+                taken.Add(first);
+                p = ((IPEndPoint)first.LocalEndpoint).Port;
+                try { var second = new System.Net.Sockets.TcpListener(IPAddress.Loopback, p + 1); second.Start(); taken.Add(second); }
+                catch (System.Net.Sockets.SocketException) { }
+            }
+            Assert.Equal(2, taken.Count);
             var app = new App(Tmp.Dir());
             var en = await Assert.ThrowsAsync<InvalidOperationException>(() => Api.StartAsync(app, p, 2));
             Assert.Equal($"No free port between {p} and {p + 1}.", en.Message);
@@ -879,7 +915,7 @@ public class ServerTests : IAsyncLifetime
     {
         dir = Tmp.Dir();
         app = new App(dir);
-        (web, port) = await Api.StartAsync(app, 18000 + Random.Shared.Next(1000));
+        (web, port) = await Api.StartAsync(app, 0);   // the system picks a free port: no collision with parallel tests or other services
         http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}"), Timeout = TimeSpan.FromSeconds(60) };
     }
 

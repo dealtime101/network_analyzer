@@ -3,7 +3,12 @@ using NetworkAnalyzer;
 
 namespace NetworkAnalyzer.Tests;
 
-/// <summary>Deterministic simulated network incidents, to test the statistics and the diagnosis rules.</summary>
+/// <summary>One incident of a simulated session, from second <c>T0</c> to second <c>T1</c> after the start.
+/// <para><c>Kind</c>: <c>gw_loss</c> (the gateway and everything behind it lose packets and slow down: local network),
+/// <c>inet_all</c> (all Internet targets degrade, the gateway stays healthy: upstream), <c>inet_one</c> (a single target degrades:
+/// path to it; its id is <c>Opt</c>), <c>custom_only</c> (only the custom destination degrades), <c>bg_traffic</c> (the PC itself
+/// moves <c>Mbps</c> of traffic and latency to the Internet rises with it).</para>
+/// <para><c>Opt</c>: the target id for <c>inet_one</c>, unused otherwise. <c>Mbps</c>: traffic of the PC, for <c>bg_traffic</c> only.</para></summary>
 public sealed record SimEvent(string Kind, double T0, double T1, string? Opt = null, double Mbps = 0);
 
 public sealed class LoadSim
@@ -25,6 +30,9 @@ public sealed class SimParams
     public List<string> IcmpBlocked = new();
 }
 
+/// <summary>Deterministic simulated network incidents, to test the statistics and the diagnosis rules.
+/// <see cref="Make"/> builds a whole session (pings, DNS, traffic, Wi-Fi, marks, an optional load test) for a named scenario and a seed:
+/// the same pair always gives the same data. <see cref="Scenarios"/> lists the scenario names.</summary>
 public static class Simulator
 {
     public const double T0 = 1_760_000_000.0;

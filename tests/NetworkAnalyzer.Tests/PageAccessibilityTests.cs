@@ -372,6 +372,21 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void NoControlForcesAWidthWiderThanASmallScreen()
+    {
+        // a fixed minimum width cannot shrink on a 320 px screen: it overflows the card and the page scrolls sideways
+        var fixedMin = Regex.Matches(Markup, "min-width\\s*:\\s*(\\d+)px").Select(m => int.Parse(m.Groups[1].Value)).Where(w => w > 200).ToList();
+        Assert.Empty(fixedMin);
+        var sel = Regex.Match(Markup, "<select\\b[^>]*\\bid=\"dsess\"[^>]*>").Value;
+        Assert.Contains("max-width:100%", sel);                       // red before: min-width:320px, no maximum
+        Assert.DoesNotContain("min-width:320px", sel);
+        // and no control gets a fixed pixel width above the narrowest phone without a maximum
+        foreach (Match m in Regex.Matches(Markup, "<(?:input|select|textarea)\\b[^>]*>"))
+            if (Regex.Match(m.Value, "[\" ;]width\\s*:\\s*(\\d+)px") is { Success: true } w && int.Parse(w.Groups[1].Value) > 200)
+                Assert.Contains("max-width:100%", m.Value);
+    }
+
+    [Fact]
     public void TheIncidentNoteHasAPermanentVisibleLabel()
     {
         // a placeholder disappears as soon as the user types: the field also needs a label that stays

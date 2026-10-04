@@ -431,6 +431,18 @@ public class StoreTests
     }
 }
 
+public class SessionDataShapeTests
+{
+    [Fact]
+    public void ComputedPropertiesAreNotSerialisedWithASession()
+    {
+        var json = Json.To(Simulator.Make("healthy", 7, p => p.Minutes = 1));
+        Assert.DoesNotContain("end_or_last", json);
+        // the targets appear once, inside meta
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(json, "\"targets\":").Count);
+    }
+}
+
 public class StartupMessageTests
 {
     [Fact]

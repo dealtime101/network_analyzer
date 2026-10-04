@@ -207,10 +207,10 @@ public sealed class SessionData
     public List<TraceRec> Traces { get; set; } = new();
 
     public IReadOnlyList<Sample> S(string name) => Series.TryGetValue(name, out var l) ? l : Array.Empty<Sample>();
-    public List<Target> Targets => Meta.Targets;
+    [JsonIgnore] public List<Target> Targets => Meta.Targets;   // derived: it is stored once, in Meta
 
-    /// <summary>End of the session, or the last measurement when it is still running.</summary>
-    public double EndOrLast => Ended ?? Math.Max(Started, Series.Values.Where(v => v.Count > 0).Select(v => v[^1].T).DefaultIfEmpty(Started).Max());
+    /// <summary>End of the session, or the last measurement when it is still running (derived, never stored).</summary>
+    [JsonIgnore] public double EndOrLast => Ended ?? Math.Max(Started, Series.Values.Where(v => v.Count > 0).Select(v => v[^1].T).DefaultIfEmpty(Started).Max());
 }
 
 public static class Json

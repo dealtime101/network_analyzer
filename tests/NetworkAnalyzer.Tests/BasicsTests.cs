@@ -312,6 +312,22 @@ public class ProbeTests
         Assert.Null(Probes.ParseDnsReply(new byte[5], 1));
     }
 
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static void DirtyTheStack() { Span<byte> d = stackalloc byte[8192]; d.Fill(0xFF); GC.KeepAlive(d.ToArray()); }
+
+    [Fact]
+    public void TheDnsHeaderCountsAreZeroEvenOnADirtyStack()
+    {
+        // C# zero-fills stackalloc (the compiler sets "locals init") unless [SkipLocalsInit] is used, which this project does not use.
+        // Measured here: fill the stack below the caller with 0xFF first, then build queries and read the answer, authority and additional counts.
+        for (int i = 0; i < 20; i++)
+        {
+            DirtyTheStack();
+            var pkt = Probes.BuildDnsQuery("www.example.com", 0x1234);
+            Assert.Equal(new byte[] { 0, 1, 0, 0, 0, 0, 0, 0 }, pkt[4..12]);   // QDCOUNT = 1, then ANCOUNT, NSCOUNT, ARCOUNT = 0
+        }
+    }
+
     [Theory]
     [InlineData(IPStatus.Success, true)] [InlineData(IPStatus.TtlExpired, true)] [InlineData(IPStatus.TimeExceeded, true)]
     [InlineData(IPStatus.DestinationHostUnreachable, true)] [InlineData(IPStatus.DestinationNetworkUnreachable, true)] [InlineData(IPStatus.DestinationProhibited, true)]

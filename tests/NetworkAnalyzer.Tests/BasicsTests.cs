@@ -448,8 +448,29 @@ Il y a 1 interface sur le système :
     Signal                 : 92%
     Profil                 : MaBox
 ";
-    static readonly string NetshEn = NetshFr.Replace("Nom ", "Name").Replace("État", "State").Replace("connecté", "connected").Replace("Canal", "Channel")
-        .Replace("Débit de réception (Mbit/s)", "Receive rate (Mbps)").Replace("Débit de transmission (Mbit/s)", "Transmit rate (Mbps)").Replace("Type de radio", "Radio type");
+    // `netsh wlan show interfaces` as an English Windows prints it, every label in English (written by hand from Microsoft's documented
+    // output format, not captured from a machine: the Windows test PC is wired and has no Wi-Fi service)
+    const string NetshEn = @"
+There is 1 interface on the system:
+
+    Name                   : Wi-Fi
+    Description            : Intel(R) Wi-Fi 6 AX201 160MHz
+    GUID                   : 11111111-2222-3333-4444-555555555555
+    Physical address       : aa:bb:cc:dd:ee:ff
+    State                  : connected
+    SSID                   : MyBox
+    BSSID                  : 11:22:33:44:55:66
+    Network type           : Infrastructure
+    Radio type             : 802.11ax
+    Authentication         : WPA2-Personal
+    Cipher                 : CCMP
+    Connection mode        : Profile
+    Channel                : 36
+    Receive rate (Mbps)    : 866.7
+    Transmit rate (Mbps)   : 780
+    Signal                 : 92%
+    Profile                : MyBox
+";
     static readonly string NetshDown = NetshFr.Replace("connecté", "déconnecté");
     const string NetworksFr = @"
 SSID 1 : MaBox
@@ -534,6 +555,14 @@ SSID 3 : Autre
     {
         var w = SysInfo.ParseNetshInterfaces(NetshEn)!;
         Assert.Equal((92, 36, 866.7, 780.0), (w.Signal, w.Channel, w.RxRate, w.TxRate));
+        Assert.Equal(("11:22:33:44:55:66", "802.11ax", "MyBox"), (w.Bssid, w.Radio, w.Ssid));
+        Assert.True(w.Connected);
+        Assert.Equal("5 GHz / 6 GHz", w.Band);   // inferred from channel 36 (netsh prints no band here)
+        // the same adapter described in English and in French gives the same reading
+        var fr = SysInfo.ParseNetshInterfaces(NetshFr)!;
+        Assert.Equal((fr.Signal, fr.Channel, fr.RxRate, fr.TxRate, fr.Bssid, fr.Radio, fr.Band), (w.Signal, w.Channel, w.RxRate, w.TxRate, w.Bssid, w.Radio, w.Band));
+        // and a disconnected English adapter is not reported
+        Assert.Null(SysInfo.ParseNetshInterfaces(NetshEn.Replace("connected", "disconnected")));
     }
 
     [Fact]

@@ -154,7 +154,10 @@ public sealed class SessionStore
         return d;
     }
 
-    public SessionWriter OpenWriter(int id) => new(LinesPath(id));
+    /// <summary>How many lines a session writer may hold waiting for the disk (about 20 MB at 200,000 lines).</summary>
+    public int WriterCapacity { get; set; } = SessionWriter.DefaultCapacity;
+
+    public SessionWriter OpenWriter(int id) => new(LinesPath(id), WriterCapacity);
 
     /// <summary>Writes a whole session at once (import, simulations, tests). Returns its new id.</summary>
     public int SaveComplete(SessionData d)
@@ -187,11 +190,18 @@ public sealed class SessionStore
 /// <summary>Single background writer: measurement threads only enqueue, the disk is touched every ~0.4 s.</summary>
 public sealed class SessionWriter
 {
-    readonly Channel<string> ch = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+    public const int DefaultCapacity = 200_000;
+    readonly Channel<string> ch;
     readonly Task pump;
+    long dropped;
 
-    public SessionWriter(string path)
+    /// <summary>Lines refused because the disk did not keep up and the queue was full (the newest are the ones dropped).</summary>
+    public int Dropped => (int)Interlocked.Read(ref dropped);
+
+    public SessionWriter(string path, int capacity = DefaultCapacity)
     {
+        // bounded: a disk that stalls cannot make the queue eat all the memory; what does not fit is dropped and counted, never blocking a measuring thread
+        ch = Channel.CreateBounded<string>(new BoundedChannelOptions(capacity) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
         pump = Task.Run(async () =>
         {
             try
@@ -221,10 +231,12 @@ public sealed class SessionWriter
     /// <summary>False once the writer stopped (finished or failed).</summary>
     public bool IsAccepting => Failure is null && !ch.Reader.Completion.IsCompleted;
 
-    public void Sample(double t, string series, double? v, bool ok, string info) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "s", Math.Round(t, 3), series, v.HasValue && double.IsFinite(v.Value) ? Math.Round(v.Value, 3) : null, ok ? 1 : 0, info }));  // NaN/Infinity are not JSON numbers
-    public void Mark(double t, string kind, string note) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "m", t, kind, note }));
-    public void Phase(string name, double t0, double t1, PhaseMeta meta) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "p", name, t0, t1, JsonSerializer.SerializeToElement(meta, Json.Options) }));
-    public void Trace(double t, string target, TraceResult r) => ch.Writer.TryWrite(JsonSerializer.Serialize(new object?[] { "tr", t, target, JsonSerializer.SerializeToElement(r, Json.Options) }));
+    void Put(string line) { if (!ch.Writer.TryWrite(line) && !ch.Reader.Completion.IsCompleted) Interlocked.Increment(ref dropped); }   // a finished or failed writer is reported by Failure, not counted here
+
+    public void Sample(double t, string series, double? v, bool ok, string info) => Put(JsonSerializer.Serialize(new object?[] { "s", Math.Round(t, 3), series, v.HasValue && double.IsFinite(v.Value) ? Math.Round(v.Value, 3) : null, ok ? 1 : 0, info }));  // NaN/Infinity are not JSON numbers
+    public void Mark(double t, string kind, string note) => Put(JsonSerializer.Serialize(new object?[] { "m", t, kind, note }));
+    public void Phase(string name, double t0, double t1, PhaseMeta meta) => Put(JsonSerializer.Serialize(new object?[] { "p", name, t0, t1, JsonSerializer.SerializeToElement(meta, Json.Options) }));
+    public void Trace(double t, string target, TraceResult r) => Put(JsonSerializer.Serialize(new object?[] { "tr", t, target, JsonSerializer.SerializeToElement(r, Json.Options) }));
 
     public async Task CompleteAsync()
     {

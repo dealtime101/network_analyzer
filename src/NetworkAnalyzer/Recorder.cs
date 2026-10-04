@@ -258,6 +258,7 @@ public sealed class Recorder
                 if (hdr != null) { hdr.Ended = Clock.Now(); store.SaveHeader(hdr); }
             }
             if (wr != null) await wr.CompleteAsync();
+            if (wr?.Dropped > 0) AddNote("samples_dropped");   // the writer is gone by the next Status: keep what happened
         }
         finally { lock (gate) stopping = false; }   // whatever happened, a new session may start now
     }
@@ -578,7 +579,7 @@ public sealed class Recorder
                 Running = Running, Sid = Sid, Started = Started, PlannedS = PlannedS,
                 RemainingS = Running ? Math.Max(0, Started + PlannedS - Clock.Now()) : 0,
                 // a failed disk write is shown to the user as it happens, not only discovered when the session is read back
-                Notes = notes.Concat(writer?.Failure != null ? new[] { "write_failed" } : Array.Empty<string>()).Select(c => Loc.T("note." + c)).ToList(), Phase = curPhase?.Name,
+                Notes = notes.Concat(writer?.Failure != null ? new[] { "write_failed" } : Array.Empty<string>()).Concat(writer?.Dropped > 0 ? new[] { "samples_dropped" } : Array.Empty<string>()).Distinct().Select(c => Loc.T("note." + c)).ToList(), Phase = curPhase?.Name,
                 Marks = marks.TakeLast(50).ToList(), Phases = phases.TakeLast(20).ToList(),
             };
     }

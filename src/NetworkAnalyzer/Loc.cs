@@ -128,6 +128,7 @@ public static partial class Loc
         Add("note.no_iface", "No readable physical network interface: computer traffic unavailable.", "Aucune interface réseau physique lisible : trafic de l'ordinateur indisponible.");
         Add("note.task_failed", "A measurement stopped unexpectedly during this session: some series may end before the others.", "Une mesure s'est arrêtée de façon inattendue pendant cette session : certaines séries peuvent s'arrêter avant les autres.");
         Add("note.write_failed", "Saving to disk failed (disk full or file locked): the measurements taken from now on are NOT being saved.", "L'écriture sur disque a échoué (disque plein ou fichier verrouillé) : les mesures prises à partir de maintenant ne sont PAS enregistrées.");
+        Add("note.samples_dropped", "The disk could not keep up with the measurements: some were dropped, so this session has gaps.", "Le disque n'a pas suivi le rythme des mesures : certaines ont été abandonnées, cette session comporte donc des trous.");
         Add("note.counters_unreadable", "Network interface counters unreadable: computer traffic unavailable.", "Compteurs de l'interface réseau illisibles : trafic de l'ordinateur indisponible.");
 
         // ---- marks stored as codes

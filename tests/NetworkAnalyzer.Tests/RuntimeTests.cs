@@ -1127,6 +1127,45 @@ public class WriterFailureTests
     }
 }
 
+public class WriterBacklogTests
+{
+    [Fact]
+    public async Task AWriterThatCannotKeepUpDropsAndCountsInsteadOfGrowingWithoutLimit()
+    {
+        var path = Path.Combine(Tmp.Dir(), "1.jsonl");
+        var w = new SessionWriter(path, capacity: 50);
+        for (int i = 0; i < 1000; i++) w.Sample(i, "ping:x", 1.0, true, "");        // far faster than the 0.4 s disk cycle
+        await w.CompleteAsync();
+        int written = File.ReadAllLines(path).Length;
+        Assert.True(w.Dropped >= 900, $"dropped {w.Dropped}");                        // red before: the queue took all 1000 (and no counter existed)
+        Assert.Equal(1000, written + w.Dropped);                                      // every line is either on disk or counted as dropped
+        Assert.True(written <= 150, $"{written} lines were queued with a capacity of 50");
+    }
+
+    [Fact]
+    public async Task ASessionThatDroppedMeasurementsSaysSo()
+    {
+        var store = new SessionStore(Tmp.Dir()) { WriterCapacity = 50 };
+        var rec = new Recorder(store);
+        rec.Start(new EnvInfo(), new List<Target>(), 1);
+        for (int i = 0; i < 2000; i++) rec.Emit("net:down_bps", i, true);
+        await rec.StopAsync();
+        Assert.Contains(rec.Status().Notes, n => n == Loc.T("note.samples_dropped"));
+        using (Loc.Scope("fr")) Assert.Contains("abandonnées", Loc.T("note.samples_dropped"));
+    }
+
+    [Fact]
+    public async Task AHealthyWriterDropsNothing()
+    {
+        var path = Path.Combine(Tmp.Dir(), "1.jsonl");
+        var w = new SessionWriter(path);
+        for (int i = 0; i < 5000; i++) w.Sample(i, "ping:x", 1.0, true, "");
+        await w.CompleteAsync();
+        Assert.Equal(0, w.Dropped);
+        Assert.Equal(5000, File.ReadAllLines(path).Length);
+    }
+}
+
 public class StoreToleranceTests
 {
     [Fact]

@@ -566,7 +566,7 @@ public class ProbeTests
         errors[1].Unreachable = 3;
         var a = Probes.AnalyzeTrace(errors, "1.1.1.1");
         Assert.False(a.Reached);                  // red before: true, from the mere presence of RTTs
-        Assert.Equal(100.0, a.DestLossPct);       // and the probes are failures, not 0 % loss
+        Assert.Null(a.DestLossPct);               // not reached: no destination loss is stated either (NET467.245)
         // one real echo reply among the errors is a real answer
         var mixed = new[] { Hop(1, "192.168.0.1", new[] { .5, .5, .5 }, 0), Hop(2, "1.1.1.1", new[] { 12.0, 11, 13 }, 0) };
         mixed[1].Unreachable = 2;
@@ -581,7 +581,9 @@ public class ProbeTests
         var hops = new[] { Hop(1, "192.168.0.1", new[] { .5, .5, .5 }, 0), Hop(2, "10.0.0.1", new[] { 10.0, 10 }, 1), Hop(3, null, Array.Empty<double>(), 3) };
         var a = Probes.AnalyzeTrace(hops, "1.1.1.1");
         Assert.False(a.Reached);
-        Assert.Equal(100.0, a.DestLossPct);
+        // the last TTL tested is not the destination: no destination loss is claimed (the ISP rule reads it as evidence)
+        Assert.Null(a.DestLossPct);
+        Assert.Equal(0, a.DestSent);
         Assert.False(Probes.AnalyzeTrace(new List<TraceHop>()).Reached);
     }
 }

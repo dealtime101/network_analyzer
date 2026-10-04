@@ -221,8 +221,12 @@ public static class Probes
                 break;
             }
         }
-        res.DestSent = last.Sent;
-        res.DestLossPct = last.Sent > 0 ? 100.0 * (last.Lost + last.Unreachable) / last.Sent : null;   // the probes an error answered did not measure the destination
+        // only when the destination was reached: otherwise the last hop is just the last TTL tried, and its loss says nothing about the destination
+        if (res.Reached)
+        {
+            res.DestSent = last.Sent;
+            res.DestLossPct = last.Sent > 0 ? 100.0 * (last.Lost + last.Unreachable) / last.Sent : null;   // the probes an error answered did not measure the destination
+        }
         return res;
     }
 

@@ -22,6 +22,20 @@ public static class Launcher
         catch (System.Text.Json.JsonException) { return false; }
     }
 
+    /// <summary>Waits for the host's own shutdown (Ctrl+C, SIGTERM, closing the console window), then closes the running
+    /// session and releases the host. WaitForShutdownAsync already stops the host itself, so there is no second stop here; the
+    /// session is closed whatever happens, and a failure while doing so is reported, not thrown.</summary>
+    public static async Task WaitAndShutDownAsync(Microsoft.AspNetCore.Builder.WebApplication web, Func<Task> stopSession)
+    {
+        try { await web.WaitForShutdownAsync(); }
+        finally
+        {
+            try { await stopSession(); }
+            catch (Exception e) { Console.Error.WriteLine($"[shutdown] closing the running session failed: {e.Message}"); }
+            finally { await web.DisposeAsync(); }
+        }
+    }
+
     public sealed record Options(int Port, bool OpenBrowser, bool Help, string? Error);
 
     /// <summary>Command line → options. Anything wrong is reported in Error (never silently ignored).</summary>

@@ -7,6 +7,34 @@ using Xunit;
 
 namespace NetworkAnalyzer.Tests;
 
+public class ShutdownTests
+{
+    static async Task<(Microsoft.AspNetCore.Builder.WebApplication Web, int Port)> Server() => await Api.StartAsync(new App(Tmp.Dir()), 19500 + Random.Shared.Next(400));
+
+    [Fact]
+    public async Task TheSessionIsStoppedAndTheHostReleasedWhenTheHostShutsDown()
+    {
+        var (web, _) = await Server();
+        bool stopped = false;
+        var run = Launcher.WaitAndShutDownAsync(web, () => { stopped = true; return Task.CompletedTask; });
+        Assert.False(run.IsCompleted);                       // it waits for the host's own shutdown (Ctrl+C, SIGTERM, window closed)
+        web.Lifetime.StopApplication();
+        await run.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.True(stopped);
+        Assert.Throws<ObjectDisposedException>(() => web.Services.GetService(typeof(Microsoft.Extensions.Hosting.IHostApplicationLifetime)));   // the host is released
+    }
+
+    [Fact]
+    public async Task AFailureWhileStoppingTheSessionIsReportedAndDoesNotLeakTheHost()
+    {
+        var (web, _) = await Server();
+        var run = Launcher.WaitAndShutDownAsync(web, () => throw new IOException("disk full"));
+        web.Lifetime.StopApplication();
+        await run.WaitAsync(TimeSpan.FromSeconds(20));        // no exception escapes
+        Assert.Throws<ObjectDisposedException>(() => web.Services.GetService(typeof(Microsoft.Extensions.Hosting.IHostApplicationLifetime)));
+    }
+}
+
 public class LauncherTests
 {
     [Theory]

@@ -43,7 +43,5 @@ Console.WriteLine($"Network Analyzer {AppVersion.Display} — interface: {url}  
 if (openBrowser) Open(url);
 
 // The host drives the shutdown (Ctrl+C, SIGTERM, closing the console window): wait for it, then stop the session cleanly.
-await web.WaitForShutdownAsync();
-await app.StopSessionAsync();
-await web.StopAsync();
+await Launcher.WaitAndShutDownAsync(web, () => app.StopSessionAsync());
 return 0;

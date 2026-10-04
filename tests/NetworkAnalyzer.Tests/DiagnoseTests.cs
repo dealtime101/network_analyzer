@@ -245,7 +245,7 @@ public class ScenarioTests
         Assert.Equal("saturation", Ids(a)[0]);
         Assert.Contains(a.Hypotheses[0].Evidence, p => p.Contains('%'));
         var unknown = Run("saturation", new AppConfig());
-        Assert.NotEqual("saturation", Ids(unknown).FirstOrDefault());
+        Assert.DoesNotContain("saturation", Ids(unknown));   // anywhere in the list, not only first
     }
 
     [Fact]

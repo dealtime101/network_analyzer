@@ -301,6 +301,13 @@ public static partial class Diagnose
     static int Z(Dictionary<string, int> z, string k) => z.GetValueOrDefault(k);
     static string Cap(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
+    /// <summary>Cap and round the score first, then derive the level from the number the user will see.</summary>
+    public static void Finalise(Hypothesis h)
+    {
+        h.Score = Math.Round(Math.Min(h.Score, 10.0), 1, MidpointRounding.ToEven);
+        h.Level = Level(h.Score);
+    }
+
     public static string Level(double score) => score >= 7 ? "high" : score >= 4 ? "medium" : "low";
 
     public static string Grade(double delta)
@@ -984,11 +991,7 @@ public static partial class Diagnose
             RuleLan(cx, timeline, bloat), RuleBufferbloat(cx, bloat), RuleSaturation(cx, timeline, bloat, cfg), RuleRouter(cx, bloat, cfg),
             RuleIsp(cx, timeline), RuleDns(cx), RuleBackground(cx, timeline),
         };
-        foreach (var h in hyps)
-        {
-            h.Level = Level(h.Score);
-            h.Score = Math.Round(Math.Min(h.Score, 10.0), 1, MidpointRounding.ToEven);
-        }
+        foreach (var h in hyps) Finalise(h);
         var shown = hyps.Where(h => h.Score >= 2 && h.Evidence.Count > 0).OrderByDescending(h => h.Score).ToList();
         var unlikely = hyps.Where(h => h.Score < 2 && h.Counter.Count > 0).Select(h => new UnlikelyItem { Id = h.Id, Title = h.Title, Reasons = h.Counter }).ToList();
         var notEval = hyps.Where(h => h.NotEvaluatedReason != null).Select(h => new NotEvaluatedItem { Id = h.Id, Title = h.Title, Reason = h.NotEvaluatedReason!, NextTest = h.NextTest }).ToList();

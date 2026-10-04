@@ -168,6 +168,19 @@ public class ScenarioTests
         Assert.Contains("Task Manager", h.NextTest);
     }
 
+    [Theory]
+    [InlineData(6.96, 7.0, "high")]
+    [InlineData(3.96, 4.0, "medium")]
+    [InlineData(3.94, 3.9, "low")]
+    [InlineData(12.0, 10.0, "high")]
+    public void LevelFollowsTheDisplayedScore(double raw, double shown, string level)
+    {
+        var h = new Hypothesis { Score = raw };
+        Diagnose.Finalise(h);
+        Assert.Equal(shown, h.Score);
+        Assert.Equal(level, h.Level);
+    }
+
     [Fact]
     public void ComparisonMetricsIgnoreAGatewayThatDoesNotAnswerIcmp()
     {

@@ -41,6 +41,17 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void SessionWithUploadTrafficOnlyStillAnalysesToo()
+    {
+        var d = Simulator.Make("background", 7);
+        d.Series.Remove("net:down_bps");
+        var a = Diagnose.Analyze(d, new AppConfig());   // the mirror image of the download-only case: no exception, the missing side shows a dash
+        var text = Text(a);
+        Assert.Contains("PC traffic: ↓ — Mbps (max —)", text);
+        Assert.DoesNotContain("PC traffic: ↓ — Mbps (max —), ↑ — Mbps", text);   // the upload figures are shown, not dashed too
+    }
+
+    [Fact]
     public void WifiInstability()
     {
         var a = Run("wifi_unstable");

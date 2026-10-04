@@ -18,7 +18,7 @@ public static class Report
     };
 
     public static string Ts(double t, string fmt = "HH:mm:ss") => DateTimeOffset.FromUnixTimeMilliseconds((long)(t * 1000)).ToLocalTime().ToString(fmt, Inv);
-    static string Num(double? x, int d = 0, string unit = "") => x is null ? "—" : x.Value.ToString("F" + d, Inv) + unit;
+    static string Num(double? x, int d = 0, string unit = "") => x is null ? "—" : x.Value.ToString("F" + d, Loc.Fmt) + unit;
 
     /// <summary>A change with an explicit sign: +4, -3, 0; an em dash when there is no value.</summary>
     static string Signed(double? x, int d = 0, string unit = "") => x is null ? "—" : (x.Value > 0 && Math.Round(x.Value, d) != 0 ? "+" : "") + Num(x, d, unit);
@@ -80,7 +80,7 @@ public static class Report
         for (int i = 0; i < 5; i++)
         {
             double y = 4 + i * (H - B - 4) / 4.0;
-            o.Append($"<line x1=\"{L}\" x2=\"{W - 6}\" y1=\"{N1(y)}\" y2=\"{N1(y)}\" stroke=\"#ddd\"/><text x=\"{L - 4}\" y=\"{N1(y + 3)}\" font-size=\"9\" text-anchor=\"end\" fill=\"#666\">{(ymax * (1 - i / 4.0)).ToString(ymax < 1 ? "0.00" : ymax < 10 ? "0.0" : "0", Inv)}</text>");
+            o.Append($"<line x1=\"{L}\" x2=\"{W - 6}\" y1=\"{N1(y)}\" y2=\"{N1(y)}\" stroke=\"#ddd\"/><text x=\"{L - 4}\" y=\"{N1(y + 3)}\" font-size=\"9\" text-anchor=\"end\" fill=\"#666\">{(ymax * (1 - i / 4.0)).ToString(ymax < 1 ? "0.00" : ymax < 10 ? "0.0" : "0", Loc.Fmt)}</text>");
         }
         for (int i = 0; i <= 6; i++)
         {
@@ -146,7 +146,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
     static string StatRow(string label, string state, RttStats? s)
     {
         if (s is null) return $"<tr><td>{E(label)}</td><td>{E(state)}</td>" + string.Concat(Enumerable.Repeat("<td class='n'>—</td>", 7)) + "</tr>";
-        return $"<tr><td>{E(label)}</td><td>{E(state)}</td><td class='n'>{s.N}</td><td class='n'>{s.LossPct.ToString("0.0", Inv)}</td><td class='n'>{Num(s.Median, 1)}</td>" +
+        return $"<tr><td>{E(label)}</td><td>{E(state)}</td><td class='n'>{s.N}</td><td class='n'>{s.LossPct.ToString("0.0", Loc.Fmt)}</td><td class='n'>{Num(s.Median, 1)}</td>" +
                $"<td class='n'>{Num(s.P95, 1)}</td><td class='n'>{Num(s.Max, 1)}</td><td class='n'>{Num(s.Jitter, 1)}</td><td class='n'>{Num(s.Min, 1)}</td></tr>";
     }
 

@@ -39,8 +39,8 @@ public static class RouterQos
     public const string DocUrl = "https://www.tp-link.com/en/support/";
     const int ProtocolSteps = 6;
 
-    static string G(double x) => x.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture);
-    static string F0(double x) => x.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+    static string G(double x) => x.ToString("0.######", Loc.Fmt);
+    static string F0(double x) => x.ToString("0", Loc.Fmt);
     /// <summary>English templates open with the direction ("Download limit"); the French ones put it after "Limite", in lower case.</summary>
     static string Cap(string s) => s.Length == 0 || Loc.Lang != "en" ? s : char.ToUpperInvariant(s[0]) + s[1..];
     static string Dir(string d) => Loc.T("dir." + d);

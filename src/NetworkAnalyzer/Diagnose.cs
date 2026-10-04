@@ -291,10 +291,11 @@ public static partial class Diagnose
     static string T(string key, params object?[] args) => Loc.T(key, args);
 
     // ------------------------------------------------------------------ helpers
-    static string F0(double x) => x.ToString("0", Inv);
-    static string F1(double x) => x.ToString("0.0", Inv);
-    static string F2(double x) => x.ToString("0.00", Inv);
-    static string G(double x) => x.ToString("0.######", Inv);
+    // numbers written into sentences follow the reader's language (decimal comma in French)
+    static string F0(double x) => x.ToString("0", Loc.Fmt);
+    static string F1(double x) => x.ToString("0.0", Loc.Fmt);
+    static string F2(double x) => x.ToString("0.00", Loc.Fmt);
+    static string G(double x) => x.ToString("0.######", Loc.Fmt);
     static string FmtF1(double? x) => x is null ? "—" : F1(x.Value);
     static string FmtMs(double? x) => x is null ? "—" : F0(x.Value) + " ms";
     static double? Mbps(double? bps) => bps is null ? null : bps / 1e6;

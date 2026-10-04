@@ -401,6 +401,22 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void FrenchTextUsesTheDecimalCommaAndEnglishTheDot()
+    {
+        // a raw double given to a template
+        Assert.Contains("≥ 5,5 Mbps", Loc.In("fr", "d.zone.busy", 5.5));
+        Assert.Contains("≥ 5.5 Mbps", Loc.In("en", "d.zone.busy", 5.5));
+        // numbers formatted by the engine before they reach the template
+        var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };
+        using (Loc.Scope("fr")) Assert.Contains("environ 0,46 Mbps", RouterQos.Propose(r, (null, 0.5), 200).First().Change);
+        using (Loc.Scope("en")) Assert.Contains("about 0.46 Mbps", RouterQos.Propose(r, (null, 0.5), 200).First().Change);
+        // and the report's chart axis
+        string Axis(string lang) { using (Loc.Scope(lang)) return Report.SvgChart(new() { new Report.ChartSeries { Name = "x", Pts = new() { (1, 0.4), (2, 0.2) } } }, 0, 10); }
+        Assert.Contains(">0,43<", Axis("fr"));
+        Assert.Contains(">0.43<", Axis("en"));
+    }
+
+    [Fact]
     public void BothLanguagesNameTheSameInvalidFields()
     {
         // SaveConfig refuses a bad QoS TYPE or a bad unit: both messages must say so

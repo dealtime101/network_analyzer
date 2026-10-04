@@ -44,12 +44,19 @@ public static partial class Loc
         public void Dispose() => current.Value = previous;
     }
 
-    /// <summary>Translated text with {0}, {1}… placeholders filled (invariant culture). A missing key shows as ‹key›.</summary>
+    // The application runs with InvariantGlobalization, so a "fr-FR" CultureInfo would still format with a dot: the French
+    // separators are spelled out. Machine output (CSV, SVG coordinates, JSON) stays on the invariant culture.
+    static readonly NumberFormatInfo FrNumbers = new() { NumberDecimalSeparator = ",", NumberGroupSeparator = " " };
+
+    /// <summary>How numbers shown to the reader are written: decimal comma in French, dot in English.</summary>
+    public static IFormatProvider Fmt => Lang == "fr" ? FrNumbers : CultureInfo.InvariantCulture;
+
+    /// <summary>Translated text with {0}, {1}… placeholders filled (numbers in the reader's format). A missing key shows as ‹key›.</summary>
     public static string T(string key, params object?[] args)
     {
         if (!table.TryGetValue(key, out var v)) return $"‹{key}›";
         var tpl = Lang == "fr" ? v.Fr : v.En;
-        return args.Length == 0 ? tpl : string.Format(CultureInfo.InvariantCulture, tpl, args);
+        return args.Length == 0 ? tpl : string.Format(Fmt, tpl, args);
     }
 
     public static string In(string lang, string key, params object?[] args)

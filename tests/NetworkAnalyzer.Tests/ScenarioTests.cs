@@ -41,6 +41,19 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void AnyDegradedCustomTargetMakesTheWindowACustomPathNotOnlyTheFirst()
+    {
+        TargetFacts T(string role, bool bad) => new() { Role = role, Label = role, Bad = bad, Stats = new RttStats { N = 20 } };
+        var healthyFirst = new WindowFacts { Targets = { ["gateway"] = T("gateway", false), ["cloudflare"] = T("internet", false), ["c1"] = T("custom", false), ["c2"] = T("custom", true) } };
+        Assert.Equal("custom_path", Diagnose.Localize(healthyFirst));   // the second custom target is the degraded one
+        var allHealthy = new WindowFacts { Targets = { ["gateway"] = T("gateway", false), ["cloudflare"] = T("internet", false), ["c1"] = T("custom", false), ["c2"] = T("custom", false) } };
+        Assert.Equal("none", Diagnose.Localize(allHealthy));
+        // and nothing changed for the usual single custom target
+        var single = new WindowFacts { Targets = { ["gateway"] = T("gateway", false), ["cloudflare"] = T("internet", false), ["custom"] = T("custom", true) } };
+        Assert.Equal("custom_path", Diagnose.Localize(single));
+    }
+
+    [Fact]
     public void SessionWithUploadTrafficOnlyStillAnalysesToo()
     {
         var d = Simulator.Make("background", 7);

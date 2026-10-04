@@ -384,7 +384,7 @@ public static partial class Diagnose
         if (gw.Count > 0 && gw[0].Bad) return "local";
         if (badInet.Count >= 2 || (inet.Count == 1 && badInet.Count > 0)) return "upstream";
         if (badInet.Count > 0) return "path";
-        if (cust.Count > 0 && cust[0].Bad) return "custom_path";
+        if (cust.Any(v => v.Bad)) return "custom_path";  // any custom target, not only the first one
         if (DnsBad(f)) return "dns";
         if (!f.Targets.Values.Any(v => v.Stats != null && v.Stats.N >= 3)) return "undetermined";
         return "none";

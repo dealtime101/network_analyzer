@@ -51,7 +51,7 @@ public static partial class Loc
         Add("lan.ev.wifi_weak", "Weak Wi‑Fi signal: median {0} % (min {1} %).", "Signal Wi‑Fi faible : médiane {0} % (min {1} %).");
         Add("lan.ev.wifi_drops", "Wi‑Fi signal drops down to {0} % (median {1} %).", "Chutes du signal Wi‑Fi jusqu'à {0} % (médiane {1} %).");
         Add("lan.counter.wifi_ok", "Good Wi‑Fi signal: median {0} %, min {1} %.", "Signal Wi‑Fi correct : médiane {0} %, min {1} %.");
-        Add("lan.ev.wifi_link", "The Wi‑Fi LINK rate (≠ Internet speed) drops from {0} to {1} Mbit/s.", "Le débit de LIAISON Wi‑Fi (≠ débit Internet) chute de {0} à {1} Mbit/s.");
+        Add("lan.ev.wifi_link", "The Wi‑Fi LINK rate (≠ Internet speed) drops from {0} to {1} Mbps.", "Le débit de LIAISON Wi‑Fi (≠ débit Internet) chute de {0} à {1} Mbps.");
         Add("lan.ev.roams", "{0} Wi‑Fi access point change(s) during the session.", "{0} changement(s) de point d'accès Wi‑Fi pendant la session.");
         Add("lan.ev.neighbors", "{0} neighbouring networks with a notable signal on the same channel (indicative; non-Wi‑Fi interference — microwave ovens, Bluetooth — cannot be measured here).", "{0} réseaux voisins avec un signal notable sur le même canal (indicatif ; les interférences non Wi‑Fi — micro‑ondes, Bluetooth — ne sont pas mesurables ici).");
         Add("lan.limit_no_wifi", "No Wi‑Fi measurement available (Windows did not expose them).", "Aucune mesure Wi‑Fi disponible (Windows ne les a pas exposées).");

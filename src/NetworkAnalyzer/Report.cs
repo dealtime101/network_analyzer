@@ -335,7 +335,7 @@ public static partial class Loc
         Add("rep.measures_note", "Outside the load phases of the saturation test (except idle).", "Hors phases de charge du test de saturation (sauf le repos).");
         Add("rep.traffic_line", "PC traffic (outside the test) — download: median {0} Mbps, p95 {1}, max {2}; upload: median {3} Mbps, p95 {4}, max {5}.", "Trafic du PC (hors test) — descendant : médiane {0} Mbps, p95 {1}, max {2} ; montant : médiane {3} Mbps, p95 {4}, max {5}.");
         Add("rep.traffic_note", "The computer's totals only; no per-process attribution (not reliable without administrator rights).", "Totaux de l'ordinateur uniquement ; pas d'attribution par processus (non fiable sans droits administrateur).");
-        Add("rep.wifi_line", "Wi‑Fi: median signal {0} % (min {1} %), channel {2}, band {3}, LINK rate (≠ Internet speed) transmit median {4} Mbit/s (min {5}), receive {6} Mbit/s.", "Wi‑Fi : signal médian {0} % (min {1} %), canal {2}, bande {3}, débit de LIAISON (≠ débit Internet) émission médian {4} Mbit/s (min {5}), réception {6} Mbit/s.");
+        Add("rep.wifi_line", "Wi‑Fi: median signal {0} % (min {1} %), channel {2}, band {3}, LINK rate (≠ Internet speed) transmit median {4} Mbps (min {5}), receive {6} Mbps.", "Wi‑Fi : signal médian {0} % (min {1} %), canal {2}, bande {3}, débit de LIAISON (≠ débit Internet) émission médian {4} Mbps (min {5}), réception {6} Mbps.");
         Add("rep.h.sat", "Saturation test (indicative)", "Test de saturation (indicatif)");
         Add("rep.th.dir", "Direction", "Sens");
         Add("rep.th.sustained", "Sustained throughput", "Débit soutenu");

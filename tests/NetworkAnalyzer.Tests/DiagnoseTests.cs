@@ -401,6 +401,16 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void OneNotationForTheBitRateUnit()
+    {
+        foreach (var k in Loc.Keys)
+        {
+            var (en, fr) = Loc.Raw(k);
+            Assert.False(en.Contains("Mbit/s") || fr.Contains("Mbit/s"), $"{k}: use Mbps");
+        }
+    }
+
+    [Fact]
     public void FrenchTextHasNoKnownAgreementMistakes()
     {
         // wording mistakes found in review: add the faulty phrase here when one is fixed

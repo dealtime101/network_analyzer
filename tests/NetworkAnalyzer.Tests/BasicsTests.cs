@@ -45,6 +45,7 @@ public class TargetLabelTests
         Assert.Equal(6, targets.Count);
         Assert.All(targets, t => Assert.NotEqual(t.Id, t.Label));
         Assert.Equal("Cloudflare (1.1.1.1)", targets.Single(t => t.Id == "cloudflare").Label);
+        Assert.Equal("Cloudflare IPv6 (2606:4700:4700::1111)", targets.Single(t => t.Id == "cloudflare6").Label);   // the address is shown, like the other public targets
         Assert.Contains("game.example.net", targets.Single(t => t.Id == "custom").Label);
         Assert.False(string.IsNullOrWhiteSpace(targets.Single(t => t.Id == "gateway").Label));
     }

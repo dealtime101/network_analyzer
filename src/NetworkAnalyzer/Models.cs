@@ -23,7 +23,7 @@ public sealed class Target
         "cloudflare" => $"Cloudflare ({Host})",
         "google" => $"Google ({Host})",
         "quad9" => $"Quad9 ({Host})",
-        "cloudflare6" => "Cloudflare IPv6",
+        "cloudflare6" => $"Cloudflare IPv6 ({Host})",
         _ => Id,
     };
 }

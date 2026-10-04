@@ -1070,7 +1070,10 @@ public class ServerTests : IAsyncLifetime
     [Fact]
     public async Task RealShortSessionEndToEnd()
     {
-        var (code, body) = await Call("/api/session/start", new { minutes = 1, label = "e2e", custom_target = "" });
+        // Loopback stands in for the gateway and for a custom destination, so this test needs no Internet at all:
+        // the Cloudflare/Google/Quad9 targets are still measured, but nothing below depends on them answering.
+        await Call("/api/config", new { gateway_override = "127.0.0.1" });
+        var (code, body) = await Call("/api/session/start", new { minutes = 1, label = "e2e", custom_target = "127.0.0.1:443" });
         Assert.Equal(200, code);
         int sid = J(body)["sid"]!.GetValue<int>();
         Assert.Equal(409, (await Call("/api/session/start", new { minutes = 1 })).Code);  // already running
@@ -1078,7 +1081,8 @@ public class ServerTests : IAsyncLifetime
         Assert.Equal(200, (await Call("/api/mark", new { note = "x" })).Code);
         var live = J((await Call("/api/live?since=0")).Body);
         Assert.True(live["status"]!["running"]!.GetValue<bool>());
-        Assert.NotNull(live["series"]!["ping:cloudflare"]);
+        Assert.NotNull(live["series"]!["ping:custom"]);    // answered by the loopback
+        Assert.NotNull(live["series"]!["ping:gateway"]);
         Assert.Equal(409, (await Call($"/api/session/{sid}/delete", new { })).Code);  // no deletion while measuring
         Assert.Equal(200, (await Call("/api/session/stop", new { })).Code);
         var res = J((await Call($"/api/session/{sid}")).Body);

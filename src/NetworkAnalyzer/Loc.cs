@@ -162,6 +162,6 @@ public static partial class Loc
         Add("def.median", "Median: central value of the replies received.", "Médiane : valeur centrale des temps de réponse reçus.");
         Add("def.p95", "p95: at least 95% of the replies are at most this value (nearest rank).", "p95 : au moins 95 % des réponses sont au plus égales à cette valeur (rang le plus proche).");
         Add("def.loss", "Loss: requests without reply ÷ requests sent. System pauses (sleep) do not count.", "Perte : requêtes sans réponse ÷ requêtes envoyées. Les pauses système (veille) ne comptent pas.");
-        Add("def.jitter", "Jitter: mean of |RTT(i) − RTT(i−1)| between two consecutive replies (a loss breaks the chain).", "Gigue : moyenne de |RTT(i) − RTT(i−1)| entre deux réponses consécutives (une perte interrompt la chaîne).");
+        Add("def.jitter", "Jitter: mean of |RTT(i) − RTT(i−1)| between two consecutive replies (a loss or a long pause breaks the chain).", "Gigue : moyenne de |RTT(i) − RTT(i−1)| entre deux réponses consécutives (une perte ou une longue pause interrompt la chaîne).");
     }
 }

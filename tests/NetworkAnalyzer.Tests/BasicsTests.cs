@@ -54,6 +54,21 @@ public class TargetLabelTests
 public class StatsTests
 {
     [Fact]
+    public void JitterDoesNotBridgeAPauseOrAnExcludedInterval()
+    {
+        var s = new List<Sample>();
+        for (int t = 0; t < 10; t++) s.Add(new Sample(t, 10, true, ""));
+        for (int t = 70; t < 80; t++) s.Add(new Sample(t, 20, true, ""));   // a minute without samples: sleep, or an excluded load phase
+        Assert.Equal(0.0, Stats.Jitter(s));                                 // the 10 ms jump across the gap is not jitter
+        // a series that is sampled slowly by design (DNS: every 5 s) keeps its chain
+        var dns = Enumerable.Range(0, 10).Select(i => new Sample(i * 5, i % 2 == 0 ? 10 : 20, true, "")).ToList();
+        Assert.Equal(10.0, Stats.Jitter(dns));
+        // a lost sample still breaks the chain, as before
+        var lossy = new List<Sample> { new(0, 10, true, ""), new(1, null, false, "timeout"), new(2, 30, true, ""), new(3, 31, true, "") };
+        Assert.Equal(1.0, Stats.Jitter(lossy));
+    }
+
+    [Fact]
     public void MedianOfASortedListReadsTheMiddleWithoutSortingAgain()
     {
         Assert.Equal(2.0, Stats.MedianSorted(new List<double> { 1, 2, 3 }));

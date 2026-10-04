@@ -45,17 +45,25 @@ public static class Stats
         return n % 2 == 1 ? s[n / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
     }
 
+    /// <summary>Mean |RTT(i) − RTT(i−1)| between consecutive replies. A lost sample breaks the chain, and so does a hole
+    /// in the series (a system pause, or an interval taken out by the caller): more than 3 usual sampling steps apart,
+    /// two replies are not "consecutive".</summary>
     public static double? Jitter(IEnumerable<Sample> samples)
     {
+        var list = samples as IList<Sample> ?? samples.ToList();
+        var steps = new List<double>();
+        for (int i = 1; i < list.Count; i++) steps.Add(list[i].T - list[i - 1].T);
+        double maxStep = steps.Count > 0 ? 3 * (Median(steps.Where(d => d > 0)) ?? 1.0) : double.MaxValue;
         double? prev = null;
-        double sum = 0;
+        double prevT = 0, sum = 0;
         int count = 0;
-        foreach (var s in samples)
+        foreach (var s in list)
         {
             if (s.Ok && s.V.HasValue)
             {
-                if (prev.HasValue) { sum += Math.Abs(s.V.Value - prev.Value); count++; }
+                if (prev.HasValue && s.T - prevT <= maxStep) { sum += Math.Abs(s.V.Value - prev.Value); count++; }
                 prev = s.V;
+                prevT = s.T;
             }
             else prev = null;
         }

@@ -95,16 +95,25 @@ public static class Api
         {
             if (!(ctx.Request.ContentType ?? "").StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) { await Write(ctx, 415, new { error = Loc.T("err.content_type") }); return; }
             if ((ctx.Request.ContentLength ?? 0) > MaxBody) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
+            // Kestrel's own default is 30 MB: bring it down to ours so the transport stops reading, and the connection is closed, once it is crossed
+            if (ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } lim) lim.MaxRequestBodySize = MaxBody;
             try
             {
+                // read by blocks and counted: a body without Content-Length (chunked) is refused as soon as it passes the limit, not after being copied whole
                 using var ms = new MemoryStream();
-                await ctx.Request.Body.CopyToAsync(ms);
-                if (ms.Length > MaxBody) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
+                var block = new byte[65536];
+                int got;
+                while ((got = await ctx.Request.Body.ReadAsync(block)) > 0)
+                {
+                    if (ms.Length + got > MaxBody) { ctx.Response.Headers.Connection = "close"; await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
+                    ms.Write(block, 0, got);
+                }
                 var node = ms.Length == 0 ? new JsonObject() : JsonNode.Parse(ms.ToArray());
                 if (node is not JsonObject o) { await Write(ctx, 400, new { error = Loc.T("err.object_expected") }); return; }
                 body = o;
             }
             catch (JsonException) { await Write(ctx, 400, new { error = Loc.T("err.invalid_json") }); return; }
+            catch (Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException e) when (e.StatusCode == 413) { await Write(ctx, 413, new { error = Loc.T("err.too_large") }); return; }
         }
         else if (method != "GET") { await Write(ctx, 405, new { error = Loc.T("err.method") }); return; }
         try

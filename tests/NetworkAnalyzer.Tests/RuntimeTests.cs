@@ -1172,6 +1172,38 @@ public class ServerTests : IAsyncLifetime
         try { Directory.Delete(dir, true); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }   // best effort; Tmp sweeps what is left at exit
     }
 
+    /// <summary>A body of unknown length (sent chunked) that never ends: counts what the server let it send.</summary>
+    sealed class EndlessBody : HttpContent
+    {
+        public long Sent;
+        public EndlessBody() { Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"); }
+        protected override async Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context)
+        {
+            var block = new byte[65536];
+            Array.Fill(block, (byte)' ');
+            while (Sent < 200_000_000)
+            {
+                await stream.WriteAsync(block);
+                Sent += block.Length;
+            }
+        }
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+    }
+
+    [Fact]
+    public async Task ABodyWithoutContentLengthStopsBeingReadAtTheLimit()
+    {
+        var body = new EndlessBody();
+        try
+        {
+            using var resp = await http.PostAsync("/api/config", body);
+            Assert.Equal(413, (int)resp.StatusCode);
+        }
+        catch (HttpRequestException) { }   // the server may close the connection once it answered: the point is how much it read
+        // the limit is 8 MB; what the client got through is that plus what the transport buffered, nowhere near the 30 MB of Kestrel's own default
+        Assert.True(body.Sent < 16_000_000, $"{body.Sent} bytes were read before the request was refused");
+    }
+
     [Fact]
     public async Task ASessionStillRunningNeverReachesThePageWithoutAnEndTime()
     {

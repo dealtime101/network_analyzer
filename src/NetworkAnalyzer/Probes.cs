@@ -71,14 +71,18 @@ public static class Probes
     }
 
     // ------------------------------------------------------------------ TCP
-    public static async Task<ProbeResult> TcpAsync(string host, int port, int timeoutMs = 2000)
+    /// <summary>Time of the TCP handshake only (≈ 1 RTT). A host name is resolved first, outside the timed part;
+    /// `resolve` replaces the system resolver (tests).</summary>
+    public static async Task<ProbeResult> TcpAsync(string host, int port, int timeoutMs = 2000, Func<string, CancellationToken, Task<IPAddress?>>? resolve = null)
     {
-        var sw = Stopwatch.StartNew();
         using var cts = new CancellationTokenSource(timeoutMs);
         try
         {
-            using var c = new TcpClient();
-            await c.ConnectAsync(host, port, cts.Token);
+            var ip = IPAddress.TryParse(host, out var parsed) ? parsed : await (resolve ?? ((h, t) => ResolveAsync(h, 0, t)))(host, cts.Token);
+            if (ip is null) return new ProbeResult(false, null, "unreachable");
+            var sw = Stopwatch.StartNew();
+            using var c = new TcpClient(ip.AddressFamily);
+            await c.ConnectAsync(ip, port, cts.Token);
             return new ProbeResult(true, sw.Elapsed.TotalMilliseconds, "tcp");
         }
         catch (OperationCanceledException) { return new ProbeResult(false, null, "timeout"); }

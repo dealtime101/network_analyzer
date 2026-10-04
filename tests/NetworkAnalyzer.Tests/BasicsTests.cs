@@ -7,6 +7,34 @@ using Xunit;
 
 namespace NetworkAnalyzer.Tests;
 
+public class TcpProbeTests
+{
+    [Fact]
+    public async Task TheTimedConnectDoesNotIncludeNameResolution()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        // a resolver that takes half a second, like a slow DNS answer
+        async Task<IPAddress?> Slow(string host, CancellationToken ct) { await Task.Delay(500, ct); return IPAddress.Loopback; }
+        var r = await Probes.TcpAsync("game.example.net", port, 3000, Slow);
+        Assert.True(r.Ok, r.Info);
+        Assert.True(r.Ms < 250, $"the connect took {r.Ms} ms: the name resolution was timed with it");
+    }
+
+    [Fact]
+    public async Task AnAddressIsNotResolvedAndAnUnresolvableNameIsUnreachable()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        Assert.True((await Probes.TcpAsync("127.0.0.1", port, 2000, (_, _) => throw new InvalidOperationException("must not resolve an address"))).Ok);
+        var r = await Probes.TcpAsync("nowhere.example.net", port, 2000, (_, _) => Task.FromResult<IPAddress?>(null));
+        Assert.False(r.Ok);
+        Assert.Equal("unreachable", r.Info);
+    }
+}
+
 public class TargetLabelTests
 {
     [Fact]

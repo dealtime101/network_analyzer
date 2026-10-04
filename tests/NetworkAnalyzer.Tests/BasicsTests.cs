@@ -212,6 +212,11 @@ public class StatsTests
     {
         Assert.Equal(2.0, Stats.MedianSorted(new List<double> { 1, 2, 3 }));
         Assert.Equal(2.5, Stats.MedianSorted(new List<double> { 1, 2, 3, 4 }));
+        // two large finite values: their sum overflows, their middle does not
+        Assert.Equal(1.7e308, Stats.MedianSorted(new List<double> { 1.7e308, 1.7e308 }));   // red before: Infinity
+        Assert.Equal(0.0, Stats.MedianSorted(new List<double> { -1.7e308, 1.7e308 }));                   // red before: the sum of the two is infinite
+        Assert.True(double.IsFinite(Stats.MedianSorted(new List<double> { 1.6e308, 1.7e308 })!.Value));
+        Assert.Equal(1.5, Stats.MedianSorted(new List<double> { 1, 2 }));                                // ordinary values keep their exact result
         Assert.Equal(7.0, Stats.MedianSorted(new List<double> { 7 }));
         Assert.Null(Stats.MedianSorted(new List<double>()));
         Assert.Equal(2.5, Stats.Median(new[] { 4.0, 1, 3, 2 }));   // the general one still accepts any order

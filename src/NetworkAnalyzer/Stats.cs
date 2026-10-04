@@ -42,7 +42,9 @@ public static class Stats
     {
         int n = s.Count;
         if (n == 0) return null;
-        return n % 2 == 1 ? s[n / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+        if (n % 2 == 1) return s[n / 2];
+        double a = s[n / 2 - 1], b = s[n / 2], sum = a + b;
+        return double.IsInfinity(sum) ? a / 2 + b / 2 : sum / 2;   // two huge finite values: the sum overflows, the middle does not
     }
 
     /// <summary>Mean |RTT(i) − RTT(i−1)| between consecutive replies. A lost sample breaks the chain, and so does a hole

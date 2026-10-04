@@ -284,6 +284,29 @@ public class ScenarioTests
     }
 
     [Fact]
+    public void IdleTrafficIsSummedWhicheverDirectionCarriesIt()
+    {
+        // the mirror of the download case: a bursty UPLOAD (3 Mbps in 60 % of the seconds) with nothing down, then both directions busy together
+        string Idle(Action<List<Sample>, List<Sample>, double> shape)
+        {
+            var d = Simulator.Make("bufferbloat", 7);
+            double t0 = Simulator.T0 + 30, t1 = Simulator.T0 + 40;
+            var down = d.Series["net:down_bps"].Select(s => s.T < t0 || s.T > t1 ? s : s with { V = 0 }).ToList();
+            var up = d.Series["net:up_bps"].Select(s => s.T < t0 || s.T > t1 ? s : s with { V = 0 }).ToList();
+            shape(down, up, t0);
+            d.Series["net:down_bps"] = down; d.Series["net:up_bps"] = up;
+            return Text(Diagnose.Analyze(d, new AppConfig()));
+        }
+        void Set(List<Sample> l, double t0, Func<int, double> mbps)
+        {
+            for (int i = 0; i < l.Count; i++) if (l[i].T >= t0 && l[i].T <= t0 + 10) l[i] = l[i] with { V = mbps((int)(l[i].T - t0)) * 1e6 };
+        }
+        Assert.Contains("already exchanges 3.0 Mbps", Idle((dn, up, t0) => Set(up, t0, k => k % 5 < 3 ? 3 : 0)));
+        // 1 Mbps down + 0.6 up in EVERY second = 1.6 Mbps in total: above the idle threshold only as a sum (each direction alone is below it)
+        Assert.Contains("already exchanges 1.6 Mbps", Idle((dn, up, t0) => { Set(dn, t0, _ => 1.0); Set(up, t0, _ => 0.6); }));
+    }
+
+    [Fact]
     public void SaturationNeedsKnownCapacity()
     {
         var a = Run("saturation");

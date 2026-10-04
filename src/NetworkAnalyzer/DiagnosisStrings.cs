@@ -13,11 +13,11 @@ public static partial class Loc
         Add("d.zone.dns", "DNS resolution: pings are healthy but DNS is slow or failing", "résolution DNS : les pings sont sains mais le DNS est lent ou en échec");
         Add("d.zone.none", "no network anomaly measured over this period (the lag would come from elsewhere: PC, game, server — not measured here)", "aucune anomalie réseau mesurée sur ce créneau (le lag viendrait d'ailleurs : PC, jeu, serveur — non mesuré ici)");
         Add("d.zone.undetermined", "period without enough measurements", "créneau sans mesure suffisante");
-        Add("d.zone.busy", " — WARNING: this PC exchanges ≥ {0} Mbps at the same time, the latency increase may come from this traffic itself", " — ATTENTION : ce PC échange ≥ {0} Mbps au même moment, la hausse de latence peut venir de ce trafic lui‑même");
+        Add("d.zone.busy", " — WARNING: this PC exchanges ≥ {0} Mbps at the same time, the latency increase may come from this traffic itself", " — ATTENTION : ce PC échange ≥ {0} Mbps au même moment, la hausse de latence peut venir de ce trafic lui-même");
         Add("d.win.target", "{0}: median {1}, max {2}, loss {3} %", "{0} : médiane {1}, max {2}, perte {3} %");
         Add("d.win.dns", "DNS: median {0}, failures {1} %", "DNS : médiane {0}, échecs {1} %");
         Add("d.win.traffic", "PC traffic: ↓ {0} Mbps (max {1}), ↑ {2} Mbps (max {3})", "Trafic du PC : ↓ {0} Mbps (max {1}), ↑ {2} Mbps (max {3})");
-        Add("d.win.wifi", "Wi‑Fi signal min {0} %", "Signal Wi‑Fi min {0} %");
+        Add("d.win.wifi", "Wi-Fi signal min {0} %", "Signal Wi-Fi min {0} %");
         Add("d.episode.note", "Episode detected automatically: {0} degraded measurements ({1}).", "Épisode détecté automatiquement : {0} mesures dégradées ({1}).");
         Add("d.dir.down", "download", "téléchargement");
         Add("d.dir.up", "upload", "envoi");
@@ -35,35 +35,35 @@ public static partial class Loc
         Add("d.general.episodes_capped", "The session has {0} episodes: only the first {1} are listed and scored, the others are not.", "La session compte {0} épisodes : seuls les {1} premiers sont listés et évalués, les autres ne le sont pas.");
 
         // ---- Wi-Fi / local network
-        Add("lan.title", "Wi‑Fi or local network instability", "Instabilité du Wi‑Fi ou du réseau local");
+        Add("lan.title", "Wi-Fi or local network instability", "Instabilité du Wi-Fi ou du réseau local");
         Add("lan.limit1", "The router may answer pings slowly while forwarding traffic fine (ICMP at low priority): jitter to the gateway alone does not prove a network problem.", "Le routeur peut répondre lentement aux pings tout en acheminant bien le trafic (ICMP en basse priorité) : une gigue vers la passerelle seule ne prouve pas un problème de réseau.");
         Add("lan.limit2", "Windows' \"signal %\" is a coarse scale; the application measures neither channel occupancy nor interference.", "Le « signal % » de Windows est une échelle grossière ; l'application ne mesure ni l'occupation du canal ni les interférences.");
-        Add("lan.next_wifi", "Repeat exactly the same monitoring over Ethernet (cable). If the episodes disappear, Wi‑Fi is involved; if they persist, look at the cable, the port or the router.", "Refaire exactement la même surveillance en Ethernet (câble). Si les épisodes disparaissent, le Wi‑Fi est en cause ; s'ils persistent, regarder le câble, le port ou le routeur.");
+        Add("lan.next_wifi", "Repeat exactly the same monitoring over Ethernet (cable). If the episodes disappear, Wi-Fi is involved; if they persist, look at the cable, the port or the router.", "Refaire exactement la même surveillance en Ethernet (câble). Si les épisodes disparaissent, le Wi-Fi est en cause ; s'ils persistent, regarder le câble, le port ou le routeur.");
         Add("lan.next_wired", "Plug another device into another router port over Ethernet and compare, then try another cable.", "Brancher un autre appareil en Ethernet sur un autre port du routeur et comparer, puis tester un autre câble.");
         Add("lan.limit_gw_noicmp", "The gateway does not answer ICMP pings: the local network could not be assessed by this method.", "La passerelle ne répond pas aux pings ICMP : le réseau local n'a pas pu être évalué par cette méthode.");
         Add("lan.ev.gw_loss", "Loss to the gateway: {0} % ({1} of {2} requests).", "Perte vers la passerelle : {0} % ({1} sur {2} requêtes).");
-        Add("lan.ev.gw_p95", "Latency to the gateway p95 = {0} (max {1}); a healthy local network usually stays under a few ms (Ethernet) to ~20 ms (Wi‑Fi).", "Latence vers la passerelle p95 = {0} (max {1}) ; un réseau local sain reste généralement sous quelques ms (Ethernet) à ~20 ms (Wi‑Fi).");
+        Add("lan.ev.gw_p95", "Latency to the gateway p95 = {0} (max {1}); a healthy local network usually stays under a few ms (Ethernet) to ~20 ms (Wi-Fi).", "Latence vers la passerelle p95 = {0} (max {1}) ; un réseau local sain reste généralement sous quelques ms (Ethernet) à ~20 ms (Wi-Fi).");
         Add("lan.ev.gw_peaks", "Occasional spikes to the gateway up to {0}.", "Pics ponctuels vers la passerelle jusqu'à {0}.");
         Add("lan.ev.gw_jitter", "High jitter to the gateway: {0} ms.", "Gigue vers la passerelle élevée : {0} ms.");
         Add("lan.counter.gw_stable", "Stable gateway: loss {0} %, p95 {1}, max {2}.", "Passerelle stable : perte {0} %, p95 {1}, max {2}.");
         Add("lan.ev.zones_local", "{0} episode(s)/incident(s) out of {1} hit the gateway first (so below the Internet level).", "{0} épisode(s)/incident(s) sur {1} touchent d'abord la passerelle (donc en deçà d'Internet).");
         Add("lan.counter.zones_none", "None of the {0} episode(s)/incident(s) degrades the gateway.", "Aucun des {0} épisode(s)/incident(s) ne dégrade la passerelle.");
-        Add("lan.ev.wifi_weak", "Weak Wi‑Fi signal: median {0} % (min {1} %).", "Signal Wi‑Fi faible : médiane {0} % (min {1} %).");
-        Add("lan.ev.wifi_drops", "Wi‑Fi signal drops down to {0} % (median {1} %).", "Chutes du signal Wi‑Fi jusqu'à {0} % (médiane {1} %).");
-        Add("lan.counter.wifi_ok", "Good Wi‑Fi signal: median {0} %, min {1} %.", "Signal Wi‑Fi correct : médiane {0} %, min {1} %.");
-        Add("lan.ev.wifi_link", "The Wi‑Fi LINK rate (≠ Internet speed) drops from {0} to {1} Mbps.", "Le débit de LIAISON Wi‑Fi (≠ débit Internet) chute de {0} à {1} Mbps.");
-        Add("lan.ev.roams", "{0} Wi‑Fi access point change(s) during the session.", "{0} changement(s) de point d'accès Wi‑Fi pendant la session.");
-        Add("lan.ev.neighbors", "{0} neighbouring network(s) with a notable signal on the same channel (indicative; non-Wi‑Fi interference — microwave ovens, Bluetooth — cannot be measured here).", "{0} réseau(x) voisin(s) avec un signal notable sur le même canal (indicatif ; les interférences non Wi‑Fi — micro‑ondes, Bluetooth — ne sont pas mesurables ici).");
-        Add("lan.limit_no_wifi", "No Wi‑Fi measurement available (Windows did not expose them).", "Aucune mesure Wi‑Fi disponible (Windows ne les a pas exposées).");
-        Add("lan.counter.wired", "Wired connection: Wi‑Fi is ruled out for this session.", "Connexion filaire : le Wi‑Fi est hors de cause pour cette session.");
-        Add("lan.ev.load_gw", "Under load, latency to the gateway rises too (+{0} ms): the local link itself saturates (Wi‑Fi or router queue on the LAN side).", "Sous charge, la latence vers la passerelle monte aussi (+{0} ms) : le lien local lui‑même sature (Wi‑Fi ou file du routeur côté LAN).");
+        Add("lan.ev.wifi_weak", "Weak Wi-Fi signal: median {0} % (min {1} %).", "Signal Wi-Fi faible : médiane {0} % (min {1} %).");
+        Add("lan.ev.wifi_drops", "Wi-Fi signal drops down to {0} % (median {1} %).", "Chutes du signal Wi-Fi jusqu'à {0} % (médiane {1} %).");
+        Add("lan.counter.wifi_ok", "Good Wi-Fi signal: median {0} %, min {1} %.", "Signal Wi-Fi correct : médiane {0} %, min {1} %.");
+        Add("lan.ev.wifi_link", "The Wi-Fi LINK rate (≠ Internet speed) drops from {0} to {1} Mbps.", "Le débit de LIAISON Wi-Fi (≠ débit Internet) chute de {0} à {1} Mbps.");
+        Add("lan.ev.roams", "{0} Wi-Fi access point change(s) during the session.", "{0} changement(s) de point d'accès Wi-Fi pendant la session.");
+        Add("lan.ev.neighbors", "{0} neighbouring network(s) with a notable signal on the same channel (indicative; non-Wi-Fi interference — microwave ovens, Bluetooth — cannot be measured here).", "{0} réseau(x) voisin(s) avec un signal notable sur le même canal (indicatif ; les interférences non Wi-Fi — micro-ondes, Bluetooth — ne sont pas mesurables ici).");
+        Add("lan.limit_no_wifi", "No Wi-Fi measurement available (Windows did not expose them).", "Aucune mesure Wi-Fi disponible (Windows ne les a pas exposées).");
+        Add("lan.counter.wired", "Wired connection: Wi-Fi is ruled out for this session.", "Connexion filaire : le Wi-Fi est hors de cause pour cette session.");
+        Add("lan.ev.load_gw", "Under load, latency to the gateway rises too (+{0} ms): the local link itself saturates (Wi-Fi or router queue on the LAN side).", "Sous charge, la latence vers la passerelle monte aussi (+{0} ms) : le lien local lui-même sature (Wi-Fi ou file du routeur côté LAN).");
         Add("lan.action.wifi1", "Move the computer closer to the router or use an Ethernet cable to compare.", "Rapprocher l'ordinateur du routeur ou utiliser un câble Ethernet pour comparer.");
-        Add("lan.action.wifi2", "If Wi‑Fi: change channel/band (5 GHz) and move the router away from interference sources.", "Si Wi‑Fi : changer de canal/bande (5 GHz) et éloigner le routeur des sources d'interférences.");
+        Add("lan.action.wifi2", "If Wi-Fi: change channel/band (5 GHz) and move the router away from interference sources.", "Si Wi-Fi : changer de canal/bande (5 GHz) et éloigner le routeur des sources d'interférences.");
         Add("lan.action.wired", "Check the cable and the router port; restart the router, then run another session to compare.", "Vérifier câble et port du routeur ; redémarrer le routeur puis refaire une session pour comparer.");
 
         // ---- bufferbloat
         Add("bloat.title", "Bufferbloat (latency that explodes when the connection is loaded)", "Bufferbloat (latence qui explose quand la connexion est chargée)");
-        Add("bloat.limit1", "Throughput may be capped by the test server, the Wi‑Fi or the PC: INDICATIVE result.", "Le débit obtenu peut être borné par le serveur de test, le Wi‑Fi ou le PC : résultat INDICATIF.");
+        Add("bloat.limit1", "Throughput may be capped by the test server, the Wi-Fi or the PC: INDICATIVE result.", "Le débit obtenu peut être borné par le serveur de test, le Wi-Fi ou le PC : résultat INDICATIF.");
         Add("bloat.limit2", "ICMP ping is not necessarily handled like your game traffic (a QoS queue may separate them).", "Le ping ICMP n'est pas forcément traité comme votre trafic de jeu (une file QoS peut les séparer).");
         Add("bloat.next", "Repeat the saturation test over Ethernet, then after a single setting change (QoS/SQM limit), with the before/after protocol.", "Refaire le test de saturation en Ethernet, puis après un seul changement de réglage (limite QoS/SQM), avec le protocole avant/après.");
         Add("bloat.not_eval.none", "No saturation test in this session: run the \"Saturation test\" tab.", "Aucun test de saturation dans cette session : lancez l'onglet « Test de saturation ».");
@@ -72,10 +72,10 @@ public static partial class Loc
         Add("bloat.limit_invalid", "{0} phase inconclusive (throughput {1} or silent targets): the line was not really loaded.", "Phase {0} non concluante (débit {1} ou cibles muettes) : la ligne n'a pas été réellement chargée.");
         Add("bloat.cap_early", " The volume cap was reached in {0} s: rerun with a higher cap.", " Le plafond de volume a été atteint en {0} s : relancez avec un plafond plus élevé.");
         Add("bloat.ev", "{0}: median Internet latency {1} → {2} ms (+{3} ms, indicative grade {4}), p95 under load {5}, max loss {6} %, sustained throughput {7} Mbps.", "{0} : latence Internet médiane {1} → {2} ms (+{3} ms, note indicative {4}), p95 sous charge {5}, perte max {6} %, débit soutenu {7} Mbps.");
-        Add("bloat.ev_gw_stable", "{0}: the gateway stays stable (+{1} ms) while the Internet side goes up: the queue forms beyond the local network (router exit, modem or line) — consistent with bufferbloat.", "{0} : la passerelle reste stable (+{1} ms) alors qu'Internet monte : la file d'attente se forme au‑delà du réseau local (sortie du routeur, modem ou ligne) — compatible avec du bufferbloat.");
+        Add("bloat.ev_gw_stable", "{0}: the gateway stays stable (+{1} ms) while the Internet side goes up: the queue forms beyond the local network (router exit, modem or line) — consistent with bufferbloat.", "{0} : la passerelle reste stable (+{1} ms) alors qu'Internet monte : la file d'attente se forme au-delà du réseau local (sortie du routeur, modem ou ligne) — compatible avec du bufferbloat.");
         Add("bloat.counter_gw", "{0}: latency to the gateway also rises (+{1} ms): the local link saturates, the delay cannot be (entirely) attributed to the Internet line.", "{0} : la latence vers la passerelle monte aussi (+{1} ms) : le lien local sature, on ne peut pas attribuer (tout) le retard à la ligne Internet.");
         Add("bloat.counter_stable", "{0}: latency stable under load (+{1} ms).", "{0} : latence stable sous charge (+{1} ms).");
-        Add("bloat.limit_wifi", "Test run over Wi‑Fi: Wi‑Fi can add latency under load; repeat over Ethernet to isolate the line.", "Test réalisé en Wi‑Fi : le Wi‑Fi peut ajouter de la latence sous charge ; refaire en Ethernet pour isoler la ligne.");
+        Add("bloat.limit_wifi", "Test run over Wi-Fi: Wi-Fi can add latency under load; repeat over Ethernet to isolate the line.", "Test réalisé en Wi-Fi : le Wi-Fi peut ajouter de la latence sous charge ; refaire en Ethernet pour isoler la ligne.");
         Add("bloat.action", "Enable queue management (SQM/Smart Queue) if your router offers it, otherwise manually limit upload/download rates to ~90–95 % of the measured throughput.", "Activer une gestion de file (SQM/Smart Queue) si votre routeur la propose, sinon limiter manuellement débit montant/descendant à ~90–95 % du débit mesuré.");
 
         // ---- saturation
@@ -104,7 +104,7 @@ public static partial class Loc
         Add("isp.limit1", "The default targets are public DNS resolvers (anycast): they do not necessarily follow the same path as your game or site.", "Les cibles par défaut sont des résolveurs DNS publics (anycast) : elles ne passent pas forcément par le même chemin que votre jeu ou votre site.");
         Add("isp.limit2", "A one-off traceroute shows a single moment and three probes per hop.", "Un traceroute ponctuel ne montre qu'un instant et trois sondes par saut.");
         Add("isp.next", "Run a session with your game server as the custom destination and click \"I'm lagging now\" during the lag (automatic traceroute); compare at another time of day.", "Refaire une session avec votre serveur de jeu comme destination personnalisée et cliquer « Je lag maintenant » pendant le lag (traceroute automatique) ; comparer à une autre heure.");
-        Add("isp.limit_busy", "{0} episode(s) coincide with sustained traffic (≥ {1} Mbps) from this PC: the latency increase may come from that traffic itself, they are not held against the provider.", "{0} épisode(s) coïncident avec un trafic soutenu (≥ {1} Mbps) de ce PC : la hausse de latence peut venir de ce trafic lui‑même, ils ne sont pas retenus contre le fournisseur.");
+        Add("isp.limit_busy", "{0} episode(s) coincide with sustained traffic (≥ {1} Mbps) from this PC: the latency increase may come from that traffic itself, they are not held against the provider.", "{0} épisode(s) coïncident avec un trafic soutenu (≥ {1} Mbps) de ce PC : la hausse de latence peut venir de ce trafic lui-même, ils ne sont pas retenus contre le fournisseur.");
         Add("isp.ev.upstream", "{0} episode(s)/incident(s) out of {1}: the gateway is healthy but several independent Internet destinations degrade at the same time, without notable PC traffic.", "{0} épisode(s)/incident(s) sur {1} : la passerelle est saine mais plusieurs destinations Internet indépendantes sont dégradées en même temps, sans trafic notable du PC.");
         Add("isp.ev.path", "{0} episode(s) affect only ONE Internet destination (the others and the gateway stay healthy): more likely the path to that destination than the whole connection.", "{0} épisode(s) n'affectent qu'UNE destination Internet (les autres et la passerelle restent saines) : plutôt le trajet vers cette destination que la connexion entière.");
         Add("isp.ev.custom", "{0} episode(s) affect only your custom destination: possible problem on the path or at that server.", "{0} épisode(s) n'affectent que votre destination personnalisée : problème possible sur le trajet ou chez ce serveur.");
@@ -119,7 +119,7 @@ public static partial class Loc
 
         // ---- DNS
         Add("dnsr.title", "DNS problem", "Problème DNS");
-        Add("dnsr.limit1", "The measurement queries your resolver directly over UDP/53; a browser using DNS-over-HTTPS bypasses that resolver.", "La mesure interroge directement votre résolveur en UDP/53 ; un navigateur qui utilise DNS‑sur‑HTTPS contourne ce résolveur.");
+        Add("dnsr.limit1", "The measurement queries your resolver directly over UDP/53; a browser using DNS-over-HTTPS bypasses that resolver.", "La mesure interroge directement votre résolveur en UDP/53 ; un navigateur qui utilise DNS-sur-HTTPS contourne ce résolveur.");
         Add("dnsr.limit2", "The \"cold\" test uses random names under example.com (a domain reserved for documentation, RFC 2606; the random names do not exist, so the expected answer is NXDOMAIN).", "Le test « à froid » utilise des noms aléatoires sous example.com (domaine réservé à la documentation, RFC 2606 ; ces noms n'existent pas, la réponse attendue est NXDOMAIN).");
         Add("dnsr.next", "Change the PC's DNS (e.g. 1.1.1.1 or 9.9.9.9), run another session and compare resolution times.", "Changer le DNS du PC (ex. 1.1.1.1 ou 9.9.9.9), refaire une session et comparer les temps de résolution.");
         Add("dnsr.limit_none", "No DNS measurement available.", "Aucune mesure DNS disponible.");

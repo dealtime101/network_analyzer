@@ -162,7 +162,7 @@ public static partial class Loc
         Add("router.src.measured", "measured throughput", "débit mesuré");
         Add("router.src.plan", "advertised speed", "débit annoncé");
         Add("router.doc_url", "https://www.tp-link.com/en/support/", "https://www.tp-link.com/fr/support/");
-        Add("router.reminder", "No setting is changed by the application. Apply one change at a time yourself.", "Aucun réglage n'est modifié par l'application. Appliquez vous‑même un changement à la fois.");
+        Add("router.reminder", "No setting is changed by the application. Apply one change at a time yourself.", "Aucun réglage n'est modifié par l'application. Appliquez vous-même un changement à la fois.");
         Add("router.qos_unknown", "QoS state unknown: read it in the router interface.", "État de la QoS inconnu : à relever dans l'interface du routeur.");
         Add("router.qos_off_bloat", "QoS disabled while latency rises by {0} ms under load: no limit or queue management protects latency.", "QoS désactivée alors que la latence monte de {0} ms sous charge : aucune limite ni gestion de file ne protège la latence.");
         Add("router.priority_bloat", "The enabled QoS is priority-based: it does not remove the line's queue, which is consistent with the latency increase measured under load.", "La QoS activée est de type priorisation : elle ne supprime pas la file d'attente de la ligne, ce qui est compatible avec la hausse de latence mesurée sous charge.");

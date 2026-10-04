@@ -47,7 +47,7 @@ public class ScenarioTests
         Assert.Equal("lan", Ids(a)[0]);
         var top = a.Hypotheses[0];
         Assert.Equal("high", top.Level);
-        Assert.Contains(top.Evidence, p => p.Contains("Weak Wi‑Fi signal"));
+        Assert.Contains(top.Evidence, p => p.Contains("Weak Wi-Fi signal"));
         Assert.Contains(top.Evidence, p => p.Contains("access point"));
         Assert.DoesNotContain("isp", Ids(a));
         Assert.Contains("Ethernet", top.NextTest);
@@ -61,7 +61,7 @@ public class ScenarioTests
         Assert.Contains("router_qos", Ids(a));
         var lan = a.Hypotheses[0];
         Assert.Contains(lan.Counter, c => c.Contains("Wired connection"));
-        Assert.DoesNotContain(lan.Evidence, p => p.Contains("Weak Wi‑Fi"));
+        Assert.DoesNotContain(lan.Evidence, p => p.Contains("Weak Wi-Fi"));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class ScenarioTests
         double eth = Run("bufferbloat").Hypotheses[0].Score;
         var wifi = Run("bufferbloat", null, p => p.Link = "wifi").Hypotheses[0];
         Assert.True(wifi.Score < eth);
-        Assert.Contains(wifi.Limits, l => l.Contains("Wi‑Fi"));
+        Assert.Contains(wifi.Limits, l => l.Contains("Wi-Fi"));
     }
 
     [Fact]
@@ -401,6 +401,16 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void TextUsesTheOrdinaryHyphenSoSearchFindsWiFi()
+    {
+        foreach (var k in Loc.Keys)
+        {
+            var (en, fr) = Loc.Raw(k);
+            Assert.False((en + fr).Contains('‑'), $"{k}: non-breaking hyphen");
+        }
+    }
+
+    [Fact]
     public void ExampleDotComIsDescribedAsReservedForDocumentation()
     {
         var (en, fr) = Loc.Raw("dnsr.limit2");
@@ -486,7 +496,7 @@ public class LocalizationTests
         {
             var a = ScenarioTests.Run("wifi_unstable");
             Assert.Contains(a.Summary, r => r.Contains("Hypothèse la plus compatible"));
-            Assert.Equal("Instabilité du Wi‑Fi ou du réseau local", a.Hypotheses[0].Title);
+            Assert.Equal("Instabilité du Wi-Fi ou du réseau local", a.Hypotheses[0].Title);
             Assert.Equal("high", a.Hypotheses[0].Level);  // codes never change with the language
             Assert.Equal("local", a.Timeline.First(i => i.Type == "episode").Zone);
             Assert.Contains("Passerelle", a.Stats.Targets[0].Label);
@@ -500,7 +510,7 @@ public class LocalizationTests
     public void EnglishOutputIsReallyEnglish()
     {
         var a = ScenarioTests.Run("wifi_unstable");
-        Assert.Equal("Wi‑Fi or local network instability", a.Hypotheses[0].Title);
+        Assert.Equal("Wi-Fi or local network instability", a.Hypotheses[0].Title);
         Assert.Contains("Gateway", a.Stats.Targets[0].Label);
         var html = Report.Html(Simulator.Make("wifi_unstable"), a);
         Assert.Contains("Network diagnosis report", html);

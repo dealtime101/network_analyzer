@@ -318,7 +318,7 @@ public static partial class Loc
         Add("rep.s.down", "PC download", "Descendant du PC");
         Add("rep.s.up", "PC upload", "Montant du PC");
         Add("rep.s.dns", "DNS (common name)", "DNS (nom courant)");
-        Add("rep.s.wifi", "Wi‑Fi signal (%)", "Signal Wi‑Fi (%)");
+        Add("rep.s.wifi", "Wi-Fi signal (%)", "Signal Wi-Fi (%)");
         Add("rep.nochart", "No data for this chart.", "Aucune donnée pour ce graphique.");
         Add("rep.h.measures", "Measurements", "Mesures");
         Add("rep.th.target", "Target", "Cible");
@@ -335,7 +335,7 @@ public static partial class Loc
         Add("rep.measures_note", "Outside the load phases of the saturation test (except idle).", "Hors phases de charge du test de saturation (sauf le repos).");
         Add("rep.traffic_line", "PC traffic (outside the test) — download: median {0} Mbps, p95 {1}, max {2}; upload: median {3} Mbps, p95 {4}, max {5}.", "Trafic du PC (hors test) — descendant : médiane {0} Mbps, p95 {1}, max {2} ; montant : médiane {3} Mbps, p95 {4}, max {5}.");
         Add("rep.traffic_note", "The computer's totals only; no per-process attribution (not reliable without administrator rights).", "Totaux de l'ordinateur uniquement ; pas d'attribution par processus (non fiable sans droits administrateur).");
-        Add("rep.wifi_line", "Wi‑Fi: median signal {0} % (min {1} %), channel {2}, band {3}, LINK rate (≠ Internet speed) transmit median {4} Mbps (min {5}), receive {6} Mbps.", "Wi‑Fi : signal médian {0} % (min {1} %), canal {2}, bande {3}, débit de LIAISON (≠ débit Internet) émission médian {4} Mbps (min {5}), réception {6} Mbps.");
+        Add("rep.wifi_line", "Wi-Fi: median signal {0} % (min {1} %), channel {2}, band {3}, LINK rate (≠ Internet speed) transmit median {4} Mbps (min {5}), receive {6} Mbps.", "Wi-Fi : signal médian {0} % (min {1} %), canal {2}, bande {3}, débit de LIAISON (≠ débit Internet) émission médian {4} Mbps (min {5}), réception {6} Mbps.");
         Add("rep.h.sat", "Saturation test (indicative)", "Test de saturation (indicatif)");
         Add("rep.th.dir", "Direction", "Sens");
         Add("rep.th.sustained", "Sustained throughput", "Débit soutenu");
@@ -347,7 +347,7 @@ public static partial class Loc
         Add("rep.th.grade", "Grade", "Note");
         Add("rep.inconclusive", " (inconclusive)", " (non concluant)");
         Add("rep.sat_method", "Method: {0} parallel HTTP(S) streams to {1}, phases idle → download → recovery → upload → recovery, caps {2} MB (download) / {3} MB (upload) per phase; sustained throughput = median after 3 s of ramp-up.", "Méthode : {0} flux HTTP(S) parallèles vers {1}, phases repos → téléchargement → récupération → envoi → récupération, plafonds {2} Mo (descendant) / {3} Mo (montant) par phase ; débit soutenu = médiane après 3 s de montée en charge.");
-        Add("rep.grades", "Grades: A+ < 5 ms, A < 30, B < 60, C < 200, D < 400, F beyond (median latency increase).", "Notes : A+ < 5 ms, A < 30, B < 60, C < 200, D < 400, F au‑delà (hausse de latence médiane).");
+        Add("rep.grades", "Grades: A+ < 5 ms, A < 30, B < 60, C < 200, D < 400, F beyond (median latency increase).", "Notes : A+ < 5 ms, A < 30, B < 60, C < 200, D < 400, F au-delà (hausse de latence médiane).");
         Add("rep.h.router", "Router and QoS (manual entry)", "Routeur et QoS (saisie manuelle)");
         Add("rep.qos.on", "enabled", "activée");
         Add("rep.qos.off", "disabled", "désactivée");

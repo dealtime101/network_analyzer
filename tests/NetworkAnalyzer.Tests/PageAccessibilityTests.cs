@@ -238,12 +238,29 @@ public class PageAccessibilityTests
         Assert.NotEmpty(show);
         foreach (var loader in new[] { "loadDiagList", "loadHist", "loadRouter", "loadEstimate" })
         {
-            Assert.Contains($"guard({loader})()", show);                                   // errors become a toast
-            Assert.DoesNotMatch($@"(?<!guard\()\b{loader}\(\)", show);                      // and none is called bare
+            Assert.Contains($"{loader})()", show);                                         // wrapped (loadTab: the error is shown on the tab and as a toast)
+            Assert.DoesNotMatch($@"(?<!, )\b{loader}\(\)", show);                            // and none is called bare
         }
         Assert.Matches(@"const guard = fn => async \(\.\.\.a\) => \{ try \{ return await fn\(\.\.\.a\); \} catch \(e\) \{ toast\(", Page);   // what guard does
         // and inside the guarded handlers a reload is awaited, so its failure reaches the guard too
         Assert.DoesNotMatch(@"(?<!await )(?<!function )(?<!guard\()\bloadRouter\(\);", Page);
+    }
+
+    [Fact]
+    public void ATabThatCouldNotLoadSaysSoOnTheTabWithARetry()
+    {
+        // a toast disappears after a few seconds and leaves an empty or old tab that looks current: the failure is also written on the tab
+        var loadTab = Regex.Match(Page, @"const loadTab = [\s\S]*?\n\};?\n").Value;
+        Assert.NotEmpty(loadTab);                                            // red before: nothing of the kind
+        Assert.Contains("role", loadTab);                                    // announced to assistive technology
+        Assert.Contains("loadfail", loadTab);
+        Assert.Contains("tab.retry", loadTab);                               // with a way to try again
+        Assert.Contains("remove()", loadTab);                                // and gone once a load succeeds
+        var show = Regex.Match(Page, @"function showTab\([^)]*\)\s*\{[\s\S]*?\n\}").Value;
+        foreach (var (tab, loader) in new[] { ("diag", "loadDiagList"), ("hist", "loadHist"), ("router", "loadRouter"), ("sat", "loadEstimate") })
+            Assert.Contains($"loadTab('{tab}', {loader})()", show);
+        foreach (var key in new[] { "tab.load_failed", "tab.retry" })
+            Assert.True(Regex.Matches(Page, $@"'{Regex.Escape(key)}'\s*:").Count >= 2, $"{key} must exist in both dictionaries");
     }
 
     [Fact]

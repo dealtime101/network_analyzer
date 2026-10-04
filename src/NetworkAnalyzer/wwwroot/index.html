@@ -390,6 +390,7 @@ function showTab(n, keepHash) {
   $$('nav button').forEach(b => { b.setAttribute('aria-selected', b.dataset.tab === n); b.tabIndex = b.dataset.tab === n ? 0 : -1; });  // only the selected tab is in the tab order
   $$('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + n));
   // guard: a failing API call becomes a visible message instead of a rejected promise nobody sees
+  if (n === 'live' && lastLive) renderLive(lastLive);  // the charts were not drawn while another tab was shown
   if (n === 'diag') guard(loadDiagList)(); if (n === 'hist') guard(loadHist)(); if (n === 'router') guard(loadRouter)(); if (n === 'sat') guard(loadEstimate)();
   if (!keepHash) history.replaceState(null, '', '#' + n);
 }
@@ -495,7 +496,7 @@ function renderLive(d) {
       <div><div class="${bad ? 'bad' : ''}">${fmt(st.loss_pct, 1)}</div><span>${t('m.loss')}</span></div><div><div>${fmt(st.jitter, 1)}</div><span>${t('m.jitter')}</span></div></div>` : `<div class="muted small">${t('cards.waiting')}</div>`}</div>`;
   }).join('') : `<span class="muted">${t('cards.none')}</span>`;
   const t0 = s.started || d.now - 60, t1 = run ? d.now : Math.max(...Object.values(live.series).map(a => a.length ? a[a.length - 1][0] : 0), t0 + 1);
-  drawAll(live.series, live.targets, t0, t1, (s.marks || []).filter(m => m.kind === 'lag'), s.phases || []);
+  if (currentTab === 'live' && !document.hidden) drawAll(live.series, live.targets, t0, t1, (s.marks || []).filter(m => m.kind === 'lag'), s.phases || []);  // not on another tab, not in a hidden page
   renderLoad(d.loadtest);
 }
 async function poll() {
@@ -510,7 +511,10 @@ async function poll() {
   } catch (e) { $('#pill').textContent = t('pill.down'); }
   poll.busy = false;
 }
-setInterval(poll, 1000);
+// the data keeps being collected (each poll asks for what is new), but a hidden page asks only every 5th second
+let hiddenTicks = 0;
+setInterval(() => { if (document.hidden && ++hiddenTicks % 5) return; poll(); }, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && lastLive) renderLive(lastLive); });
 
 // ---------------------------------------------------------------- saturation test
 const lp = () => ({phase_s: +$('#phase_s').value, streams: +$('#streams').value, cap_down_mb: +$('#cap').value, cap_up_mb: Math.round(+$('#cap').value / 3)});

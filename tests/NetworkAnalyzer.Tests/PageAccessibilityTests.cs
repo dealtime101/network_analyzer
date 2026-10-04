@@ -124,6 +124,20 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void ChartsAreRedrawnOnlyWhileTheyCanBeSeen()
+    {
+        var render = Regex.Match(Page, @"function renderLive\(d\)\s*\{[\s\S]*?\n\}").Value;
+        Assert.NotEmpty(render);
+        // drawing (the costly part: four canvases, sorting every series) only on the visible live tab of a visible page...
+        Assert.Matches(@"if \(currentTab === 'live' && !document\.hidden\) drawAll\(", render);
+        // ...and it catches up the moment the tab or the page is shown again
+        Assert.Matches(@"if \(n === 'live' && lastLive\) renderLive\(lastLive\)", Regex.Match(Page, @"function showTab\([^)]*\)\s*\{[\s\S]*?\n\}").Value);
+        Assert.Matches(@"addEventListener\('visibilitychange', \(\) => \{ if \(!document\.hidden && lastLive\) renderLive\(lastLive\)", Page);
+        // the data keeps being collected, but a hidden page polls less often
+        Assert.Matches(@"setInterval\(\(\) => \{ if \(document\.hidden && \+\+hiddenTicks % 5\) return; poll\(\); \}, 1000\)", Page);
+    }
+
+    [Fact]
     public void WifiSignalPercentAndLinkRateMbpsAreOnSeparateCharts()
     {
         // two canvases in the live tab and two in the diagnosis tab, each with its own legend and translated name

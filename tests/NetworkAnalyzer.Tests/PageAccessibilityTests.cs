@@ -124,6 +124,22 @@ public class PageAccessibilityTests
     }
 
     [Fact]
+    public void ScreenshotThumbnailsAreNamedAndDeletionNeedsConfirmation()
+    {
+        var thumbs = Regex.Match(Page, @"\$\('#r_shots'\)\.innerHTML = [^\n]*").Value;
+        Assert.NotEmpty(thumbs);
+        Assert.Matches(@"<img class=""thumb""[^>]*\balt=""\$\{esc\(t\('r\.shot_alt'", thumbs);        // a described picture, not an unnamed link
+        Assert.Matches(@"<button[^>]*\baria-label=""\$\{esc\(t\('r\.shot_del'", thumbs);               // the cross has a name
+        Assert.Contains("title=", thumbs);
+        // the deletion asks first
+        var del = Regex.Match(Page, @"\$\$\('#r_shots \[data-del\]'\)[^\n]*").Value;
+        Assert.NotEmpty(del);
+        Assert.Matches(@"if \(!confirm\(t\('r\.shot_confirm'\)\)\) return;", del);
+        foreach (var key in new[] { "r.shot_alt", "r.shot_del", "r.shot_confirm" })
+            Assert.True(Regex.Matches(Page, $@"'{Regex.Escape(key)}'\s*:").Count >= 2, $"{key} must exist in both dictionaries");
+    }
+
+    [Fact]
     public void ANumberInABandwidthRuleIsReadWithADecimalCommaOrReportedNeverSentAsNull()
     {
         // the helper itself, extracted from the page and run as a function (no browser needed for a pure function)

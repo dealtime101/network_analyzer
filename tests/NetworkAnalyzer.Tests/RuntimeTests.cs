@@ -923,7 +923,21 @@ public class ServerTests : IAsyncLifetime
     {
         await app.StopSessionAsync();
         await web.StopAsync();
+        await web.DisposeAsync();
         http.Dispose();
+        try { Directory.Delete(dir, true); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }   // best effort; Tmp sweeps what is left at exit
+    }
+
+    [Fact]
+    public async Task TheFixtureReleasesTheServerAndItsFolder()
+    {
+        var probe = new ServerTests();
+        await probe.InitializeAsync();
+        var (web, dir) = (probe.web, probe.dir);
+        Assert.True(Directory.Exists(dir));
+        await probe.DisposeAsync();
+        Assert.False(Directory.Exists(dir));
+        Assert.Throws<ObjectDisposedException>(() => web.Services.GetService(typeof(Microsoft.Extensions.Hosting.IHostApplicationLifetime)));
     }
 
     async Task<(int Code, string Body)> Call(string path, object? body = null, string? host = null, string ctype = "application/json", string? lang = null)

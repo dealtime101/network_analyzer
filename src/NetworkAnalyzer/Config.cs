@@ -83,16 +83,22 @@ public sealed class ConfigStore
 
     public ConfigStore(string dataDir) => path = Path.Combine(dataDir, "config.json");
 
+    /// <summary>Why the last Load fell back to defaults: "invalid" (not valid JSON; a copy was kept) or "unreadable" (the file exists but cannot be read).
+    /// Null when the settings were loaded, or when there is no file yet (a first run is not a problem).</summary>
+    public string? LoadProblem { get; private set; }
+
     public AppConfig Load()
     {
         lock (gate)
         {
             string text;
+            LoadProblem = null;
             try { text = File.ReadAllText(path); }
-            catch (IOException) { return new AppConfig(); }  // no file yet: the normal first run
-            catch (UnauthorizedAccessException e)  // not an IOException: a file this account may not read
+            catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { return new AppConfig(); }  // no file yet: the normal first run
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)  // the file is there but cannot be read
             {
-                Console.Error.WriteLine($"[config] cannot read {path} ({e.Message}); defaults are used");
+                LoadProblem = "unreadable";
+                Console.Error.WriteLine($"[config] cannot read {path} ({e.Message}); defaults are used and nothing will be saved over it");
                 return new AppConfig();
             }
             try
@@ -103,6 +109,7 @@ public sealed class ConfigStore
             }
             catch (JsonException e)
             {
+                LoadProblem = "invalid";
                 // unreadable (truncated, bad hand edit): the next save would overwrite it with an empty one, so keep a copy first
                 var backup = $"{path}.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}";
                 try
@@ -120,7 +127,7 @@ public sealed class ConfigStore
 
     public void Save(AppConfig c)
     {
-        lock (gate) DurableFile.WriteAllText(path, Json.To(c));
+        lock (gate) { DurableFile.WriteAllText(path, Json.To(c)); LoadProblem = null; }
     }
 
     public AppConfig Update(Action<AppConfig> change)
@@ -128,6 +135,8 @@ public sealed class ConfigStore
         lock (gate)
         {
             var c = Load();
+            // a file that exists but cannot be read must not be replaced by defaults plus one change: that would destroy it
+            if (LoadProblem == "unreadable") throw new ApiException(Loc.T("err.config_unreadable"), 409);
             change(c);
             Save(c);
             return c;

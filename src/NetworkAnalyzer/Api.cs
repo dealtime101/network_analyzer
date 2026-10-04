@@ -160,7 +160,12 @@ public static class Api
                     series = rec.LiveSince(since), loadtest = app.Load?.Status(), targets = rec.Targets, version = AppVersion.Short, data_dir = app.Store.DataDir,
                 };
             }
-            if (path == "/api/config") return app.Config.Load();
+            if (path == "/api/config")
+            {
+                var node = JsonSerializer.SerializeToNode(app.Config.Load(), Json.Options)!.AsObject();
+                node["load_problem"] = app.Config.LoadProblem;   // null when the settings loaded fine: the page shows a warning otherwise
+                return node;
+            }
             if (path == "/api/loadtest/estimate")
             {
                 var b = new JsonObject();

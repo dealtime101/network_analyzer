@@ -983,8 +983,44 @@ public class ConfigStoreTests
     public void AMissingConfigIsNormalAndLeavesNoBackup()
     {
         var dir = Tmp.Dir();
-        Assert.Equal("", new ConfigStore(dir).Load().CustomTarget);
+        var store = new ConfigStore(dir);
+        Assert.Equal("", store.Load().CustomTarget);
         Assert.Empty(Directory.GetFiles(dir, "config.json.corrupt-*"));
+        Assert.Null(store.LoadProblem);                                    // a first run is not a problem
+    }
+
+    [Fact]
+    public void AConfigThatCouldNotBeLoadedIsReportedNotJustReplacedByDefaults()
+    {
+        var dir = Tmp.Dir();
+        File.WriteAllText(Path.Combine(dir, "config.json"), "{ \"custom_target\": ");
+        var store = new ConfigStore(dir);
+        store.Load();
+        Assert.Equal("invalid", store.LoadProblem);                        // red before: no such signal
+        store.Update(c => c.CustomTarget = "fresh.example.net");           // saving fresh settings stays possible (the backup holds the old text)…
+        Assert.Null(store.LoadProblem);                                    // …and the file is sound again: the problem is gone
+        Assert.Equal("fresh.example.net", store.Load().CustomTarget);
+    }
+
+    [Fact]
+    public void AConfigThatCannotBeReadIsNeverOverwrittenByASave()
+    {
+        if (OperatingSystem.IsWindows() || Environment.UserName == "root") return;   // needs a file this account cannot read
+        var dir = Tmp.Dir();
+        var file = Path.Combine(dir, "config.json");
+        File.WriteAllText(file, "{\"custom_target\":\"keep.example.net\",\"plan_down_mbps\":500}");
+        File.SetUnixFileMode(file, UnixFileMode.UserWrite);               // writable, not readable: the case where a blind save would destroy it
+        try
+        {
+            var store = new ConfigStore(dir);
+            store.Load();
+            Assert.Equal("unreadable", store.LoadProblem);
+            var ex = Assert.Throws<ApiException>(() => store.Update(c => c.CustomTarget = "other.example.net"));
+            Assert.Equal(409, ex.Code);
+        }
+        finally { File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
+        Assert.Contains("keep.example.net", File.ReadAllText(file));       // not a byte lost
+        Assert.Contains("500", File.ReadAllText(file));
     }
 }
 
@@ -1261,6 +1297,22 @@ public class ServerTests : IAsyncLifetime
             }
         }
         protected override bool TryComputeLength(out long length) { length = 0; return false; }
+    }
+
+    [Fact]
+    public async Task TheConfigEndpointTellsWhenTheStoredSettingsCouldNotBeLoaded()
+    {
+        File.WriteAllText(Path.Combine(dir, "config.json"), "{ broken");
+        var cfg = J((await Call("/api/config")).Body);
+        Assert.Equal("invalid", cfg["load_problem"]!.GetValue<string>());
+        File.WriteAllText(Path.Combine(dir, "config.json"), "{\"custom_target\":\"ok.example.net\"}");
+        Assert.Null(J((await Call("/api/config")).Body)["load_problem"]);
+        // the page shows it, in both languages
+        var page = System.Text.Encoding.UTF8.GetString(Api.IndexBytes);
+        Assert.Contains("id=\"cfg_problem\"", page);
+        Assert.Contains("'cfg.problem.invalid':", page);
+        Assert.Contains("'cfg.problem.unreadable':", page);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(page, "'cfg\\.problem\\.invalid':").Count);   // EN and FR tables
     }
 
     [Fact]

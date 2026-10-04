@@ -98,6 +98,7 @@ public static partial class Loc
         Add("err.invalid_loadtest", "Invalid test parameter.", "Paramètre de test invalide.");
         Add("err.invalid_server_url", "Invalid test server address.", "Adresse de serveur de test invalide.");
         Add("err.confirm_required", "Confirmation required: this test deliberately saturates the connection.", "Confirmation requise : ce test sature volontairement la connexion.");
+        Add("err.config_unreadable", "The settings file exists but cannot be read, so nothing was saved over it. Fix its permissions or move it away, then try again.", "Le fichier de réglages existe mais ne peut pas être lu : rien n'a été enregistré par-dessus. Corrigez ses droits ou déplacez-le, puis réessayez.");
         Add("err.test_running", "A test is already running.", "Un test est déjà en cours.");
         Add("err.session_too_short", "The running monitoring ends before the test is over ({0} s): restart it with more minutes.", "La surveillance en cours se termine avant la fin du test ({0} s) : relancez-la avec plus de minutes.");
         Add("err.session_not_found", "Session not found.", "Session introuvable.");

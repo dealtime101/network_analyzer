@@ -241,6 +241,9 @@ public class StatsTests
 
 public class ProbeTests
 {
+    readonly Xunit.Abstractions.ITestOutputHelper output;
+    public ProbeTests(Xunit.Abstractions.ITestOutputHelper output) => this.output = output;
+
     [Fact]
     public void HostValidationBlocksOptionInjection()
     {
@@ -258,16 +261,41 @@ public class ProbeTests
         Assert.Equal("unreachable", Probes.MapPingStatus(IPStatus.DestinationNetworkUnreachable));
     }
 
+    /// <summary>What a loopback ping result means: null = fine, "unavailable" = ICMP cannot be used here (the success path was NOT verified),
+    /// anything else = a failure that is a bug in the ping path. Where ICMP is declared available (NA_REQUIRE_ICMP=1), "unavailable" is a failure too.</summary>
+    static string? LoopbackPingVerdict(ProbeResult r, bool icmpRequired)
+    {
+        if (r.Ok) return r.Ms is >= 0 and < 500 ? null : $"loopback ping answered in {r.Ms} ms";
+        // The loopback always answers: a timeout or "unreachable" there is a bug in the ping path, never an environment problem.
+        if (r.Info == "ping_unavailable" || (r.Info?.StartsWith("error:") ?? false))
+            return icmpRequired ? $"NA_REQUIRE_ICMP=1 but ping is unavailable ('{r.Info}')" : "unavailable";
+        return $"loopback ping failed with '{r.Info}': that is not an unavailable-ICMP outcome";
+    }
+
+    [Fact]
+    public void ALoopbackPingFailureIsOnlyExcusedWhenIcmpIsReallyUnavailable()
+    {
+        Assert.Null(LoopbackPingVerdict(new ProbeResult(true, 0.5, ""), false));
+        Assert.NotNull(LoopbackPingVerdict(new ProbeResult(true, 900, ""), false));
+        Assert.Equal("unavailable", LoopbackPingVerdict(new ProbeResult(false, null, "ping_unavailable"), false));
+        Assert.StartsWith("NA_REQUIRE_ICMP", LoopbackPingVerdict(new ProbeResult(false, null, "ping_unavailable"), true));
+        Assert.StartsWith("NA_REQUIRE_ICMP", LoopbackPingVerdict(new ProbeResult(false, null, "error:AccessDenied"), true));
+        foreach (var bug in new[] { "timeout", "unreachable", "" })
+            Assert.Contains("not an unavailable-ICMP outcome", LoopbackPingVerdict(new ProbeResult(false, null, bug), false));
+    }
+
     [Fact]
     public async Task PingLoopback()
     {
         var r = await Probes.PingAsync(IPAddress.Loopback, 1000);
-        if (r.Ok) { Assert.True(r.Ms is >= 0 and < 500); return; }
-        // The loopback always answers: a timeout or "unreachable" there is a bug in the ping path, never an environment problem.
-        // Only an explicit "ICMP cannot be used here" outcome (sandbox without raw/ping sockets) may excuse a failure.
-        Assert.True(r.Info == "ping_unavailable" || (r.Info?.StartsWith("error:") ?? false), $"loopback ping failed with '{r.Info}': that is not an unavailable-ICMP outcome");
-        Assert.NotEqual("timeout", r.Info);
-        Assert.NotEqual("unreachable", r.Info);
+        var verdict = LoopbackPingVerdict(r, Environment.GetEnvironmentVariable("NA_REQUIRE_ICMP") == "1");
+        if (verdict == "unavailable")
+        {
+            // xunit 2 cannot mark a test skipped while it runs: say so where the run's output is read, and let NA_REQUIRE_ICMP=1 turn it into a failure
+            output.WriteLine($"ICMP UNAVAILABLE HERE ('{r.Info}'): the successful ping path was NOT verified by this run. Set NA_REQUIRE_ICMP=1 where ICMP is expected.");
+            return;
+        }
+        Assert.Null(verdict);
     }
 
     // ---- DNS

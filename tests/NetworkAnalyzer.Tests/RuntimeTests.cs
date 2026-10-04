@@ -495,8 +495,15 @@ public class StoreTests
         var dir = Tmp.Dir();
         var store = new SessionStore(dir);
         int id = store.SaveComplete(Simulator.Make("healthy", 7, p => p.Minutes = 1));
+        var before = store.Load(id)!;
+        int samplesBefore = before.Series.Sum(kv => kv.Value.Count);
+        Assert.True(samplesBefore > 100);   // there is something to lose
         File.AppendAllText(Path.Combine(dir, "sessions", $"{id}.jsonl"), "[\"s\", 12.5, \"ping:gat");
-        Assert.NotNull(store.Load(id));
+        var after = store.Load(id);
+        Assert.NotNull(after);
+        Assert.Equal(samplesBefore, after!.Series.Sum(kv => kv.Value.Count));          // the valid data is all still there
+        Assert.Equal(before.Series.Keys.OrderBy(k => k), after.Series.Keys.OrderBy(k => k));   // no series lost, none invented from the half line
+        Assert.Equal(before.Marks.Count, after.Marks.Count);
         store.Delete(id);
         Assert.Null(store.Load(id));
         // both session files are gone; only the id counter stays, on purpose (an id is never handed out again)

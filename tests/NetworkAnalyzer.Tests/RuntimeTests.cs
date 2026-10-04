@@ -209,6 +209,22 @@ public class ReportTests
     }
 
     [Fact]
+    public void QosTypeIsShownInTheReaderLanguageNotAsACode()
+    {
+        var d = Simulator.Make("healthy");
+        var a = Diagnose.Analyze(d, new AppConfig());
+        foreach (var (lang, shown) in new[] { ("en", "(type: Rate limit)"), ("fr", "(type : Limite de débit)"), ("fr", "(type : Inconnu)") })
+            using (Loc.Scope(lang))
+            {
+                var typ = shown.Contains("Inconnu") ? "unknown" : "bandwidth_limit";
+                var cfg = new AppConfig { Router = new RouterConfig { Model = "X", QosType = typ } };
+                var html = System.Net.WebUtility.HtmlDecode(Report.Html(d, a, cfg));
+                Assert.Contains(shown, html);
+                Assert.DoesNotContain("bandwidth_limit", html);
+            }
+    }
+
+    [Fact]
     public void IncreaseColumnHasACleanSign()
     {
         var d = Simulator.Make("bufferbloat");

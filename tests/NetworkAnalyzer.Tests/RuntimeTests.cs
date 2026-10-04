@@ -724,6 +724,23 @@ public class StoreTests
     }
 
     [Fact]
+    public void SaveCompleteWritesRecordByRecordNotThroughOneBigString()
+    {
+        var dir = Tmp.Dir();
+        var store = new SessionStore(dir);
+        var data = Simulator.Make("healthy", 7, p => p.Minutes = 60);
+        store.SaveComplete(Simulator.Make("healthy", 8, p => p.Minutes = 1));   // warm-up: JIT and caches
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        int id = store.SaveComplete(data);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var size = new FileInfo(Path.Combine(dir, "sessions", $"{id}.jsonl")).Length;
+        Assert.True(size > 1_000_000, $"only {size} bytes: too small to tell");
+        // measured: 9.1 allocated bytes per file byte with the whole-journal StringBuilder and string, 5.1 when written record by record
+        Assert.True(allocated < 7.0 * size, $"{allocated} bytes allocated for a {size}-byte file ({(double)allocated / size:0.0} per byte)");
+        Assert.Equal(data.Series.Sum(kv => kv.Value.Count), store.Load(id)!.Series.Sum(kv => kv.Value.Count));
+    }
+
+    [Fact]
     public void ANewSessionNeverTruncatesAMeasurementFileThatAlreadyExists()
     {
         var dir = Tmp.Dir();

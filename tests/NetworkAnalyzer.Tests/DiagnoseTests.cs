@@ -579,6 +579,20 @@ public class RouterTests
 
     static List<(string Sev, string Txt)> Kinds(RouterConfig r, double worst = 200) => RouterQos.Check(r, Meas, new AppConfig(), worst).Select(f => (f.Severity, f.Text)).ToList();
 
+    [Theory]
+    [InlineData(324.0, false)]   // 108 % of the measured 300: Check says consistent, so nothing is proposed
+    [InlineData(345.0, true)]    // 115 %: Check says it limits nothing, so a lower limit is proposed
+    public void CheckAndProposeAgreeAroundTheNoEffectThreshold(double limit, bool proposes)
+    {
+        var r = new RouterConfig { QosEnabled = true, QosType = "bandwidth_limit", LimitDown = limit, Unit = "Mbps" };
+        var meas = ((double?)300.0, (double?)null);
+        var down = RouterQos.Check(r, meas, new AppConfig(), 200).Where(f => f.Text.Contains("Mbps")).ToList();
+        var noEffect = down.Any(f => f.Severity != "ok");
+        var proposed = RouterQos.Propose(r, meas, 200).Any(p => p.Change.Contains("Download") || p.Change.Contains("download"));
+        Assert.Equal(proposes, noEffect);
+        Assert.Equal(noEffect, proposed);
+    }
+
     [Fact]
     public void ProposedLimitKeepsItsPrecisionOnSlowLines()
     {

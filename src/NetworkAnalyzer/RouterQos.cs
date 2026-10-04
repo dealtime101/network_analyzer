@@ -45,6 +45,9 @@ public static class RouterQos
     static string Cap(string s) => s.Length == 0 || Loc.Lang != "en" ? s : char.ToUpperInvariant(s[0]) + s[1..];
     static string Dir(string d) => Loc.T("dir." + d);
 
+    /// <summary>A limit at or above this share of the measured throughput limits nothing: Check reports it and Propose offers a lower one.</summary>
+    const double NoEffectRatio = 1.1;
+
     public static double? ToMbps(double? value, string? unit)
     {
         if (value is null) return null;
@@ -92,7 +95,7 @@ public static class RouterQos
                 Add("problem", Loc.T("router.limit_unit", Cap(d), G(l), G(ratio), src, F0(rf)));
             else if (m is > 0 && qos == true && m > 1.15 * l)
                 Add("problem", Loc.T("router.limit_exceeded", Loc.T("dir." + dir + ".m"), F0(m.Value), G(l)));
-            else if (ratio >= 1.1)
+            else if (ratio >= NoEffectRatio)
                 Add(worstDelta >= 30 ? "warning" : "info", Loc.T("router.limit_noeffect", Cap(d), G(l), src, F0(rf)));
             else if (ratio < 0.5)
                 Add("warning", Loc.T("router.limit_toolow", Cap(d), G(l), src, F0(rf)));
@@ -133,7 +136,7 @@ public static class RouterQos
             // two decimals below 10 Mbps (0.5 Mbps upstream gives 0.46, not 0), whole numbers above
             double Fit(double v) => Math.Round(v, v < 10 ? 2 : 0, MidpointRounding.ToEven);
             var target = Fit(m.Value * 0.92);
-            if (lim is null || lim > 1.05 * m)
+            if (lim is null || lim >= NoEffectRatio * m)
             {
                 var now = cur.HasValue ? $"{G(cur.Value)} {r.Unit}" : Loc.T("router.prop.none_set");
                 props.Add(new Proposal

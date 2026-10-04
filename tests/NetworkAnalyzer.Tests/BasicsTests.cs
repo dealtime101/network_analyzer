@@ -272,6 +272,16 @@ SSID 3 : Autre
         Assert.StartsWith("5 GHz", w.Band);
     }
 
+    [Fact]
+    public void PlatformNameFollowsTheOperatingSystem()
+    {
+        var expected = OperatingSystem.IsWindows() ? "win32" : OperatingSystem.IsMacOS() ? "darwin" : "linux";
+        Assert.Equal(expected, SysInfo.PlatformName());
+        Assert.NotEqual("linux", SysInfo.PlatformName(windows: false, macOS: true));   // macOS is not Linux
+        Assert.Equal("darwin", SysInfo.PlatformName(windows: false, macOS: true));
+        Assert.Equal("win32", SysInfo.PlatformName(windows: true, macOS: false));
+    }
+
     [Theory]
     [InlineData("2001:db8::1", true)] [InlineData("2a01:cb00:1::5%12", true)]
     [InlineData("fd12:3456:789a::1", false)] [InlineData("fc00::1", false)]   // unique local: private, not Internet

@@ -77,9 +77,13 @@ public static partial class SysInfo
             });
         }
         var env = Summarize(ifaces);
-        env.Platform = OperatingSystem.IsWindows() ? "win32" : "linux";
+        env.Platform = PlatformName();
         return env;
     }
+
+    /// <summary>win32 | darwin | linux (the flags are parameters only so that every branch can be tested on one machine).</summary>
+    public static string PlatformName(bool? windows = null, bool? macOS = null)
+        => (windows ?? OperatingSystem.IsWindows()) ? "win32" : (macOS ?? OperatingSystem.IsMacOS()) ? "darwin" : "linux";
 
     public static EnvInfo Summarize(List<AdapterInfo> ifaces)
     {

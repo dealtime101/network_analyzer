@@ -1469,6 +1469,38 @@ public class RecorderTests
     }
 
     [Fact]
+    public void AnInterfaceThatWasAskedForAndIsGoneGivesNoMeasurementNotAnotherInterface()
+    {
+        Assert.Null(Recorder.ReadCounters("this-interface-does-not-exist"));                  // used to fall back to the busiest other one
+        var any = Recorder.ReadCounters(null);                                               // with no preference the busiest is still chosen...
+        if (any != null) Assert.False(string.IsNullOrEmpty(any.Value.Name));                  // ...and its identity comes with the numbers
+    }
+
+    [Fact]
+    public async Task SwitchingInterfaceBetweenTwoReadingsDoesNotInventARateSpike()
+    {
+        int calls = 0;
+        var rec = new Recorder(new SessionStore(Tmp.Dir()))
+        {
+            TrafficPollMs = 40,
+            CounterReader = _ =>
+            {
+                int n = Interlocked.Increment(ref calls);
+                // two readings on interface "a" (about 2 KB), then the busiest interface becomes "b" whose counters are 50 MB:
+                // subtracting a's counter from b's would read as ~12 Gbps
+                if (n <= 2) return ("a", n * 1_000L, n * 500L);
+                return ("b", 50_000_000L + (n - 3) * 1_000L, 40_000_000L + (n - 3) * 500L);
+            },
+        };
+        rec.Start(new EnvInfo { Active = new AdapterInfo { Name = "" } }, new List<Target>(), 1);
+        await Task.Delay(900);
+        await rec.StopAsync();
+        var down = rec.LiveSince(0)["net:down_bps"].Select(s => (double)s[1]!).ToList();
+        Assert.True(down.Count >= 5);
+        Assert.True(down.Max() < 1e6, $"a rate of {down.Max():0} bps was recorded: counters of two interfaces were subtracted");
+    }
+
+    [Fact]
     public async Task LiveStatisticsKeepTheInitialFailuresUnlessATcpFallbackReallyTookOver()
     {
         var rec = new Recorder(new SessionStore(Tmp.Dir()));
@@ -1555,7 +1587,7 @@ public class RecorderTests
             {
                 int n = Interlocked.Increment(ref calls);
                 if (n is 3 or 4) throw new System.Net.NetworkInformation.NetworkInformationException();   // adapter being reset
-                return (n * 1_000L, n * 500L);
+                return ("eth", n * 1_000L, n * 500L);
             },
         };
         rec.Start(new EnvInfo { Active = new AdapterInfo { Name = "eth" } }, new List<Target>(), 1);

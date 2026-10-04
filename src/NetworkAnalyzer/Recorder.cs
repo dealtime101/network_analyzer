@@ -78,7 +78,7 @@ public sealed class Recorder
     public double GapThresholdS { get; set; } = GapS;
     public int WifiPollMs { get; set; } = 5000;
     public int TrafficPollMs { get; set; } = 1000;
-    public Func<string?, (long Rx, long Tx)?> CounterReader { get; set; } = ReadCounters;
+    public Func<string?, (string Name, long Rx, long Tx)?> CounterReader { get; set; } = ReadCounters;
     public Func<Task<WifiInfo?>> WifiReader { get; set; } = SysInfo.ReadWifiAsync;
     public Func<int?, string?, Task<WifiNeighbors?>> NeighborReader { get; set; } = SysInfo.ReadNeighborsAsync;
 
@@ -418,16 +418,19 @@ public sealed class Recorder
     }
 
     /// <summary>Byte counters of ONE interface. Never the sum of several: bridges, VM switches and filter bindings count the same bytes again.</summary>
-    static (long Rx, long Tx)? ReadCounters(string? nic)
+    /// <summary>The name comes with the numbers: two readings may only be subtracted if they belong to the same interface.
+    /// An interface that was asked for by name and is gone gives null (no measurement), never another interface's counters.
+    /// Only with no preference at all is the busiest physical-looking interface chosen.</summary>
+    public static (string Name, long Rx, long Tx)? ReadCounters(string? nic)
     {
         var all = NetworkInterface.GetAllNetworkInterfaces().Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback && !SysInfo.IsFilterInstance(n.Name)).ToList();
-        var one = nic == null ? null : all.FirstOrDefault(n => n.Name == nic);
-        // No known active interface: the busiest physical-looking one.
-        one ??= all.Where(n => n.OperationalStatus == OperationalStatus.Up && SysInfo.Kind(n.Name, n.Description, n.NetworkInterfaceType) is "wifi" or "ethernet")
-                   .OrderByDescending(n => { var s = n.GetIPv4Statistics(); return s.BytesReceived + s.BytesSent; }).FirstOrDefault();
+        NetworkInterface? one;
+        if (nic != null) one = all.FirstOrDefault(n => n.Name == nic);
+        else one = all.Where(n => n.OperationalStatus == OperationalStatus.Up && SysInfo.Kind(n.Name, n.Description, n.NetworkInterfaceType) is "wifi" or "ethernet")
+                      .OrderByDescending(n => { var s = n.GetIPv4Statistics(); return s.BytesReceived + s.BytesSent; }).FirstOrDefault();
         if (one is null) return null;
         var st = one.GetIPv4Statistics();
-        return (st.BytesReceived, st.BytesSent);
+        return (one.Name, st.BytesReceived, st.BytesSent);
     }
 
     async Task TrafficLoop(string? nic, CancellationToken ct)
@@ -436,7 +439,7 @@ public sealed class Recorder
         {
             bool noted = false;
             // an adapter being reset throws: that read is skipped, the loop goes on (and says so once)
-            (long Rx, long Tx)? Read()
+            (string Name, long Rx, long Tx)? Read()
             {
                 try { return CounterReader(nic); }
                 catch (NetworkInformationException)
@@ -457,6 +460,7 @@ public sealed class Recorder
                 if (cur0 is null) continue;  // interface momentarily gone (cable pulled, adapter reset): no sample, no fake zero
                 var cur = cur0.Value;
                 double dt = now - pt;
+                if (cur.Name != prev.Name) { prev = cur; pt = now; continue; }  // another interface: its counters cannot be subtracted from the previous one's, start again from here
                 if (dt > GapS) { prev = cur; pt = now; continue; }  // sleep: the delta would cover the pause
                 if (cur.Rx >= prev.Rx && cur.Tx >= prev.Tx && dt > 0)
                 {

@@ -321,6 +321,17 @@ SSID 3 : Autre
         Assert.DoesNotContain("Voisin", Json.To(n));
     }
 
+    [Fact]
+    public void TheUsersOwnAccessPointIsNotItsOwnNeighbour()
+    {
+        var aps = SysInfo.ParseNetshNetworks(NetworksFr);
+        Assert.Equal("11:22:33:44:55:66", aps[0].Bssid);
+        var n = SysInfo.NeighborsSummary(aps, 36, "11:22:33:44:55:66");
+        Assert.Equal((3, 2, 1), (n.Total, n.SameChannel, n.SameChannelStrong));   // 4 / 3 / 2 with our own AP counted
+        Assert.Equal((3, 2, 1), (SysInfo.NeighborsSummary(aps, 36, "11:22:33:44:55:66".ToUpperInvariant()).Total, n.SameChannel, n.SameChannelStrong));   // case does not matter
+        Assert.DoesNotContain("aa:aa", Json.To(n));   // the neighbours' addresses are compared, never stored
+    }
+
     static AdapterInfo Ad(string name, string desc, string kind, string status, string? gw4 = null, string? gw6 = null, string[]? v4 = null, string[]? v6 = null, int metric = 1) => new()
     {
         Name = name, Description = desc, Kind = kind, Status = status, Gw4 = gw4, Gw6 = gw6, Ipv4 = (v4 ?? Array.Empty<string>()).ToList(), Ipv6 = (v6 ?? Array.Empty<string>()).ToList(), Dns = new() { "192.168.0.1" }, Metric = metric,

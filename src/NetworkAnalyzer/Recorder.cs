@@ -78,7 +78,7 @@ public sealed class Recorder
     public int TrafficPollMs { get; set; } = 1000;
     public Func<string?, (long Rx, long Tx)?> CounterReader { get; set; } = ReadCounters;
     public Func<Task<WifiInfo?>> WifiReader { get; set; } = SysInfo.ReadWifiAsync;
-    public Func<int?, Task<WifiNeighbors?>> NeighborReader { get; set; } = SysInfo.ReadNeighborsAsync;
+    public Func<int?, string?, Task<WifiNeighbors?>> NeighborReader { get; set; } = SysInfo.ReadNeighborsAsync;
 
     public bool Running { get; private set; }
     public int? Sid { get; private set; }
@@ -462,7 +462,7 @@ public sealed class Recorder
                     if (first)
                     {
                         SetMeta(m => m.Wifi = w);
-                        var n = await NeighborReader(w.Channel);
+                        var n = await NeighborReader(w.Channel, w.Bssid);
                         if (n != null) SetMeta(m => m.WifiNeighbors = n);
                         last = Clock.Now();  // the scan takes seconds: it is work, not a system sleep
                     }

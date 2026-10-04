@@ -188,26 +188,30 @@ public static partial class SysInfo
     /// <summary>`netsh wlan show networks mode=bssid` → access points (neighbours' SSIDs are deliberately ignored).</summary>
     public static List<Ap> ParseNetshNetworks(string text)
     {
-        var aps = new List<(int? Signal, int? Channel)>();
+        var aps = new List<Ap>();
+        string? bssid = null;
         int? sig = null, ch = null;
         bool open = false;
-        void Flush() { if (open) aps.Add((sig, ch)); sig = ch = null; }
+        void Flush() { if (open) aps.Add(new Ap(bssid, sig, ch)); bssid = null; sig = ch = null; }
         foreach (var line in text.Split('\n'))
         {
             int i = line.IndexOf(':');
             if (i < 0) continue;
             var k = Norm(line[..i]);
             var v = line[(i + 1)..];
-            if (k.StartsWith("bssid")) { Flush(); open = true; }
+            if (k.StartsWith("bssid")) { Flush(); open = true; bssid = v.Trim(); }
             else if (open && k == "signal") sig = Num(v) is { } s ? (int)s : null;
             else if (open && k is "canal" or "channel") ch = Num(v) is { } c ? (int)c : null;
         }
         Flush();
-        return aps.Select(a => new Ap(null, a.Signal, a.Channel)).ToList();
+        return aps;
     }
 
-    public static WifiNeighbors NeighborsSummary(IReadOnlyList<Ap> aps, int? myChannel)
+    /// <summary>`myBssid` is the access point we are connected to: the scan lists it, but it is not our own neighbour.
+    /// BSSIDs are only compared here; the summary keeps counts, never addresses.</summary>
+    public static WifiNeighbors NeighborsSummary(IReadOnlyList<Ap> allAps, int? myChannel, string? myBssid = null)
     {
+        var aps = string.IsNullOrEmpty(myBssid) ? allAps : allAps.Where(a => !string.Equals(a.Bssid, myBssid, StringComparison.OrdinalIgnoreCase)).ToList();
         var same = aps.Where(a => a.Channel != null && a.Channel == myChannel).ToList();
         return new WifiNeighbors
         {
@@ -236,10 +240,10 @@ public static partial class SysInfo
     public static async Task<WifiInfo?> ReadWifiAsync()
         => OperatingSystem.IsWindows() ? ParseNetshInterfaces(await RunAsync("netsh", "wlan show interfaces", 10000)) : null;
 
-    public static async Task<WifiNeighbors?> ReadNeighborsAsync(int? myChannel)
+    public static async Task<WifiNeighbors?> ReadNeighborsAsync(int? myChannel, string? myBssid = null)
     {
         if (!OperatingSystem.IsWindows()) return null;
         var aps = ParseNetshNetworks(await RunAsync("netsh", "wlan show networks mode=bssid", 15000));
-        return aps.Count > 0 ? NeighborsSummary(aps, myChannel) : null;
+        return aps.Count > 0 ? NeighborsSummary(aps, myChannel, myBssid) : null;
     }
 }

@@ -829,7 +829,7 @@ public class RecorderTests
         {
             GapThresholdS = 0.6, WifiPollMs = 50,
             WifiReader = () => Task.FromResult<WifiInfo?>(new WifiInfo { Connected = true, Signal = 80, Channel = 6, Bssid = "aa:bb" }),
-            NeighborReader = async _ => { await Task.Delay(900); return new WifiNeighbors { Total = 3 }; },
+            NeighborReader = async (_, _) => { await Task.Delay(900); return new WifiNeighbors { Total = 3 }; },
         };
         rec.Start(new EnvInfo { Active = new AdapterInfo { Kind = "wifi" } }, new List<Target>(), 1);
         await Task.Delay(1800);

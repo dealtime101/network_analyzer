@@ -140,7 +140,7 @@ public static partial class Loc
         Add("bg.ev.notable", "Notable background traffic outside the test: median ↓ {0} Mbps, ↑ {1} Mbps.", "Trafic de fond notable hors test : médiane ↓ {0} Mbps, ↑ {1} Mbps.");
         Add("bg.ev.idle", "During the test's idle phase (nothing was supposed to flow), the PC already exchanges {0} Mbps (↓+↑ combined).", "Pendant la phase de repos du test (rien ne devait circuler), le PC échange déjà {0} Mbps (↓+↑ cumulés).");
         Add("bg.ev.corr", "At the degraded moments, the PC's traffic is {0}× higher than the rest of the time ({1} versus {2} Mbps): a correlation consistent with background activity (a correlation is not proof).", "Aux instants dégradés, le trafic du PC est {0}× plus élevé que le reste du temps ({1} contre {2} Mbps) : corrélation compatible avec une activité de fond (une corrélation n'est pas une preuve).");
-        Add("bg.ev.hot", "{0} episode(s)/incident(s) coincide with PC traffic ≥ 5 Mbps.", "{0} épisode(s)/incident(s) coïncident avec un trafic du PC ≥ 5 Mbps.");
+        Add("bg.ev.hot", "{0} episode(s)/incident(s) coincide with PC traffic ≥ {1} Mbps.", "{0} épisode(s)/incident(s) coïncident avec un trafic du PC ≥ {1} Mbps.");
         Add("bg.counter.low", "Low PC traffic outside the test: median ↓ {0} Mbps, ↑ {1} Mbps.", "Trafic du PC faible hors test : médiane ↓ {0} Mbps, ↑ {1} Mbps.");
         Add("bg.action", "Close cloud backups, updates, game launchers and streaming tabs while gaming, then run another session to compare.", "Fermer sauvegardes cloud, mises à jour, lanceurs de jeux, onglets de streaming pendant le jeu, puis refaire une session pour comparer.");
 

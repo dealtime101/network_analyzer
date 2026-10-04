@@ -401,6 +401,15 @@ public class LocalizationTests
     }
 
     [Fact]
+    public void BusyThresholdInTextComesFromTheEngine()
+    {
+        var (en, fr) = Loc.Raw("bg.ev.hot");
+        Assert.Contains("{1}", en);
+        Assert.Contains("{1}", fr);
+        Assert.DoesNotContain("5 Mbps", en + fr);
+    }
+
+    [Fact]
     public void OneNotationForTheBitRateUnit()
     {
         foreach (var k in Loc.Keys)

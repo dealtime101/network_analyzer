@@ -920,7 +920,7 @@ public static partial class Diagnose
         if (hot > 0)
         {
             h.Score += 1;
-            h.Evidence.Add(T("bg.ev.hot", hot));
+            h.Evidence.Add(T("bg.ev.hot", hot, G(Th.BusyMbps)));
         }
         if (h.Score == 0) h.Counter.Add(T("bg.counter.low", F2(md), F2(mu)));
         h.Actions = new() { T("bg.action") };

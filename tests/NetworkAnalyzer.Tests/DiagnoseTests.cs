@@ -333,13 +333,25 @@ public class InvariantTests
     [Fact]
     public void NeverPresentsHypothesisAsConfirmedCause()
     {
-        var bad = new Regex(@"cause is (certain|confirmed)|\bis confirmed\b|proven that|it is certain|certain cause", RegexOptions.IgnoreCase);
-        foreach (var scn in Simulator.Scenarios)
+        // wording that would present a hypothesis as a fact, in each language (the cautious "not confirmed causes" sentence is plural, so it is not matched)
+        var bad = new Dictionary<string, Regex>
         {
-            var a = ScenarioTests.Run(scn);
-            Assert.False(bad.IsMatch(ScenarioTests.Text(a)), scn);
-            if (a.Hypotheses.Count > 0) Assert.Contains(a.Summary, r => r.Contains("not confirmed causes"));
-        }
+            ["en"] = new(@"cause is (certain|confirmed)|\bis confirmed\b|proven that|it is certain|certain cause", RegexOptions.IgnoreCase),
+            ["fr"] = new(@"cause (est )?(certaine|confirmée)|\best confirmée?\b|il est (prouvé|certain)|prouvé que|cause (certaine|confirmée)|c'est certain", RegexOptions.IgnoreCase),
+        };
+        var caution = new Dictionary<string, string> { ["en"] = "not confirmed causes", ["fr"] = "pas des causes confirmées" };
+        foreach (var lang in bad.Keys)
+            using (Loc.Scope(lang))
+                foreach (var scn in Simulator.Scenarios)
+                {
+                    var a = ScenarioTests.Run(scn);
+                    Assert.False(bad[lang].IsMatch(ScenarioTests.Text(a)), $"{lang}/{scn}");
+                    if (a.Hypotheses.Count > 0) Assert.Contains(a.Summary, r => r.Contains(caution[lang]));
+                }
+        // the patterns themselves must be able to match, or the loop above proves nothing
+        Assert.Matches(bad["fr"], "la cause est confirmée");
+        Assert.Matches(bad["fr"], "Il est certain que votre FAI");
+        Assert.Matches(bad["en"], "the cause is confirmed");
     }
 
     [Fact]

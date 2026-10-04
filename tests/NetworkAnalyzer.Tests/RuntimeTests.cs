@@ -209,6 +209,23 @@ public class ReportTests
     }
 
     [Fact]
+    public void IncreaseColumnHasACleanSign()
+    {
+        var d = Simulator.Make("bufferbloat");
+        var a = Diagnose.Analyze(d, new AppConfig());
+        var down = a.Bufferbloat!.Directions["down"];
+        var up = a.Bufferbloat.Directions["up"];
+        down.Delta = -3; down.GwDelta = -1;
+        up.Delta = null; up.GwDelta = 4;
+        var html = Report.Html(d, a);
+        Assert.DoesNotContain("+-", html);
+        Assert.DoesNotContain("+—", html);
+        Assert.Contains("<td class='n'>-3 ms</td>", html);
+        Assert.Contains("<td class='n'>-1 ms</td>", html);
+        Assert.Contains("<td class='n'>+4 ms</td>", html);
+    }
+
+    [Fact]
     public void LateLossesAreDrawnToo()
     {
         var lost = Enumerable.Range(0, 600).Select(i => i + 0.5).ToList();   // a loss every second for 10 minutes

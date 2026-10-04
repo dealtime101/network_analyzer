@@ -20,6 +20,9 @@ public static class Report
     public static string Ts(double t, string fmt = "HH:mm:ss") => DateTimeOffset.FromUnixTimeMilliseconds((long)(t * 1000)).ToLocalTime().ToString(fmt, Inv);
     static string Num(double? x, int d = 0, string unit = "") => x is null ? "—" : x.Value.ToString("F" + d, Inv) + unit;
 
+    /// <summary>A change with an explicit sign: +4, -3, 0; an em dash when there is no value.</summary>
+    static string Signed(double? x, int d = 0, string unit = "") => x is null ? "—" : (x.Value > 0 && Math.Round(x.Value, d) != 0 ? "+" : "") + Num(x, d, unit);
+
     // ------------------------------------------------------------------ exports
     static string Csv(string? s)
     {
@@ -223,8 +226,8 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.muted{color:#656d76}.ca
             foreach (var k in new[] { "down", "up" })
             {
                 if (!bb.Directions.TryGetValue(k, out var r)) continue;
-                var gw = r.GwDelta.HasValue ? "+" + Num(r.GwDelta) + " ms" : "—";
-                o.Append($"<tr><td>{E(Cap(T("d.dir." + k)))}</td><td class='n'>{Num(r.Mbps, 0, " Mbps")}</td><td class='n'>{Num(r.IdleMed)} → {Num(r.LoadMed)} ms</td><td class='n'>+{Num(r.Delta)} ms</td>" +
+                var gw = Signed(r.GwDelta, 0, " ms");
+                o.Append($"<tr><td>{E(Cap(T("d.dir." + k)))}</td><td class='n'>{Num(r.Mbps, 0, " Mbps")}</td><td class='n'>{Num(r.IdleMed)} → {Num(r.LoadMed)} ms</td><td class='n'>{Signed(r.Delta, 0, " ms")}</td>" +
                          $"<td class='n'>{Num(r.LoadP95)} ms</td><td class='n'>{Num(r.LossPct, 1, " %")}</td><td class='n'>{gw}</td><td>{E(r.Grade ?? "—")}{(r.Valid ? "" : E(T("rep.inconclusive")))}</td></tr>");
             }
             var lt = d.Meta.Loadtest;

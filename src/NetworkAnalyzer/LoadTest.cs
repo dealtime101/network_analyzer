@@ -272,9 +272,10 @@ public sealed class LoadTest
             long sent = 0;
             while (sent < size && !stopped())
             {
-                await stream.WriteAsync(block, ct);
-                sent += block.Length;
-                counted(block.Length);
+                int len = (int)Math.Min(block.Length, size - sent);  // the last block is cut to the announced length
+                await stream.WriteAsync(block.AsMemory(0, len), ct);
+                sent += len;
+                counted(len);
             }
             if (sent < size) throw new OperationCanceledException();  // never end a half body as if it were complete
         }

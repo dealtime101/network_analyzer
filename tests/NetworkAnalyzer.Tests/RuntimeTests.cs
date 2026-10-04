@@ -25,7 +25,7 @@ sealed class StubServer : IAsyncDisposable
     readonly WebApplication web;
     public string Url { get; }
 
-    StubServer(WebApplication web, string url) { this.web = web; Url = url; }
+    StubServer(WebApplication web, string url, int[] counters) { this.web = web; Url = url; this.counters = counters; }
 
     public static async Task<StubServer> StartAsync()
     {
@@ -41,15 +41,29 @@ sealed class StubServer : IAsyncDisposable
             try { while (n > 0) { int k = (int)Math.Min(n, blk.Length); await c.Response.Body.WriteAsync(blk.AsMemory(0, k), c.RequestAborted); n -= k; } }
             catch (OperationCanceledException) { }
         });
+        var counters = new int[3];   // started, exact, wrong
         app.MapPost("/__up", async (HttpContext c) =>
         {
+            Interlocked.Increment(ref counters[0]);
             var buf = new byte[65536];
-            try { while (await c.Request.Body.ReadAsync(buf, c.RequestAborted) > 0) { } } catch (OperationCanceledException) { }
+            long read = 0, declared = c.Request.ContentLength ?? -1;
+            try
+            {
+                int k;
+                while ((k = await c.Request.Body.ReadAsync(buf, c.RequestAborted)) > 0) read += k;
+                Interlocked.Increment(ref counters[read == declared ? 1 : 2]);
+            }
+            catch (OperationCanceledException) { }
         });
         await app.StartAsync();
         var url = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
-        return new StubServer(app, url);
+        return new StubServer(app, url, counters);
     }
+
+    readonly int[] counters;
+    public int UploadsStarted => Volatile.Read(ref counters[0]);
+    public int UploadsExact => Volatile.Read(ref counters[1]);
+    public int UploadsWrong => Volatile.Read(ref counters[2]);
 
     public async ValueTask DisposeAsync() { await web.StopAsync(); await web.DisposeAsync(); }
 }
@@ -81,6 +95,25 @@ public class LoadTestTests
         Assert.True(res[1].AvgMbps > 1);
         var live = rec.LiveSince(0);
         Assert.True(live.ContainsKey("load:down_bps") && live.ContainsKey("load:up_bps"));
+    }
+
+    [Fact]
+    public async Task UploadBodiesMatchTheirContentLengthAndCauseNoErrors()
+    {
+        await using var stub = await StubServer.StartAsync();
+        var cfg = new LoadConfig
+        {
+            BaseUrl = stub.Url, Streams = 1, CapDownMb = 100000, CapUpMb = 30,
+            Phases = new() { new() { Name = "upload", DurationS = 4, Direction = "up" } },
+        };
+        var lt = new LoadTest(NewRec(), cfg);
+        lt.Start();
+        await lt.Task!.WaitAsync(TimeSpan.FromSeconds(30));
+        var r = lt.Status().Results.Single();
+        Assert.True(r.Errors is null || r.Errors.Count == 0, string.Join(" | ", r.Errors ?? new()));
+        Assert.True(stub.UploadsStarted >= 2, "several complete POSTs were expected");
+        Assert.Equal(stub.UploadsStarted, stub.UploadsExact);   // every body had exactly the announced length
+        Assert.Equal(0, stub.UploadsWrong);
     }
 
     [Fact]

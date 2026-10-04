@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace NetworkAnalyzer;
 
-/// <summary>Outcome of one probe. Info holds a short code: "" (ok), timeout, unreachable, error, port_closed, tcp, or a DNS rcode name.</summary>
+/// <summary>Outcome of one probe. Info holds a short code: "" (ok), timeout, unreachable, error, port_closed, tcp, truncated, or a DNS rcode name.</summary>
 public readonly record struct ProbeResult(bool Ok, double? Ms, string Info);
 
 /// <summary>
@@ -120,14 +120,49 @@ public static class Probes
         return ms.ToArray();
     }
 
-    /// <summary>(rcode, answer count), or null when this is not the expected reply.</summary>
-    public static (int RCode, int Answers)? ParseDnsReply(ReadOnlySpan<byte> data, ushort qid)
+    /// <summary>(rcode, answer count, truncated), or null when this is not a complete reply to the question that was asked:
+    /// wrong id, not a response, not a standard query, another question than <paramref name="query"/>'s, or announced records the packet does not carry.
+    /// A truncated reply (TC bit) is returned as such: its sections are partial, so they are not walked.</summary>
+    public static (int RCode, int Answers, bool Truncated)? ParseDnsReply(ReadOnlySpan<byte> data, ushort qid, ReadOnlySpan<byte> query = default)
     {
         if (data.Length < 12) return null;
         var id = BinaryPrimitives.ReadUInt16BigEndian(data);
         var flags = BinaryPrimitives.ReadUInt16BigEndian(data[2..]);
-        if (id != qid || (flags & 0x8000) == 0) return null;
-        return (flags & 0x0F, BinaryPrimitives.ReadUInt16BigEndian(data[6..]));
+        if (id != qid || (flags & 0x8000) == 0 || ((flags >> 11) & 0xF) != 0) return null;
+        int qd = BinaryPrimitives.ReadUInt16BigEndian(data[4..]), an = BinaryPrimitives.ReadUInt16BigEndian(data[6..]);
+        int pos = 12;
+        if (query.Length > 12)
+        {
+            var asked = query[12..];                       // name + type + class, as built by BuildDnsQuery
+            if (qd != 1 || data.Length < 12 + asked.Length || !System.Text.Ascii.EqualsIgnoreCase(data.Slice(12, asked.Length), asked)) return null;
+            pos += asked.Length;
+        }
+        else
+            for (int i = 0; i < qd; i++) { if (!SkipName(data, ref pos) || (pos += 4) > data.Length) return null; }
+        int rcode = flags & 0x0F;
+        if ((flags & 0x0200) != 0) return (rcode, an, true);
+        for (int i = 0; i < an; i++)
+        {
+            if (!SkipName(data, ref pos) || pos + 10 > data.Length) return null;
+            int rdlen = BinaryPrimitives.ReadUInt16BigEndian(data[(pos + 8)..]);
+            pos += 10 + rdlen;
+            if (pos > data.Length) return null;
+        }
+        return (rcode, an, false);
+    }
+
+    /// <summary>Moves past a (possibly compressed) domain name; false when it runs off the packet.</summary>
+    static bool SkipName(ReadOnlySpan<byte> d, ref int pos)
+    {
+        while (pos < d.Length)
+        {
+            int len = d[pos];
+            if (len == 0) { pos++; return true; }
+            if ((len & 0xC0) == 0xC0) { pos += 2; return pos <= d.Length; }   // a pointer ends the name
+            if ((len & 0xC0) != 0) return false;                               // reserved label types
+            pos += 1 + len;
+        }
+        return false;
     }
 
     /// <summary>Queries <paramref name="server"/> over UDP. <paramref name="acceptNxdomain"/>: NXDOMAIN counts as a valid reply.</summary>
@@ -150,10 +185,11 @@ public static class Probes
             while (true)
             {
                 int n = await sock.ReceiveAsync(buf, SocketFlags.None, cts.Token);
-                var r = ParseDnsReply(buf.AsSpan(0, n), qid);
+                var r = ParseDnsReply(buf.AsSpan(0, n), qid, pkt);
                 if (r is null) continue;
                 double ms = sw.Elapsed.TotalMilliseconds;
-                var (rcode, an) = r.Value;
+                var (rcode, an, truncated) = r.Value;
+                if (truncated) return new ProbeResult(false, ms, "truncated");   // the resolver answered but the reply is incomplete: not a resolution
                 bool good = (rcode == 0 && an > 0) || (acceptNxdomain && (rcode == 0 || rcode == 3));
                 return new ProbeResult(good, ms, RCodes.TryGetValue(rcode, out var s) ? s : $"rcode{rcode}");
             }

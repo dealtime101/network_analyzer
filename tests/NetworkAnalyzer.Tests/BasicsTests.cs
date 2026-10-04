@@ -271,7 +271,18 @@ public class ProbeTests
     }
 
     // ---- DNS
-    static (Socket Sock, int Port) DnsStub(int rcode, int answers, bool silent = false)
+    /// <summary>A well-formed reply to <paramref name="query"/>: the question echoed, then <paramref name="answers"/> real A records.</summary>
+    static byte[] DnsReplyFor(byte[] query, int rcode, int answers, int extraFlags = 0)
+    {
+        var r = new List<byte>(query);
+        r[2] = (byte)((0x8180 | rcode | extraFlags) >> 8); r[3] = (byte)((0x8180 | rcode | extraFlags) & 0xFF);
+        r[6] = (byte)(answers >> 8); r[7] = (byte)(answers & 0xFF);
+        for (int i = 0; i < answers; i++)
+            r.AddRange(new byte[] { 0xC0, 0x0C, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 192, 0, 2, (byte)(i + 1) });   // name pointer, A, IN, ttl 60, 4 bytes
+        return r.ToArray();
+    }
+
+    static (Socket Sock, int Port) DnsStub(int rcode, int answers, bool silent = false, int extraFlags = 0)
     {
         var sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         sock.Bind(new IPEndPoint(IPAddress.Loopback, 0));
@@ -283,11 +294,7 @@ public class ProbeTests
                 EndPoint from = new IPEndPoint(IPAddress.Any, 0);
                 int n = sock.ReceiveFrom(buf, ref from);
                 if (silent) return;
-                var reply = new byte[n];
-                Array.Copy(buf, reply, n);
-                BinaryPrimitives.WriteUInt16BigEndian(reply.AsSpan(2), (ushort)(0x8180 | rcode));
-                BinaryPrimitives.WriteUInt16BigEndian(reply.AsSpan(6), (ushort)answers);
-                sock.SendTo(reply, from);
+                sock.SendTo(DnsReplyFor(buf[..n], rcode, answers, extraFlags), from);
             }
             catch (SocketException) { }
             catch (ObjectDisposedException) { }
@@ -295,9 +302,9 @@ public class ProbeTests
         return (sock, ((IPEndPoint)sock.LocalEndPoint!).Port);
     }
 
-    static async Task<ProbeResult> Query(int rcode, int answers, bool acceptNx = false, bool silent = false, int timeout = 2000)
+    static async Task<ProbeResult> Query(int rcode, int answers, bool acceptNx = false, bool silent = false, int timeout = 2000, int extraFlags = 0)
     {
-        var (s, port) = DnsStub(rcode, answers, silent);
+        var (s, port) = DnsStub(rcode, answers, silent, extraFlags);
         try { return await Probes.DnsQueryAsync("127.0.0.1", "x.example.com", timeout, acceptNx, port); }
         finally { s.Dispose(); }
     }
@@ -310,6 +317,39 @@ public class ProbeTests
         var label = new byte[] { 3, (byte)'w', (byte)'w', (byte)'w', 7, (byte)'e', (byte)'x', (byte)'a', (byte)'m', (byte)'p', (byte)'l', (byte)'e', 3, (byte)'c', (byte)'o', (byte)'m', 0 };
         Assert.True(pkt.AsSpan(12).IndexOf(label) >= 0);
         Assert.Null(Probes.ParseDnsReply(new byte[5], 1));
+    }
+
+    [Fact]
+    public void ADnsReplyIsOnlyAcceptedWhenItIsCompleteAndAnswersTheQuestionAsked()
+    {
+        var q = Probes.BuildDnsQuery("x.example.com", 7);
+        Assert.Equal((0, 1, false), Probes.ParseDnsReply(DnsReplyFor(q, 0, 1), 7, q));
+        Assert.Equal((3, 0, false), Probes.ParseDnsReply(DnsReplyFor(q, 3, 0), 7, q));
+        // a bare 12-byte header that announces an answer it does not carry
+        Assert.Null(Probes.ParseDnsReply(DnsReplyFor(q, 0, 1)[..12], 7, q));
+        // announced two answers, carries one and a half
+        var cut = DnsReplyFor(q, 0, 2); Array.Resize(ref cut, cut.Length - 10);
+        Assert.Null(Probes.ParseDnsReply(cut, 7, q));
+        // a reply to another name, another opcode, a missing question
+        var other = Probes.BuildDnsQuery("y.example.com", 7);
+        Assert.Null(Probes.ParseDnsReply(DnsReplyFor(other, 0, 1), 7, q));
+        var notify = DnsReplyFor(q, 0, 1); notify[2] |= 0x10;   // opcode 2
+        Assert.Null(Probes.ParseDnsReply(notify, 7, q));
+        var noQuestion = DnsReplyFor(q, 0, 1); noQuestion[5] = 0;
+        Assert.Null(Probes.ParseDnsReply(noQuestion, 7, q));
+        // the name is compared without case: some resolvers change it
+        var upper = DnsReplyFor(q, 0, 1); for (int i = 13; i < 14; i++) upper[i] = (byte)char.ToUpperInvariant((char)upper[i]);
+        Assert.Equal((0, 1, false), Probes.ParseDnsReply(upper, 7, q));
+    }
+
+    [Fact]
+    public async Task ATruncatedDnsReplyIsReportedAsTruncatedNotAsAResolution()
+    {
+        var r = await Query(0, 1, extraFlags: 0x0200);   // TC bit
+        Assert.False(r.Ok);
+        Assert.Equal("truncated", r.Info);
+        Assert.True(r.Ms > 0);                           // the resolver did answer: the time is still measured
+        Assert.True((await Query(0, 1)).Ok);             // the same reply without TC is a success
     }
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
@@ -360,13 +400,7 @@ public class ProbeTests
                 var buf = new byte[512];
                 EndPoint from = new IPEndPoint(IPAddress.Any, 0);
                 int n = server.ReceiveFrom(buf, ref from);
-                byte[] Reply(int rcode, int answers)
-                {
-                    var r = buf[..n];
-                    BinaryPrimitives.WriteUInt16BigEndian(r.AsSpan(2), (ushort)(0x8180 | rcode));
-                    BinaryPrimitives.WriteUInt16BigEndian(r.AsSpan(6), (ushort)answers);
-                    return r;
-                }
+                byte[] Reply(int rcode, int answers) => DnsReplyFor(buf[..n], rcode, answers);
                 using var rogue = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 rogue.Bind(new IPEndPoint(IPAddress.Loopback, 0));
                 rogue.SendTo(Reply(0, 1), from);      // forged: right id, wrong sender

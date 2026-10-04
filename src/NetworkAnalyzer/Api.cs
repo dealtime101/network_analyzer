@@ -157,7 +157,7 @@ public static class Api
             var m = SessionRx.Match(path);
             if (m.Success)
             {
-                int sid = int.Parse(m.Groups[1].Value);
+                if (!int.TryParse(m.Groups[1].Value, out int sid)) throw new ApiException(Loc.T("err.session_not_found"), 404);  // too big for an id: no such session
                 string? sub = m.Groups[2].Success ? m.Groups[2].Value : null, ext = m.Groups[3].Success ? m.Groups[3].Value : null;
                 if (sub is null) return app.SessionDetail(sid);
                 if (sub == "series") return app.SeriesPayload(sid);
@@ -188,7 +188,8 @@ public static class Api
         var ma = SessionActionRx.Match(path);
         if (ma.Success)
         {
-            app.DeleteOrLabel(int.Parse(ma.Groups[1].Value), ma.Groups[2].Value, body);
+            if (!int.TryParse(ma.Groups[1].Value, out int id)) throw new ApiException(Loc.T("err.session_not_found"), 404);
+            app.DeleteOrLabel(id, ma.Groups[2].Value, body);
             return new { ok = true };
         }
         throw new ApiException(Loc.T("err.not_found"), 404);

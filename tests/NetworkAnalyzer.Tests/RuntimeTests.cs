@@ -605,6 +605,28 @@ public class ServerTests : IAsyncLifetime
         Assert.False(app.Rec.Running);
     }
 
+    [Theory]
+    [InlineData("/api/session/99999999999")]
+    [InlineData("/api/session/99999999999/series")]
+    [InlineData("/api/session/99999999999/export.csv")]
+    [InlineData("/api/session/99999999999/report.html")]
+    public async Task ASessionIdTooBigForAnIntIsNotFoundNotAServerError(string path)
+    {
+        var r = await Call(path);
+        Assert.Equal(404, r.Code);
+        Assert.DoesNotContain("Overflow", r.Body);
+    }
+
+    [Theory]
+    [InlineData("/api/session/99999999999/delete")]
+    [InlineData("/api/session/99999999999/label")]
+    public async Task AnActionOnATooBigSessionIdIsNotFoundToo(string path)
+    {
+        var r = await Call(path, new { label = "x" });
+        Assert.Equal(404, r.Code);
+        Assert.DoesNotContain("Overflow", r.Body);
+    }
+
     [Fact]
     public async Task TheEstimateReadsDecimalAndNegativeQueryValuesLikeNumbers()
     {

@@ -493,6 +493,24 @@ public class ProbeTests
     }
 
     [Fact]
+    public void TheLatencyStepNoteDescribesWhatIsSeenWithoutNamingTheCause()
+    {
+        var hops = new[] { Hop(1, "192.168.0.1", new[] { .5, .5, .5 }, 0), Hop(2, "80.2.2.2", new[] { 82.0, 85, 80 }, 0), Hop(3, "8.8.8.8", new[] { 85.0, 86, 84 }, 0) };
+        var a = Probes.AnalyzeTrace(hops, "8.8.8.8");
+        Assert.NotNull(a.Step);
+        foreach (var lang in new[] { "en", "fr" })
+            using (Loc.Scope(lang))
+            {
+                var note = Probes.TraceNotes(a).Single(n => n.Contains("80.2.2.2") || n.Contains(" 2 ") || n.Contains("85"));
+                Assert.DoesNotContain("starts at this point", note);
+                Assert.DoesNotContain("commence à ce niveau", note);
+                // says that a traceroute alone cannot place the cause: return paths and ICMP handling
+                Assert.Contains(lang == "en" ? "cannot place" : "ne permet pas de localiser", note);
+                Assert.Contains("ICMP", note);
+            }
+    }
+
+    [Fact]
     public void AnIcmpErrorFromTheDestinationIsNotAnEchoReply()
     {
         // the destination address answered "unreachable" (administratively prohibited…) to all 3 probes: there are RTTs, but nothing was reached

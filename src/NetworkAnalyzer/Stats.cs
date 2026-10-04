@@ -35,9 +35,11 @@ public static class Stats
         return sorted[Math.Min(k, sorted.Count) - 1];
     }
 
-    public static double? Median(IEnumerable<double> vals)
+    public static double? Median(IEnumerable<double> vals) => MedianSorted(vals.OrderBy(x => x).ToList());
+
+    /// <summary>Median of a list that is ALREADY sorted ascending (reads the middle, no copy, no sort).</summary>
+    public static double? MedianSorted(IReadOnlyList<double> s)
     {
-        var s = vals.OrderBy(x => x).ToList();
         int n = s.Count;
         if (n == 0) return null;
         return n % 2 == 1 ? s[n / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
@@ -70,7 +72,7 @@ public static class Stats
         return new RttStats
         {
             N = n, Lost = lost, LossPct = 100.0 * lost / n,
-            Median = Median(vals), P95 = Percentile(vals, 95),
+            Median = MedianSorted(vals), P95 = Percentile(vals, 95),
             Max = vals.Count > 0 ? vals[^1] : null, Min = vals.Count > 0 ? vals[0] : null,
             Mean = vals.Count > 0 ? vals.Average() : null, Jitter = Jitter(list),
         };

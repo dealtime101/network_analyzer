@@ -53,6 +53,18 @@ public class TargetLabelTests
 
 public class StatsTests
 {
+    [Fact]
+    public void MedianOfASortedListReadsTheMiddleWithoutSortingAgain()
+    {
+        Assert.Equal(2.0, Stats.MedianSorted(new List<double> { 1, 2, 3 }));
+        Assert.Equal(2.5, Stats.MedianSorted(new List<double> { 1, 2, 3, 4 }));
+        Assert.Equal(7.0, Stats.MedianSorted(new List<double> { 7 }));
+        Assert.Null(Stats.MedianSorted(new List<double>()));
+        Assert.Equal(2.5, Stats.Median(new[] { 4.0, 1, 3, 2 }));   // the general one still accepts any order
+        // an array that is not sorted proves MedianSorted does not sort: it trusts its input
+        Assert.Equal(1.0, Stats.MedianSorted(new double[] { 3, 1, 2 }));
+    }
+
     static List<Sample> S(params double?[] vals) => vals.Select((v, i) => new Sample(i, v, v.HasValue, "")).ToList();
     static List<Sample> Range(int a, int b) => S(Enumerable.Range(a, b - a + 1).Select(x => (double?)x).ToArray());
 

@@ -100,6 +100,21 @@ public class RouterTests
     }
 
     [Fact]
+    public void TheLimitJustificationIsAHypothesisToCheckNotAPromise()
+    {
+        var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };
+        foreach (var lang in new[] { "en", "fr" })
+            using (Loc.Scope(lang))
+            {
+                var why = RouterQos.Propose(r, (300.0, null), 120).First().Justification;
+                Assert.DoesNotContain("which can manage it", why);
+                Assert.DoesNotContain("qui peut la gérer", why);
+                Assert.Contains(lang == "en" ? "may" : "peut", why);
+                Assert.Contains(lang == "en" ? "again" : "Relancez", why);     // it says how to verify: the same test before and after
+            }
+    }
+
+    [Fact]
     public void ALimitIsNeverProposedAsZero()
     {
         var r = new RouterConfig { QosType = "bandwidth_limit", Unit = "Mbps" };

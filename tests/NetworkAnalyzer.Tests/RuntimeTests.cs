@@ -1469,6 +1469,25 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task FailuresHeldBackWhileWaitingToDecideAboutIcmpAreSavedWhenTheSessionStopsEarly()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        var rec = new Recorder(store);
+        // a target that never answers (TEST-NET-1, reserved for documentation): within a 3.5 s session fewer than the 8 failures needed to decide
+        var ghost = new Target { Id = "ghost", Host = "192.0.2.1", Role = "internet", Family = 4 };
+        int sid = rec.Start(new EnvInfo(), new List<Target> { ghost }, 1);
+        await Task.Delay(3500);
+        await rec.StopAsync();
+        var samples = store.Load(sid)!.S("ping:ghost");
+        Assert.True(samples.Count >= 2, $"only {samples.Count} samples saved: the early failures were lost");
+        Assert.All(samples, s => { Assert.False(s.Ok); Assert.NotEqual("icmp_no_reply", s.Info); });   // as they were observed, not relabelled
+        // and they do not leak into the next session
+        int next = rec.Start(new EnvInfo(), new List<Target>(), 1);
+        await rec.StopAsync();
+        Assert.Empty(store.Load(next)!.S("ping:ghost"));
+    }
+
+    [Fact]
     public async Task AMeasurementTaskThatCrashedNeverPreventsTheSessionFromBeingFinalised()
     {
         var store = new SessionStore(Tmp.Dir());

@@ -69,6 +69,7 @@ public sealed class Recorder
     (string Name, double T0, PhaseMeta Meta)? curPhase;
     double lastGap;
     bool stopping;   // StopAsync is closing the previous session: Start must wait
+    int epoch;       // incremented by every Start: what a loop emits while closing is only kept if its session is still the current one
     readonly List<Task> traceTasks = new();
 
     public Recorder(SessionStore store) => this.store = store;
@@ -204,6 +205,7 @@ public sealed class Recorder
             Env = env;
             Targets = targets;
             live.Clear(); notes.Clear(); targetState.Clear(); phases.Clear(); marks.Clear(); curPhase = null; lastGap = 0;
+            epoch++;
             cts = new CancellationTokenSource();
             var ct = cts.Token;
             tasks = new List<Task>();
@@ -294,14 +296,26 @@ public sealed class Recorder
             MarkNow("gap", "", last, ct);
     }
 
+    /// <summary>Failures a ping loop was still holding back (it had not decided about ICMP yet) when its session stopped. They
+    /// are real observations and are saved as observed, unless a newer session has begun in the meantime (they belong to the old one).</summary>
+    void EmitHeld(int sessionEpoch, string series, IEnumerable<(double T, string Info)> held)
+    {
+        foreach (var (t, info) in held)
+        {
+            lock (gate) { if (epoch != sessionEpoch) return; }
+            Emit(series, null, false, info, t);   // no token: the session is closing, its writer is still open
+        }
+    }
+
     async Task PingLoop(Target tg, CancellationToken ct)
     {
+        var name = $"ping:{tg.Id}";
+        var pending = new List<(double T, string Info)>();
+        bool decided = false;
+        int ep; lock (gate) ep = epoch;
         try
         {
-            var name = $"ping:{tg.Id}";
             var mode = "icmp";
-            var pending = new List<(double T, string Info)>();
-            bool decided = false;
             var sw = Stopwatch.StartNew();
             double next = 0, last = Clock.Now();
             IPAddress? addr = null;
@@ -363,6 +377,11 @@ public sealed class Recorder
             }
         }
         catch (OperationCanceledException) { }
+        finally
+        {
+            // stopped before it could decide about ICMP: the failures held back are kept (as observed, not relabelled)
+            if (!decided && pending.Count > 0) EmitHeld(ep, name, pending);
+        }
     }
 
     async Task DnsLoop(string server, CancellationToken ct)

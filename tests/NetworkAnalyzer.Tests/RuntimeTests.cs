@@ -1616,6 +1616,27 @@ public class RecorderTests
     }
 
     [Fact]
+    public async Task WifiThatBecomesReadableAfterAnUnavailableFirstReadingStillGetsItsDetails()
+    {
+        var store = new SessionStore(Tmp.Dir());
+        int calls = 0;
+        var rec = new Recorder(store)
+        {
+            WifiPollMs = 30,
+            WifiReader = () => Task.FromResult<WifiInfo?>(++calls == 1 ? null : new WifiInfo { Connected = true, Signal = 80, Channel = 6, Bssid = "aa:bb" }),
+            NeighborReader = (_, _) => Task.FromResult<WifiNeighbors?>(new WifiNeighbors { Total = 3 }),
+        };
+        rec.Start(new EnvInfo { Active = new AdapterInfo { Kind = "wifi" } }, new List<Target>(), 1);
+        await Task.Delay(600);
+        var id = rec.Status().Sid!.Value;
+        await rec.StopAsync();
+        var meta = store.LoadHeader(id)!.Meta;
+        Assert.NotNull(meta.Wifi);                          // red before: stayed null for the whole session
+        Assert.Equal(3, meta.WifiNeighbors?.Total);
+        Assert.Single(rec.Status().Notes, n => n == Loc.T("note.wifi_unavailable"));   // the first miss is still noted, once
+    }
+
+    [Fact]
     public async Task ALateMeasurementOfAStoppedSessionIsDropped()
     {
         var store = new SessionStore(Tmp.Dir());

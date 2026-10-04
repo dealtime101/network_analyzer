@@ -478,7 +478,8 @@ public sealed class Recorder
         try
         {
             string? lastBssid = null;
-            bool first = true;
+            bool first = true;       // the details have not been collected yet: only a usable reading clears it
+            bool missNoted = false;  // the "unavailable" note is written once, however long the Wi-Fi stays unreadable
             double last = Clock.Now();
             while (!ct.IsCancellationRequested)
             {
@@ -487,7 +488,7 @@ public sealed class Recorder
                 last = Clock.Now();
                 if (w is null)
                 {
-                    if (first) AddNote("wifi_unavailable");
+                    if (first && !missNoted) { AddNote("wifi_unavailable"); missNoted = true; }
                 }
                 else
                 {
@@ -505,8 +506,8 @@ public sealed class Recorder
                     if (lastBssid != null && !string.IsNullOrEmpty(w.Bssid) && w.Bssid != lastBssid)
                         MarkNow("roam", "", null, ct);
                     if (!string.IsNullOrEmpty(w.Bssid)) lastBssid = w.Bssid;
+                    first = false;
                 }
-                first = false;
                 await Task.Delay(WifiPollMs, ct);
             }
         }

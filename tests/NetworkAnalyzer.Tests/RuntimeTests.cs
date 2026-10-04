@@ -391,6 +391,45 @@ public class ReportTests
         Assert.Contains("<title>", html);
     }
 
+    /// <summary>A strict reader for the CSV the tool writes (RFC 4180 quoting): records and fields, quotes unescaped.</summary>
+    static List<List<string>> ParseCsv(string text)
+    {
+        var rows = new List<List<string>>();
+        var row = new List<string>();
+        var field = new System.Text.StringBuilder();
+        bool quoted = false, any = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (quoted)
+            {
+                if (c == '"' && i + 1 < text.Length && text[i + 1] == '"') { field.Append('"'); i++; }
+                else if (c == '"') quoted = false;
+                else field.Append(c);
+            }
+            else if (c == '"' && field.Length == 0) { quoted = true; any = true; }
+            else if (c == ',') { row.Add(field.ToString()); field.Clear(); any = true; }
+            else if (c == '\n') { row.Add(field.ToString()); field.Clear(); rows.Add(row); row = new(); any = false; }
+            else field.Append(c);
+        }
+        if (any || field.Length > 0) { row.Add(field.ToString()); rows.Add(row); }
+        return rows;
+    }
+
+    [Fact]
+    public void EveryMarkKindComesBackAsOneRecordOfSevenFieldsWhenTheCsvIsParsed()
+    {
+        var d = Simulator.Make("healthy", 7, p => p.Minutes = 1);
+        var kinds = new[] { "lag", "a,b", "say \"hi\"", "two\nlines", "cr\rlf", "=HYPERLINK(\"x\")", "-minus", "@at", "plain" };
+        foreach (var (k, i) in kinds.Select((k, i) => (k, i))) d.Marks.Add(new Mark { T = Simulator.T0 + 10 + i, Kind = k, Note = $"note,{i}\n\"q\"" });
+        var rows = ParseCsv(Report.ExportCsv(d));
+        Assert.All(rows, r => Assert.Equal(7, r.Count));                                   // no row is split or shifted, header included
+        var marks = rows.Where(r => r[3].StartsWith("mark:")).ToList();
+        Assert.Equal(d.Marks.Count, marks.Count);                                           // one record per mark, the simulator's own included
+        foreach (var (k, i) in kinds.Select((k, i) => (k, i)))                              // each of mine comes back intact, with its own note
+            Assert.Contains(marks, m => m[3] == "mark:" + k && m[6] == $"note,{i}\n\"q\"");
+    }
+
     [Fact]
     public void TimelineShowsTheDateOnlyWhenTheSessionSpansSeveralDays()
     {
